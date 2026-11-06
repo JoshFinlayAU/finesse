@@ -11,6 +11,7 @@ These are the owner's choices. Don't change them without asking.
 | Area | Decision |
 |---|---|
 | Playback | Hybrid: AVPlayer first, libmpv/FFmpeg fallback |
+| Playback package | Our own dynamic LGPL 2.1 mpv and FFmpeg build. MPVKit is development-only until that lands |
 | UI | SwiftUI first, UIKit where needed |
 | Minimum OS | tvOS 26; no back-deployment or availability shims for older versions |
 | Design | Full Liquid Glass; Plex for structure only |
@@ -20,6 +21,8 @@ These are the owner's choices. Don't change them without asking.
 | Test server | Existing Jellyfin server, test user only |
 | Distribution | TestFlight first, kept App Store-ready |
 | Licence | Private for now; open or closed source to be decided before release |
+| Bundle ID | `au.com.athenanetworks.finesse`. Not yet registered: the developer portal and App Store Connect need a separate go-ahead from the owner |
+| Apple team | `4S7BG5A4XV` |
 
 ## Stack
 
@@ -83,6 +86,7 @@ sed 's/^/TEST_RUNNER_/' .env.local | ssh fin-mac 'set -a; . /dev/stdin; set +a; 
 - Keep values shell-safe and quoted, with no comment lines in the file.
 - Skip integration tests when the variables are absent, and keep them in their own test plan so unit tests stay offline.
 - Don't log credentials or tokens, including in test output.
+- One accepted exception, for these low-privilege test accounts only: `runningboardd` and `CoreSimulatorBridge` write process environments to the simulator's unified log, so test credentials end up there on every run and can't be kept out. Erase our simulators periodically to clear it, with `xcrun simctl shutdown "<name>"` then `xcrun simctl erase "<name>"`. This doesn't extend to any other credential.
 
 ### UI flow tests
 
@@ -181,7 +185,7 @@ TestFlight uploads and any App Store Connect change are outward-facing, so confi
 
 - Private memory: `memory/`  ·  Spoke skills: `skills/`
 - Destructive git ops (force-push, reset --hard, branch deletes) are fine without asking. Make a throwaway branch or note the SHA first so the state is recoverable.
-- Still undecided: bundle ID, Apple team, app icon and branding, and the final licence. Ask rather than inventing them, then record the answers here.
+- Still undecided: app icon and branding, and the final licence. Ask rather than inventing them, then record the answers here.
 
 <!-- aisandbox:multi-agent:start -->
 ## Multi-agent spoke

@@ -1,7 +1,7 @@
 name: Finesse
 
 options:
-  bundleIdPrefix: invalid.placeholder
+  bundleIdPrefix: au.com.athenanetworks
   createIntermediateGroups: true
   deploymentTarget:
     tvOS: "26.0"
@@ -26,6 +26,7 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: 4S7BG5A4XV
     # Ad-hoc in the simulator: no team needed, and Keychain calls fail with -34018 when unsigned.
     "CODE_SIGN_IDENTITY[sdk=appletvsimulator*]": "-"
     "CODE_SIGN_STYLE[sdk=appletvsimulator*]": Manual
@@ -49,7 +50,7 @@ targets:
       base:
         PRODUCT_NAME: Finesse
         PRODUCT_MODULE_NAME: FinEsse
-        PRODUCT_BUNDLE_IDENTIFIER: invalid.placeholder.finesse
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.athenanetworks.finesse
         INFOPLIST_FILE: Finesse/Resources/Info.plist
         ENABLE_PREVIEWS: "YES"
 
@@ -62,7 +63,7 @@ targets:
       - target: Finesse
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: invalid.placeholder.finesse.tests
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.athenanetworks.finesse.tests
         GENERATE_INFOPLIST_FILE: "YES"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Finesse.app/Finesse"
         BUNDLE_LOADER: "$(TEST_HOST)"
@@ -76,7 +77,7 @@ targets:
       - target: Finesse
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: invalid.placeholder.finesse.integrationtests
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.athenanetworks.finesse.integrationtests
         GENERATE_INFOPLIST_FILE: "YES"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Finesse.app/Finesse"
         BUNDLE_LOADER: "$(TEST_HOST)"
@@ -90,7 +91,7 @@ targets:
       - target: Finesse
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: invalid.placeholder.finesse.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.athenanetworks.finesse.uitests
         GENERATE_INFOPLIST_FILE: "YES"
         TEST_TARGET_NAME: Finesse
 
