@@ -96,10 +96,55 @@ struct PlaybackTracksEndToEndTests {
         defer { view?.removeFromSuperview() }
         #expect(try await waitUntil { engine.state == .playing && engine.position.seconds > start + 1 })
 
-        try await body(session, client)
-
+        // Cleans up even when the test fails, so a failure can't leave a resume position behind.
+        var failure: (any Error)?
+        do {
+            try await body(session, client)
+        } catch {
+            failure = error
+        }
         await session.stop()
         try await client.reportPlaybackStopped(PlaybackReport(itemID: itemID, position: .zero, playMethod: .directPlay))
+        if let failure {
+            throw failure
+        }
+    }
+
+    /// The server remembers each user's last audio choice per item from progress reports,
+    /// which sets the default next time.
+    private func remember(audio: Int, on itemID: String) async throws -> Int? {
+        let client = try await LiveServer.signedInClient()
+        let report = PlaybackReport(itemID: itemID, position: .zero, playMethod: .directPlay, audioStreamIndex: audio)
+        try await client.reportPlaybackStart(report)
+        try await client.reportPlaybackProgress(report)
+        try await client.reportPlaybackStopped(report)
+        let info = try await client.playbackInfo(PlaybackInfoRequest(itemID: itemID, deviceProfile: DeviceProfileBuilder.make()))
+        return info.mediaSources.first?.defaultAudioStreamIndex
+    }
+
+    /// AVPlayer only reaches this file's first audio track, so a remembered second one needs mpv.
+    @Test func unreachableDefaultAudioStartsOnMpvWithThatTrack() async throws {
+        guard try await remember(audio: 3, on: Item.avMultiAudio) == 3 else {
+            Issue.record("The server did not remember the audio choice, so this test proves nothing")
+            return
+        }
+        try await withPlayback(Item.avMultiAudio, start: 600, expecting: .mpv) { session, _ in
+            let engine = try #require(session.engine as? MPVEngine)
+            #expect(engine.selectedAudioTrackID == 3)
+            #expect(try await waitUntil(timeout: .seconds(10)) { engine.activeAudioTrackID == 3 })
+            mark("default audio 3 playing on mpv")
+            try await Task.sleep(for: .seconds(4))
+
+            // Nothing else needs mpv now, but AVPlayer can't reach this track, so it has to stay.
+            try await session.selectSubtitleTrack(id: nil)
+            let after = try #require(session.engine as? MPVEngine)
+            let view = show(after)
+            defer { view?.removeFromSuperview() }
+            #expect(try await waitUntil { after.state == .playing })
+            #expect(try await waitUntil(timeout: .seconds(10)) { after.activeAudioTrackID == 3 })
+            mark("subtitles off, still on mpv with audio 3")
+        }
+        #expect(try await remember(audio: 2, on: Item.avMultiAudio) == 2)
     }
 
     @Test func mpvSwitchesAudioAndSubtitlesOnTheSameEngine() async throws {
@@ -152,6 +197,7 @@ struct PlaybackTracksEndToEndTests {
     }
 
     @Test func avPlayerSwitchesAudioAndMovesToMpvForAnExternalSubtitleAndBack() async throws {
+        #expect(try await remember(audio: 2, on: Item.avMultiAudio) == 2)
         // The server turns this item's external subtitle on by default, so it starts on mpv.
         try await withPlayback(Item.avMultiAudio, start: 600, expecting: .mpv) { session, _ in
             let starting = try #require(session.engine as? MPVEngine)
@@ -167,34 +213,35 @@ struct PlaybackTracksEndToEndTests {
             #expect(try await waitUntil { first.state == .playing })
             #expect(abs(first.position.seconds - beforeOff.seconds) < 15)
             mark("moved to avplayer, subtitles off")
-            print("OPTIONS audible \(await first.selectableTrackCount(.audible)) legible \(await first.selectableTrackCount(.legible)) server audio \(first.audioTracks.count)")
             #expect(await first.activeTrackID(.audible) == 2)
-
-            try await session.selectAudioTrack(id: 3)
-            var active: Int?
-            for _ in 0..<25 {
-                active = await first.activeTrackID(.audible)
-                if active == 3 { break }
-                try await Task.sleep(for: .milliseconds(200))
-            }
-            #expect(active == 3)
-            #expect(session.engine === first)
-            mark("avplayer audio track 3 active")
             try await Task.sleep(for: .seconds(4))
 
+            // AVPlayer only exposes one of this file's two audio tracks, so this has to move.
+            #expect(await first.selectableTrackCount(.audible) < first.audioTracks.count)
             let before = first.position
-            try await session.selectSubtitleTrack(id: 0)
+            try await session.selectAudioTrack(id: 3)
             let mpv = try #require(session.engine as? MPVEngine)
             let view = show(mpv)
             defer { view?.removeFromSuperview() }
             #expect(try await waitUntil { mpv.state == .playing })
             #expect(abs(mpv.position.seconds - before.seconds) < 15)
-            #expect(try await waitUntil(timeout: .seconds(10)) { mpv.activeSubtitleTrackID == 0 })
-            #expect(mpv.selectedAudioTrackID == 3)
             #expect(try await waitUntil(timeout: .seconds(10)) { mpv.activeAudioTrackID == 3 })
-            mark("back on mpv, external subrip on, audio choice kept")
-            try await Task.sleep(for: .seconds(10))
+            mark("moved to mpv for audio track 3")
+            try await Task.sleep(for: .seconds(4))
+
+            try await session.selectSubtitleTrack(id: 0)
+            #expect(try await waitUntil(timeout: .seconds(10)) { mpv.activeSubtitleTrackID == 0 })
+            #expect(session.engine === mpv)
+            mark("external subrip on, same engine")
+            try await Task.sleep(for: .seconds(15))
+
+            try await session.selectSubtitleTrack(id: nil)
+            #expect(session.engine === mpv)
+            #expect(mpv.activeAudioTrackID == 3)
+            mark("subtitles off, audio choice kept on mpv")
+            try await Task.sleep(for: .seconds(4))
         }
+        #expect(try await remember(audio: 2, on: Item.avMultiAudio) == 2)
     }
 
     @Test func avPlayerSelectsMovText() async throws {

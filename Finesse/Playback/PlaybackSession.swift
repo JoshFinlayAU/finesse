@@ -23,6 +23,9 @@ final class PlaybackSession {
     @ObservationIgnored private let reportInterval: Duration
     @ObservationIgnored private var info = PlaybackInfo()
     @ObservationIgnored private var reporter: PlaybackProgressReporter?
+    /// Narrowed for good once an engine turns out not to reach a track this file has,
+    /// so a later track change can't route back to it and lose the user's choice.
+    @ObservationIgnored private var engines = EngineCapabilities.routingOrder
 
     init(
         client: any JellyfinClient,
@@ -50,8 +53,14 @@ final class PlaybackSession {
 
     func start() async throws {
         info = try await fetchInfo(startPosition: startPosition, audioStreamIndex: nil, subtitleStreamIndex: nil)
-        let route = try makeRoute(audioStreamIndex: nil, subtitle: .sourceDefault)
-        let engine = start(route, at: startPosition)
+        var route = try makeRoute(audioStreamIndex: nil, subtitle: .sourceDefault)
+        var engine = start(route, at: startPosition)
+        // The server's default audio can be a track this engine can't reach.
+        if let moved = await routeAvoidingUnreachableAudio(route, on: engine, subtitle: .sourceDefault) {
+            engine.stop()
+            route = moved
+            engine = start(moved, at: startPosition)
+        }
 
         let reporter = PlaybackProgressReporter(
             client: client,
@@ -129,7 +138,11 @@ final class PlaybackSession {
                 subtitleStreamIndex: subtitleIndex
             )
         }
-        let next = try makeRoute(audioStreamIndex: audioStreamIndex, subtitle: subtitle)
+        var next = try makeRoute(audioStreamIndex: audioStreamIndex, subtitle: subtitle)
+        if next.engine == current.engine,
+           let moved = await routeAvoidingUnreachableAudio(next, on: engine, subtitle: subtitle) {
+            next = moved
+        }
         if next.engine == current.engine, next.url == current.url {
             route = next
             reporter?.updateRoute(next)
@@ -140,10 +153,40 @@ final class PlaybackSession {
         } else {
             let position = engine.position
             engine.stop()
-            start(next, at: position)
+            var moved = start(next, at: position)
+            // The route can bring us back to an engine that can't reach the chosen audio.
+            if let elsewhere = await routeAvoidingUnreachableAudio(next, on: moved, subtitle: subtitle) {
+                moved.stop()
+                next = elsewhere
+                moved = start(elsewhere, at: position)
+            }
             reporter?.updateRoute(next)
         }
         await reporter?.reportProgress()
+    }
+
+    /// A route on another engine when this one can't reach the route's audio, otherwise nil.
+    /// A transcode's tracks are already in its URL, so this only applies to direct play.
+    private func routeAvoidingUnreachableAudio(
+        _ route: PlaybackRoute,
+        on engine: any PlaybackEngine,
+        subtitle: SubtitleChoice
+    ) async -> PlaybackRoute? {
+        guard route.method == .directPlay, let audio = route.audioStreamIndex,
+              !(await engine.canSelectAudioTrack(id: audio)) else {
+            return nil
+        }
+        let remaining = engines.filter { $0.engine != route.engine }
+        guard case .success(let moved) = PlaybackRouter.route(
+            sources: info.mediaSources,
+            audioStreamIndex: audio,
+            subtitle: subtitle,
+            engines: remaining
+        ), moved.method == .directPlay else {
+            return nil
+        }
+        engines = remaining
+        return moved
     }
 
     @discardableResult
@@ -181,7 +224,12 @@ final class PlaybackSession {
     }
 
     private func makeRoute(audioStreamIndex: Int?, subtitle: SubtitleChoice) throws -> PlaybackRoute {
-        switch PlaybackRouter.route(sources: info.mediaSources, audioStreamIndex: audioStreamIndex, subtitle: subtitle) {
+        switch PlaybackRouter.route(
+            sources: info.mediaSources,
+            audioStreamIndex: audioStreamIndex,
+            subtitle: subtitle,
+            engines: engines
+        ) {
         case .success(let route):
             return route
         case .failure:

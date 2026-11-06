@@ -17,6 +17,7 @@ private final class FakeEngine: PlaybackEngine {
     var selectedSubtitleTrackID: Int?
     var loaded: PlaybackLoadRequest?
     var stopped = false
+    var unreachableAudio: Set<Int> = []
 
     init(kind: PlaybackEngineKind) {
         self.kind = kind
@@ -33,6 +34,7 @@ private final class FakeEngine: PlaybackEngine {
     func play() { state = .playing }
     func pause() { state = .paused }
     func seek(to position: Ticks) { self.position = position }
+    func canSelectAudioTrack(id: Int) async -> Bool { !unreachableAudio.contains(id) }
     func selectAudioTrack(id: Int) { selectedAudioTrackID = id }
     func selectSubtitleTrack(id: Int?) { selectedSubtitleTrackID = id }
     func stop() { stopped = true }
@@ -136,6 +138,126 @@ private final class FakeEngine: PlaybackEngine {
         try await session.selectAudioTrack(id: 1)
         #expect(engines().count == 1)
         #expect(engines()[0].selectedAudioTrackID == 1)
+        await session.stop()
+    }
+
+    /// An MP4 whose audio tracks AVPlayer can't switch between, as seen on the test server.
+    private func makeUngroupedAudioInfo() -> PlaybackInfo {
+        var info = makeInfo()
+        info.mediaSources[0].streams[2] = stream(2, .audio, "ac3")
+        return info
+    }
+
+    @Test func audioTheEngineCannotReachMovesToTheOtherEngineAndStaysThere() async throws {
+        let client = try await makeClient(makeUngroupedAudioInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        engines()[0].unreachableAudio = [2]
+        engines()[0].position = Ticks(seconds: 100)
+
+        try await session.selectAudioTrack(id: 2)
+
+        #expect(engines().map(\.kind) == [.avPlayer, .mpv])
+        #expect(engines()[0].stopped)
+        #expect(engines()[1].loaded?.startPosition == Ticks(seconds: 100))
+        #expect(engines()[1].loaded?.audioStreamIndex == 2)
+
+        // Nothing here needs mpv by itself, but going back would lose the audio choice.
+        try await session.selectSubtitleTrack(id: nil)
+        #expect(engines().count == 2)
+        #expect(session.engine?.kind == .mpv)
+        await session.stop()
+    }
+
+    @Test func unreachableDefaultAudioStartsOnTheOtherEngineAndReportsOnce() async throws {
+        var info = makeUngroupedAudioInfo()
+        info.mediaSources[0].defaultAudioStreamIndex = 2
+        let client = try await makeClient(info)
+        var engines: [FakeEngine] = []
+        let session = PlaybackSession(client: client, itemID: "item", startPosition: Ticks(seconds: 30)) { kind in
+            let engine = FakeEngine(kind: kind)
+            engine.unreachableAudio = kind == .avPlayer ? [2] : []
+            engines.append(engine)
+            return engine
+        }
+
+        try await session.start()
+
+        #expect(engines.map(\.kind) == [.avPlayer, .mpv])
+        #expect(engines[0].stopped)
+        #expect(session.engine?.kind == .mpv)
+        #expect(engines[1].loaded?.audioStreamIndex == 2)
+        #expect(engines[1].loaded?.startPosition == Ticks(seconds: 30))
+        #expect(session.route?.engine == .mpv)
+        #expect(await client.startReports.count == 1)
+        #expect(await client.startReports.first?.audioStreamIndex == 2)
+        await session.stop()
+    }
+
+    @Test func aMoveBackToAnEngineThatCannotReachTheAudioGoesElsewhere() async throws {
+        // Starts on mpv only because of the default subtitle, with audio AVPlayer can't reach.
+        var info = makeUngroupedAudioInfo()
+        info.mediaSources[0].defaultAudioStreamIndex = 2
+        info.mediaSources[0].defaultSubtitleStreamIndex = 3
+        let client = try await makeClient(info)
+        var engines: [FakeEngine] = []
+        let session = PlaybackSession(client: client, itemID: "item") { kind in
+            let engine = FakeEngine(kind: kind)
+            engine.unreachableAudio = kind == .avPlayer ? [2] : []
+            engines.append(engine)
+            return engine
+        }
+        try await session.start()
+        #expect(session.engine?.kind == .mpv)
+        engines[0].position = Ticks(seconds: 50)
+
+        try await session.selectSubtitleTrack(id: nil)
+
+        #expect(engines.map(\.kind) == [.mpv, .avPlayer, .mpv])
+        #expect(session.engine?.kind == .mpv)
+        #expect(engines[2].loaded?.audioStreamIndex == 2)
+        #expect(engines[2].loaded?.startPosition == Ticks(seconds: 50))
+        #expect(session.route?.engine == .mpv)
+        await session.stop()
+    }
+
+    @Test func reachableDefaultAudioStaysOnAVPlayer() async throws {
+        var info = makeUngroupedAudioInfo()
+        info.mediaSources[0].defaultAudioStreamIndex = 1
+        let client = try await makeClient(info)
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        #expect(engines().map(\.kind) == [.avPlayer])
+        await session.stop()
+    }
+
+    @Test func aTranscodeIsNeverMovedForItsAudio() async throws {
+        var info = makeUngroupedAudioInfo()
+        info.mediaSources[0].supportsDirectPlay = false
+        info.mediaSources[0].supportsTranscoding = true
+        info.mediaSources[0].transcodingURL = URL(string: "http://server.invalid/master.m3u8")
+        info.mediaSources[0].defaultAudioStreamIndex = 2
+        let client = try await makeClient(info)
+        var engines: [FakeEngine] = []
+        let session = PlaybackSession(client: client, itemID: "item") { kind in
+            let engine = FakeEngine(kind: kind)
+            engine.unreachableAudio = [2]
+            engines.append(engine)
+            return engine
+        }
+        try await session.start()
+        #expect(engines.map(\.kind) == [.avPlayer])
+        #expect(session.route?.method == .transcode)
+        await session.stop()
+    }
+
+    @Test func audioTheEngineCanReachStaysOnIt() async throws {
+        let client = try await makeClient(makeUngroupedAudioInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        try await session.selectAudioTrack(id: 2)
+        #expect(engines().map(\.kind) == [.avPlayer])
+        #expect(engines()[0].selectedAudioTrackID == 2)
         await session.stop()
     }
 

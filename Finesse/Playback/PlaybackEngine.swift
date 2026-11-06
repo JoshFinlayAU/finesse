@@ -76,6 +76,8 @@ protocol PlaybackEngine: AnyObject, Observable {
     func play()
     func pause()
     func seek(to position: Ticks)
+    /// False when the engine can't reach this track, so the session should move to another engine.
+    func canSelectAudioTrack(id: Int) async -> Bool
     func selectAudioTrack(id: Int)
     /// Nil turns subtitles off.
     func selectSubtitleTrack(id: Int?)
@@ -83,4 +85,10 @@ protocol PlaybackEngine: AnyObject, Observable {
     func stop()
     /// The view video is drawn into. Only `PlaybackSurface` calls this.
     func makeRenderView() -> UIView
+}
+
+extension PlaybackEngine {
+    func canSelectAudioTrack(id: Int) async -> Bool {
+        true
+    }
 }

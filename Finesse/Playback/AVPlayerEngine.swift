@@ -51,6 +51,15 @@ final class AVPlayerEngine: PlaybackEngine {
         player.seek(to: Self.time(position), toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
+    /// An MP4's audio tracks are only switchable when the file groups them, which many don't.
+    func canSelectAudioTrack(id: Int) async -> Bool {
+        guard let offset = audioTracks.filter({ !$0.isExternal }).firstIndex(where: { $0.id == id }) else {
+            return false
+        }
+        // A file with one audio track may have no selection group at all, so the first is always reachable.
+        return offset < max(await selectableTrackCount(.audible), 1)
+    }
+
     func selectAudioTrack(id: Int) {
         selectedAudioTrackID = id
         applySelection(.audible, trackID: id, tracks: audioTracks)
