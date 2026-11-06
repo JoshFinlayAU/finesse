@@ -34,6 +34,10 @@ extension AppModel {
                 $0.nextUpValue = [next]
                 $0.latestValue = (1...8).map { MediaItem(id: "new-\($0)", name: "New Film \($0)", kind: .movie) }
                 $0.allItems = [resume, next] + $0.latestValue
+                // `-FinesseFakeServerFails` makes every request fail, to show the error states.
+                if ProcessInfo.processInfo.arguments.contains("-FinesseFakeServerFails") {
+                    $0.failure = .network("Seeded failure")
+                }
             }
         }
         return AppModel(

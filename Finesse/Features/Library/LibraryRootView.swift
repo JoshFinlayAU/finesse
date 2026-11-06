@@ -67,6 +67,7 @@ private struct LibraryContent: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 600)
+            .focusSection()
         case .loaded:
             LazyVGrid(columns: columns, alignment: .leading, spacing: 56) {
                 ForEach(model.items) { item in
