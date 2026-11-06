@@ -11,7 +11,8 @@ These are the owner's choices. Don't change them without asking.
 | Area | Decision |
 |---|---|
 | Playback | Hybrid: AVPlayer first, libmpv/FFmpeg fallback |
-| Playback package | Our own dynamic LGPL 2.1 mpv and FFmpeg build. MPVKit is development-only until that lands |
+| Playback package | Our own dynamic mpv and FFmpeg build, with FFmpeg under LGPLv3 and OpenSSL for TLS 1.3, and no GPL components. MPVKit is development-only until that lands |
+| mpv certificate verification | Off for now. Revisit before release |
 | UI | SwiftUI first, UIKit where needed |
 | Minimum OS | tvOS 26; no back-deployment or availability shims for older versions |
 | Design | Full Liquid Glass; Plex for structure only |
@@ -87,7 +88,7 @@ sed 's/^/TEST_RUNNER_/' .env.local | ssh fin-mac 'set -a; . /dev/stdin; set +a; 
 - Keep values shell-safe and quoted, with no comment lines in the file.
 - Skip integration tests when the variables are absent, and keep them in their own test plan so unit tests stay offline.
 - Don't log credentials or tokens, including in test output.
-- One accepted exception, for these low-privilege test accounts only: `runningboardd` and `CoreSimulatorBridge` write process environments to the simulator's unified log, so test credentials end up there on every run and can't be kept out. Erase our simulators periodically to clear it, with `xcrun simctl shutdown "<name>"` then `xcrun simctl erase "<name>"`. This doesn't extend to any other credential.
+- One accepted exception, for these low-privilege test accounts only: test credentials can't be kept out of two places. `runningboardd` and `CoreSimulatorBridge` write process environments to the simulator's unified log on every run, and result bundle action logs also hold them. Delete result bundles after use, and erase our simulators periodically with `xcrun simctl shutdown "<name>"` then `xcrun simctl erase "<name>"`. This doesn't extend to any other credential.
 
 ### UI flow tests
 
@@ -173,7 +174,7 @@ TestFlight uploads and any App Store Connect change are outward-facing, so confi
   - Sessions need a stable `DeviceId` and a `MediaBrowser` authorization header.
   - Report start, progress and stop, or resume and Next Up will drift.
   - Check the behaviour against the test server's version rather than assuming it from docs.
-- **libmpv/FFmpeg licensing:** use LGPL-compatible builds only, with no GPL components. Track each dependency's licence, since App Store distribution and LGPL obligations both feed into the pre-release licence decision. Treat Swiftfin and other clients as references only, and don't copy their code without checking the licence.
+- **libmpv/FFmpeg licensing:** our own dynamic build, with FFmpeg under LGPLv3 and OpenSSL for TLS 1.3 by the owner's decision, which replaced an earlier LGPL 2.1 plan. No GPL components. Track each dependency's licence, since App Store distribution and LGPL obligations both feed into the pre-release licence decision. Treat Swiftfin and other clients as references only, and don't copy their code without checking the licence.
 - **App Transport Security:** the app allows plain HTTP to any host, by the owner's decision. `NSAllowsLocalNetworking` must stay out of `Info.plist`, because its presence makes the system ignore `NSAllowsArbitraryLoads`. The App Review justification is in `memory/privacy-and-test-secrets.md`. AVPlayer and mpv make their own connections, so test both.
 - **tvOS storage:** local storage can be purged and `UserDefaults` is small. Keep tokens in the Keychain, treat image and metadata caches as disposable, and don't assume files persist.
 - **tvOS frameworks:** there's no `WKWebView`, so sign-in and help flows must be native.
