@@ -104,12 +104,6 @@ actor GatedJellyfinClient: JellyfinClient {
     }
     func playbackInfo(_ request: PlaybackInfoRequest) async throws -> PlaybackInfo { try await base.playbackInfo(request) }
     func mediaSegments(itemID: String) async throws -> [MediaSegment] { try await base.mediaSegments(itemID: itemID) }
-    func reportPlaybackStart(_ report: PlaybackReport) async throws { try await base.reportPlaybackStart(report) }
-    func reportPlaybackProgress(_ report: PlaybackReport) async throws { try await base.reportPlaybackProgress(report) }
-    func stopTranscoding(playSessionID: String) async throws {
-        try await base.stopTranscoding(playSessionID: playSessionID)
-    }
-
     func chapters(itemID: String) async throws -> [ItemChapter] { try await base.chapters(itemID: itemID) }
     func reportPlaybackStart(_ report: PlaybackReport) async throws { try await base.reportPlaybackStart(report) }
     func reportPlaybackProgress(_ report: PlaybackReport) async throws { try await base.reportPlaybackProgress(report) }
