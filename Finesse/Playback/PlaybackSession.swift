@@ -1,4 +1,4 @@
-import Foundation
+import AVFoundation
 import Observation
 
 enum PlaybackSessionError: Error, Hashable, Sendable {
@@ -39,14 +39,17 @@ final class PlaybackSession {
     }
 
     static func makeDefaultEngine(_ kind: PlaybackEngineKind) -> any PlaybackEngine {
+        // Without this, audio follows the silent switch rules and won't route as film playback.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+        try? AVAudioSession.sharedInstance().setActive(true)
         switch kind {
-        case .avPlayer: AVPlayerEngine()
-        case .mpv: MPVEngine()
+        case .avPlayer: return AVPlayerEngine()
+        case .mpv: return MPVEngine()
         }
     }
 
     func start() async throws {
-        info = try await fetchInfo(audioStreamIndex: nil, subtitleStreamIndex: nil)
+        info = try await fetchInfo(startPosition: startPosition, audioStreamIndex: nil, subtitleStreamIndex: nil)
         let route = try makeRoute(audioStreamIndex: nil, subtitle: .sourceDefault)
         let engine = start(route, at: startPosition)
 
@@ -120,7 +123,11 @@ final class PlaybackSession {
         // A transcode's tracks are burned into its URL, so the server has to make a new one.
         if current.method != .directPlay {
             let subtitleIndex: Int? = if case .stream(let index) = subtitle { index } else { nil }
-            info = try await fetchInfo(audioStreamIndex: audioStreamIndex, subtitleStreamIndex: subtitleIndex)
+            info = try await fetchInfo(
+                startPosition: engine.position,
+                audioStreamIndex: audioStreamIndex,
+                subtitleStreamIndex: subtitleIndex
+            )
         }
         let next = try makeRoute(audioStreamIndex: audioStreamIndex, subtitle: subtitle)
         if next.engine == current.engine, next.url == current.url {
@@ -155,7 +162,11 @@ final class PlaybackSession {
         return engine
     }
 
-    private func fetchInfo(audioStreamIndex: Int?, subtitleStreamIndex: Int?) async throws -> PlaybackInfo {
+    private func fetchInfo(
+        startPosition: Ticks,
+        audioStreamIndex: Int?,
+        subtitleStreamIndex: Int?
+    ) async throws -> PlaybackInfo {
         let info = try await client.playbackInfo(PlaybackInfoRequest(
             itemID: itemID,
             startPosition: startPosition,
