@@ -102,13 +102,16 @@ for slice_name, platform in (("tvos", "AppleTVOS"), ("tvossim", "AppleTVSimulato
                 assert match, f"{name} depends on {old}"
                 run("install_name_tool", "-change", old, f"@rpath/{match}.framework/{match}", binary)
         run("strip", "-x", binary)
-        run("codesign", "-f", "-s", "-", binary)
+        # Xcode keeps this identifier when it re-signs on copy, and a device refuses to install a
+        # framework whose signing identifier differs from its bundle identifier. The simulator doesn't check.
+        identifier = f"au.com.athenanetworks.finesse.deps.{name.lower()}"
+        run("codesign", "-f", "-s", "-", "-i", identifier, binary)
 
         with open(f"{framework}/Info.plist", "wb") as f:
             plistlib.dump({
                 "CFBundleDevelopmentRegion": "en",
                 "CFBundleExecutable": name,
-                "CFBundleIdentifier": f"au.com.athenanetworks.finesse.deps.{name.lower()}",
+                "CFBundleIdentifier": identifier,
                 "CFBundleInfoDictionaryVersion": "6.0",
                 "CFBundleName": name,
                 "CFBundlePackageType": "FMWK",

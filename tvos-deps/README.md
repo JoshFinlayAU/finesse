@@ -78,12 +78,23 @@ FFmpeg uses OpenSSL 3.5.9, the owner's decision. Tested on the simulator on 2026
 
 **Known issue to revisit before release: certificates aren't verified.** mpv's `tls-verify` is off by default and `MPVEngine` doesn't set it, by the owner's decision for now. An expired certificate was accepted in testing, so an https server could be impersonated. Turning it on would refuse self-signed home servers, and would also need a CA bundle or a verify callback into Apple's Security framework, because OpenSSL can't read the system's trust store on tvOS.
 
+## Getting the frameworks on a clean machine
+
+`project.yml` expects the xcframeworks at `../FinesseDeps/dist`, next to the project folder. Only the path is settled. What fills it isn't published anywhere yet.
+
+There are two ways to fill it:
+
+1. **Build them.** Follow "Building" above on the machine. From an empty work folder this took about 10 minutes at 4 jobs on a busy Mac on 2026-11-07, and the scan passed. It needs only Xcode, Homebrew's Python and pkg-config, and network access to the sources, so this works today. Rebuilds aren't byte-identical: in a different work folder, 9 of the 14 device binaries differed, though the four compared had the same size and exports. So a shipped build should be identified by its archive's hash, not by rebuilding and comparing.
+2. **Fetch an archive.** The proposal below, which needs the manager's go-ahead before anything is pushed. Builds would run `scripts/fetch-dist.sh`, which doesn't exist yet, before `xcodegen generate`.
+
+A build with neither can't succeed, because the app has no fallback.
+
 ## Storing the frameworks
 
-A proposal for the owner, not yet in place. Nothing has been published.
+A proposal, not yet in place. Nothing has been published.
 
 - Build on the Mac and make one archive per version, such as `finesse-deps-<versions>-<build>.tar.zst`, holding the xcframeworks.
 - Keep the archive in a private store: the generic package registry on `gitlab.athenanetworks.com.au` fits, since the repo is private and that server is ours.
-- Commit only its URL and SHA-256 to this folder. A small `fetch-dist.sh` downloads it, checks the hash, and unpacks into a gitignored folder that `project.yml` points at.
+- Commit only its URL and SHA-256 to this folder. A small `fetch-dist.sh` downloads it, checks the hash, and unpacks it into `../FinesseDeps/dist`, which is outside the repo.
 - Build on the Mac without fetching when testing a new version.
 - Keep the matching source archive and patches alongside each release, because LGPL distribution needs them. See `LICENSES.md`.

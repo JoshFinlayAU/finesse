@@ -9,7 +9,10 @@ if [ "$RECORD" = --record ]; then : > "$SUMS"; fi
 tarball() {
   local name=$1 url=$2 file
   file=$(basename "$url")
-  [ -f "$SRC/tarballs/$file" ] || curl -fsSL --retry 3 --max-time 300 -o "$SRC/tarballs/$file" "$url"
+  if [ ! -f "$SRC/tarballs/$file" ]; then
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 30 --max-time 300 -o "$SRC/tarballs/$file.part" "$url"
+    mv "$SRC/tarballs/$file.part" "$SRC/tarballs/$file"
+  fi
   if [ "$RECORD" = --record ]; then
     (cd "$SRC/tarballs" && shasum -a 256 "$file") >> "$SUMS"
   else

@@ -106,6 +106,12 @@ for variant, sdk_name, platform in (("tvos-arm64", "appletvos", "3"), ("tvos-arm
             if name != "Libavformat" and any(OPENSSL_SYMBOL.match(s) for s in undefined):
                 fail(name, "uses OpenSSL, and only Libavformat should")
 
+        bundle_id = plistlib.load(open(f"{framework}/Info.plist", "rb"))["CFBundleIdentifier"]
+        signed = subprocess.run(["codesign", "-dv", binary], capture_output=True, text=True).stderr
+        signed_id = re.search(r"^Identifier=(.*)$", signed, re.M)
+        if not signed_id or signed_id.group(1) != bundle_id:
+            fail(name, f"signing identifier {signed_id.group(1) if signed_id else None} is not the bundle identifier {bundle_id}")
+
         manifest_path = f"{framework}/PrivacyInfo.xcprivacy"
         if not os.path.exists(manifest_path):
             fail(name, "no privacy manifest")

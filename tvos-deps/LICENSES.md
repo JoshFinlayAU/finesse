@@ -23,9 +23,10 @@ Read from upstream's own files at the versions in `versions.sh`, on 2026-11-06, 
 | MoltenVK 1.4.2 | Apache 2.0, see below | MoltenVK, dynamic | `LICENSE` |
 | SPIRV-Cross | Apache 2.0, with a `LICENSES` folder for some files, not all read | Inside MoltenVK | `LICENSE` |
 | cereal | BSD style | Inside MoltenVK | `LICENSE` |
+| SPIRV-Tools, SPIRV-Headers | SPIRV-Tools is Apache 2.0. SPIRV-Headers' licence wasn't read here. `SPIRV-Tools` strings appear in the MoltenVK binary, so both are treated as shipped | Inside MoltenVK | `LICENSE`, `strings` on the binary |
 | Vulkan-Headers | Apache 2.0 and MIT | Headers only | `LICENSE.md` |
 
-Build-time only, not read in detail: SPIRV-Tools, SPIRV-Headers and Volk from MoltenVK's dependency script, and libplacebo's bundled generators in `3rdparty`. Whether any SPIRV-Tools code reaches the MoltenVK binary was not checked.
+Build-time only, not read in detail: Volk from MoltenVK's dependency script, whose name doesn't appear in the binary, and libplacebo's bundled generators in `3rdparty`.
 
 Apple's system zlib, bzip2, iconv and frameworks are used, not bundled.
 

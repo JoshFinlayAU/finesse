@@ -126,7 +126,7 @@ enum Spike {
         Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
             let start = player.string("sub-start")
             if start != "unavailable", seenStarts.insert(start).inserted {
-                print("SPIKE sub event \(seenStarts.count) at \(start)")
+                print("SPIKE sub event \(seenStarts.count) at \(start): \(player.string("sub-text"))")
             }
         }
         Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
