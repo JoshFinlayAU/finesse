@@ -1,5 +1,6 @@
 import Libmpv
 import Observation
+import os
 import QuartzCore
 import UIKit
 
@@ -28,12 +29,25 @@ final class MPVEngine: PlaybackEngine {
     @ObservationIgnored private var isPaused = false
     @ObservationIgnored private var isWaitingForCache = false
     @ObservationIgnored private var isReady = false
+    /// mpv refuses a seek before the file is open, so one made that early waits until it is.
+    @ObservationIgnored private var pendingSeek: Ticks?
+
+    #if DEBUG
+    static var liveCoreCount: Int {
+        MPVCore.liveCount.withLock { $0 }
+    }
+    #endif
 
     init() {
         core = MPVCore(layer: renderView.metalLayer)
         if core == nil {
             state = .failed("Could not start the player")
         }
+    }
+
+    /// Without this, mpv's own thread keeps it alive and playing after the last reference has gone.
+    deinit {
+        core?.shutdown()
     }
 
     func load(_ request: PlaybackLoadRequest) {
@@ -70,6 +84,10 @@ final class MPVEngine: PlaybackEngine {
 
     func seek(to position: Ticks) {
         self.position = position
+        guard isReady else {
+            pendingSeek = position
+            return
+        }
         core?.command(["seek", String(position.seconds), "absolute+exact"])
     }
 
@@ -111,6 +129,10 @@ final class MPVEngine: PlaybackEngine {
             applySubtitleSelection()
         case .playbackRestart:
             isReady = true
+            if let pendingSeek {
+                self.pendingSeek = nil
+                seek(to: pendingSeek)
+            }
             updateState()
         case .position(let seconds):
             guard let seconds else {
@@ -211,6 +233,10 @@ private final class MPVCore: @unchecked Sendable {
         var streamIndex: Int?
     }
 
+    #if DEBUG
+    static let liveCount = OSAllocatedUnfairLock(initialState: 0)
+    #endif
+
     let events: AsyncStream<Event>
     private let continuation: AsyncStream<Event>.Continuation
     private let handle: OpaquePointer
@@ -248,22 +274,34 @@ private final class MPVCore: @unchecked Sendable {
         mpv_observe_property(handle, 0, "pause", MPV_FORMAT_FLAG)
         mpv_observe_property(handle, 0, "paused-for-cache", MPV_FORMAT_FLAG)
 
+        #if DEBUG
+        Self.liveCount.withLock { $0 += 1 }
+        #endif
         Thread.detachNewThread { [self] in
             drainEvents()
         }
     }
 
+    /// The handle is freed soon after shutdown, so nothing may reach it from then on.
+    private let hasShutDown = OSAllocatedUnfairLock(initialState: false)
+
     func setString(_ name: String, _ value: String) {
+        guard !hasShutDown.withLock({ $0 }) else {
+            return
+        }
         mpv_set_property_string(handle, name, value)
     }
 
     func int64(_ name: String) -> Int64? {
+        guard !hasShutDown.withLock({ $0 }) else {
+            return nil
+        }
         var value: Int64 = 0
         return mpv_get_property(handle, name, MPV_FORMAT_INT64, &value) >= 0 ? value : nil
     }
 
     func string(_ name: String) -> String? {
-        guard let value = mpv_get_property_string(handle, name) else {
+        guard !hasShutDown.withLock({ $0 }), let value = mpv_get_property_string(handle, name) else {
             return nil
         }
         defer { mpv_free(value) }
@@ -271,6 +309,13 @@ private final class MPVCore: @unchecked Sendable {
     }
 
     func command(_ arguments: [String]) {
+        guard !hasShutDown.withLock({ $0 }) else {
+            return
+        }
+        sendCommand(arguments)
+    }
+
+    private func sendCommand(_ arguments: [String]) {
         var pointers: [UnsafePointer<CChar>?] = arguments.map { UnsafePointer(strdup($0)) }
         pointers.append(nil)
         mpv_command(handle, &pointers)
@@ -295,7 +340,13 @@ private final class MPVCore: @unchecked Sendable {
 
     /// The event thread destroys the handle once mpv confirms it has shut down.
     func shutdown() {
-        command(["quit"])
+        let isFirst = hasShutDown.withLock { hasShutDown in
+            defer { hasShutDown = true }
+            return !hasShutDown
+        }
+        if isFirst {
+            sendCommand(["quit"])
+        }
     }
 
     private func drainEvents() {
@@ -307,6 +358,9 @@ private final class MPVCore: @unchecked Sendable {
             case MPV_EVENT_SHUTDOWN:
                 continuation.finish()
                 mpv_terminate_destroy(handle)
+                #if DEBUG
+                Self.liveCount.withLock { $0 -= 1 }
+                #endif
                 return
             case MPV_EVENT_FILE_LOADED:
                 continuation.yield(.fileLoaded)

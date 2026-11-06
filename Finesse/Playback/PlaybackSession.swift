@@ -26,6 +26,13 @@ final class PlaybackSession {
     /// Narrowed for good once an engine turns out not to reach a track this file has,
     /// so a later track change can't route back to it and lose the user's choice.
     @ObservationIgnored private var engines: [EngineCapabilities]
+    /// Set for good by `stop`. Anything still in flight checks this when it resumes, or it would
+    /// start an engine nothing is left to stop.
+    @ObservationIgnored private var isStopped = false
+    /// Track changes run one at a time, because each can replace the engine.
+    @ObservationIgnored private var trackChange: Task<Void, any Error>?
+    /// What was last asked for, until the engine's state catches up. Engines change state later.
+    @ObservationIgnored private var requestedPause: Bool?
 
     init(
         client: any JellyfinClient,
@@ -55,10 +62,17 @@ final class PlaybackSession {
 
     func start() async throws {
         info = try await fetchInfo(startPosition: startPosition, audioStreamIndex: nil, subtitleStreamIndex: nil)
+        guard !isStopped else {
+            return
+        }
         var route = try makeRoute(audioStreamIndex: nil, subtitle: .sourceDefault)
         var engine = start(route, at: startPosition)
         // The server's default audio can be a track this engine can't reach.
-        if let moved = await routeAvoidingUnreachableAudio(route, on: engine, subtitle: .sourceDefault) {
+        let moved = await routeAvoidingUnreachableAudio(route, on: engine, subtitle: .sourceDefault)
+        guard !isStopped else {
+            return
+        }
+        if let moved {
             engine.stop()
             route = moved
             engine = start(moved, at: startPosition)
@@ -77,12 +91,25 @@ final class PlaybackSession {
         await reporter.start()
     }
 
+    /// Follows what was asked for straight away, so a report or a second press isn't left behind.
+    /// Reading this after the engine has caught up ends that, and `PlayerModel.tick` reads it often.
+    var isPaused: Bool {
+        let enginePaused = engine?.state == .paused
+        if let requestedPause, requestedPause != enginePaused {
+            return requestedPause
+        }
+        requestedPause = nil
+        return enginePaused
+    }
+
     func play() async {
+        requestedPause = false
         engine?.play()
         await reporter?.reportProgress()
     }
 
     func pause() async {
+        requestedPause = true
         engine?.pause()
         await reporter?.reportProgress()
     }
@@ -93,21 +120,34 @@ final class PlaybackSession {
     }
 
     func selectAudioTrack(id: Int) async throws {
-        try await changeTracks(audioStreamIndex: id, subtitle: currentSubtitleChoice)
+        try await enqueueTrackChange { [weak self] in
+            (id, self?.currentSubtitleChoice ?? .off)
+        }
     }
 
     func selectSubtitleTrack(id: Int?) async throws {
-        try await changeTracks(
-            audioStreamIndex: engine?.selectedAudioTrackID,
-            subtitle: id.map(SubtitleChoice.stream) ?? .off
-        )
+        try await enqueueTrackChange { [weak self] in
+            (self?.engine?.selectedAudioTrackID, id.map(SubtitleChoice.stream) ?? .off)
+        }
+    }
+
+    /// `choice` runs when its turn comes, so it builds on the change before it.
+    private func enqueueTrackChange(_ choice: @escaping @MainActor () -> (Int?, SubtitleChoice)) async throws {
+        let previous = trackChange
+        let change = Task<Void, any Error> { [weak self] in
+            _ = await previous?.result
+            let (audio, subtitle) = choice()
+            try await self?.changeTracks(audioStreamIndex: audio, subtitle: subtitle)
+        }
+        trackChange = change
+        try await change.value
     }
 
     /// Moves to another engine at the same position after this one fails. A failed engine is never
     /// tried again in this session, so this can't bounce between engines, and it ends with false
     /// once nothing is left. A transcode isn't tried, because the server only does those in software.
     func recoverFromEngineFailure() async -> Bool {
-        guard let engine, let current = route else {
+        guard !isStopped, let engine, let current = route else {
             return false
         }
         let remaining = engines.filter { $0.engine != current.engine }
@@ -123,13 +163,14 @@ final class PlaybackSession {
         let position = engine.position
         engine.stop()
         start(next, at: position)
-        reporter?.updateRoute(next)
+        reporter?.updateRoute(next, playSessionID: info.playSessionID)
         await reporter?.reportProgress()
         return true
     }
 
     /// Reports the final position while the engine still knows it, then ends the engine.
     func stop() async {
+        isStopped = true
         await reporter?.stop()
         reporter = nil
         engine?.stop()
@@ -146,14 +187,19 @@ final class PlaybackSession {
         }
         return .init(
             position: engine.position,
-            isPaused: engine.state == .paused,
+            isPaused: isPaused,
             audioStreamIndex: engine.selectedAudioTrackID,
             subtitleStreamIndex: engine.selectedSubtitleTrackID
         )
     }
 
+    /// False once stop has arrived or the engine has been replaced, so an await's result is stale.
+    private func isStillCurrent(_ engine: any PlaybackEngine) -> Bool {
+        !isStopped && self.engine === engine
+    }
+
     private func changeTracks(audioStreamIndex: Int?, subtitle: SubtitleChoice) async throws {
-        guard let engine, let current = route else {
+        guard !isStopped, let engine, let current = route else {
             return
         }
         // A transcode's tracks are burned into its URL, so the server has to make a new one.
@@ -164,15 +210,21 @@ final class PlaybackSession {
                 audioStreamIndex: audioStreamIndex,
                 subtitleStreamIndex: subtitleIndex
             )
+            guard isStillCurrent(engine) else {
+                return
+            }
         }
         var next = try makeRoute(audioStreamIndex: audioStreamIndex, subtitle: subtitle)
-        if next.engine == current.engine,
-           let moved = await routeAvoidingUnreachableAudio(next, on: engine, subtitle: subtitle) {
-            next = moved
+        if next.engine == current.engine {
+            let moved = await routeAvoidingUnreachableAudio(next, on: engine, subtitle: subtitle)
+            guard isStillCurrent(engine) else {
+                return
+            }
+            next = moved ?? next
         }
         if next.engine == current.engine, next.url == current.url {
             route = next
-            reporter?.updateRoute(next)
+            reporter?.updateRoute(next, playSessionID: info.playSessionID)
             if let audioStreamIndex {
                 engine.selectAudioTrack(id: audioStreamIndex)
             }
@@ -182,12 +234,16 @@ final class PlaybackSession {
             engine.stop()
             var moved = start(next, at: position)
             // The route can bring us back to an engine that can't reach the chosen audio.
-            if let elsewhere = await routeAvoidingUnreachableAudio(next, on: moved, subtitle: subtitle) {
+            let elsewhere = await routeAvoidingUnreachableAudio(next, on: moved, subtitle: subtitle)
+            guard isStillCurrent(moved) else {
+                return
+            }
+            if let elsewhere {
                 moved.stop()
                 next = elsewhere
                 moved = start(elsewhere, at: position)
             }
-            reporter?.updateRoute(next)
+            reporter?.updateRoute(next, playSessionID: info.playSessionID)
         }
         await reporter?.reportProgress()
     }
@@ -219,6 +275,7 @@ final class PlaybackSession {
     @discardableResult
     private func start(_ route: PlaybackRoute, at position: Ticks) -> any PlaybackEngine {
         let engine = makeEngine(route.engine)
+        requestedPause = nil
         self.engine = engine
         self.route = route
         let streams = info.mediaSources.first { $0.id == route.mediaSourceID }?.streams ?? []

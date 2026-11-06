@@ -24,6 +24,9 @@ actor InMemoryJellyfinClient: JellyfinClient {
     var playbackInfoValue = PlaybackInfo()
     var segments: [String: [MediaSegment]] = [:]
     var failure: JellyfinError?
+    /// Hold these calls open, so a test can make something happen during them.
+    var playbackInfoGate: (@Sendable () async -> Void)?
+    var reportStartGate: (@Sendable () async -> Void)?
 
     private(set) var startReports: [PlaybackReport] = []
     private(set) var progressReports: [PlaybackReport] = []
@@ -240,6 +243,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
 
     func playbackInfo(_ request: PlaybackInfoRequest) async throws -> PlaybackInfo {
         try checkSession()
+        await playbackInfoGate?()
         playbackInfoRequests.append(request)
         return playbackInfoValue
     }
@@ -251,6 +255,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
 
     func reportPlaybackStart(_ report: PlaybackReport) async throws {
         try checkSession()
+        await reportStartGate?()
         startReports.append(report)
     }
 

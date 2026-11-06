@@ -85,7 +85,7 @@ struct PlaybackTracksEndToEndTests {
     ) async throws {
         let client = try await LiveServer.signedInClient()
         guard (try? await client.item(id: itemID)) != nil else {
-            print("SKIP item \(itemID) is no longer in the library")
+            Issue.record("Item \(itemID) is no longer in the library, so this test played nothing")
             return
         }
         let session = PlaybackSession(client: client, itemID: itemID, startPosition: Ticks(seconds: start))
@@ -261,12 +261,57 @@ struct PlaybackTracksEndToEndTests {
         }
     }
 
+    /// Finding 8: what the user does before the engine is ready has to stick, on each engine.
+    private func directPlayEngine(_ itemID: String, expecting kind: PlaybackEngineKind, start: TimeInterval) async throws -> (any PlaybackEngine, PlaybackLoadRequest) {
+        let client = try await LiveServer.signedInClient()
+        let info = try await client.playbackInfo(PlaybackInfoRequest(itemID: itemID, deviceProfile: DeviceProfileBuilder.make()))
+        let source = try #require(info.mediaSources.first, "Item \(itemID) is no longer in the library")
+        let route = try PlaybackRouter.route(sources: [source], subtitle: .off).get()
+        #expect(route.engine == kind)
+        let request = PlaybackLoadRequest(url: route.url, startPosition: Ticks(seconds: start), streams: source.streams, audioStreamIndex: route.audioStreamIndex)
+        return (PlaybackSession.makeDefaultEngine(route.engine), request)
+    }
+
+    @Test(arguments: [(PlaybackEngineKind.avPlayer, Item.avMovText), (.mpv, Item.mpvMultiAudio)])
+    func pauseStraightAfterLoadSticks(_ kind: PlaybackEngineKind, _ itemID: String) async throws {
+        let (engine, request) = try await directPlayEngine(itemID, expecting: kind, start: 600)
+        let view = show(engine)
+        defer { view?.removeFromSuperview() }
+        engine.load(request)
+        engine.pause()
+
+        #expect(try await waitUntil { engine.state == .paused }, "State \(String(describing: engine.state))")
+        try await Task.sleep(for: .seconds(1))
+        let held = engine.position.seconds
+        try await Task.sleep(for: .seconds(4))
+        #expect(engine.state == .paused)
+        #expect(abs(engine.position.seconds - held) < 0.5, "Should not be moving: \(held) then \(engine.position.seconds)")
+
+        engine.play()
+        #expect(try await waitUntil { engine.state == .playing })
+        engine.stop()
+    }
+
+    @Test(arguments: [(PlaybackEngineKind.avPlayer, Item.avMovText), (.mpv, Item.mpvMultiAudio)])
+    func seekStraightAfterLoadSticks(_ kind: PlaybackEngineKind, _ itemID: String) async throws {
+        let (engine, request) = try await directPlayEngine(itemID, expecting: kind, start: 600)
+        let view = show(engine)
+        defer { view?.removeFromSuperview() }
+        engine.load(request)
+        engine.seek(to: Ticks(seconds: 1200))
+
+        #expect(try await waitUntil { engine.state == .playing })
+        try await Task.sleep(for: .seconds(3))
+        #expect(engine.position.seconds >= 1200 && engine.position.seconds < 1230, "Position \(engine.position.seconds)")
+        engine.stop()
+    }
+
     /// Causes a genuine AVPlayer failure by telling the router it can play an MKV, which it can't.
     /// That fails while loading rather than mid-playback, but it's the same path out of the engine.
     @Test func avPlayerFailingForRealMovesToMpvAtThePosition() async throws {
         let client = try await LiveServer.signedInClient()
         guard let item = try? await client.item(id: Item.mpvMultiAudio) else {
-            print("SKIP item is no longer in the library")
+            Issue.record("Item is no longer in the library, so this test played nothing")
             return
         }
         var pretending = EngineCapabilities.avPlayer
@@ -306,7 +351,7 @@ struct PlaybackTracksEndToEndTests {
     func episodeEndAdvancesToNextEpisodeAndServerMarksItPlayed(_ kind: PlaybackEngineKind) async throws {
         let client = try await LiveServer.signedInClient()
         guard let (episode, next) = try await findEpisode(for: kind, client: client), let runTime = episode.runTime else {
-            print("SKIP no suitable \(kind) episode")
+            Issue.record("No suitable \(kind) episode, so this test played nothing")
             return
         }
         let model = PlayerModel(

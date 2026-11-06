@@ -16,11 +16,12 @@ final class PlaybackProgressReporter {
 
     private let client: any JellyfinClient
     private let itemID: String
-    private let playSessionID: String?
+    private var playSessionID: String?
     private let interval: Duration
     private let sleep: Sleep
     private let snapshot: @MainActor () -> Snapshot
     private var route: PlaybackRoute
+    private var startReport: Task<Void, Never>?
     private var ticker: Task<Void, Never>?
     private var isStarted = false
     private var isStopped = false
@@ -48,7 +49,16 @@ final class PlaybackProgressReporter {
             return
         }
         isStarted = true
-        try? await client.reportPlaybackStart(report(snapshot()))
+        let report = report(snapshot())
+        // Its own task, so a stop arriving meanwhile can wait for this and can't overtake it.
+        let startReport = Task { [client] in
+            _ = try? await client.reportPlaybackStart(report)
+        }
+        self.startReport = startReport
+        await startReport.value
+        guard !isStopped else {
+            return
+        }
         ticker = Task { [weak self, interval, sleep] in
             while !Task.isCancelled {
                 do {
@@ -56,7 +66,10 @@ final class PlaybackProgressReporter {
                 } catch {
                     return
                 }
-                await self?.reportProgress()
+                guard let self else {
+                    return
+                }
+                await self.reportProgress()
             }
         }
     }
@@ -66,12 +79,18 @@ final class PlaybackProgressReporter {
         guard isStarted, !isStopped else {
             return
         }
+        await startReport?.value
+        guard !isStopped else {
+            return
+        }
         try? await client.reportPlaybackProgress(report(snapshot()))
     }
 
     /// The engine can switch mid-playback when the user picks a track only the other engine plays.
-    func updateRoute(_ route: PlaybackRoute) {
+    /// A rebuilt transcode also has a new play session, which the server needs named to end its job.
+    func updateRoute(_ route: PlaybackRoute, playSessionID: String?) {
         self.route = route
+        self.playSessionID = playSessionID
     }
 
     func stop() async {
@@ -81,6 +100,7 @@ final class PlaybackProgressReporter {
         isStopped = true
         ticker?.cancel()
         ticker = nil
+        await startReport?.value
         try? await client.reportPlaybackStopped(report(snapshot()))
     }
 

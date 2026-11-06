@@ -4,42 +4,7 @@ import Testing
 import UIKit
 @testable import FinEsse
 
-@MainActor
-@Observable
-private final class FakeEngine: PlaybackEngine {
-    let kind: PlaybackEngineKind
-    var state = PlaybackState.idle
-    var position = Ticks.zero
-    var duration: Ticks?
-    var audioTracks: [PlaybackTrack] = []
-    var subtitleTracks: [PlaybackTrack] = []
-    var selectedAudioTrackID: Int?
-    var selectedSubtitleTrackID: Int?
-    var loaded: PlaybackLoadRequest?
-    var stopped = false
-    var unreachableAudio: Set<Int> = []
-
-    init(kind: PlaybackEngineKind) {
-        self.kind = kind
-    }
-
-    func load(_ request: PlaybackLoadRequest) {
-        loaded = request
-        position = request.startPosition
-        selectedAudioTrackID = request.audioStreamIndex
-        selectedSubtitleTrackID = request.subtitleStreamIndex
-        state = .playing
-    }
-
-    func play() { state = .playing }
-    func pause() { state = .paused }
-    func seek(to position: Ticks) { self.position = position }
-    func canSelectAudioTrack(id: Int) async -> Bool { !unreachableAudio.contains(id) }
-    func selectAudioTrack(id: Int) { selectedAudioTrackID = id }
-    func selectSubtitleTrack(id: Int?) { selectedSubtitleTrackID = id }
-    func stop() { stopped = true }
-    func makeRenderView() -> UIView { UIView() }
-}
+private typealias FakeEngine = FakePlaybackEngine
 
 @MainActor
 @Suite struct PlaybackSessionTests {

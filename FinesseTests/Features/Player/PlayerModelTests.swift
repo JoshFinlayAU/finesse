@@ -4,47 +4,7 @@ import Testing
 import UIKit
 @testable import FinEsse
 
-@MainActor
-@Observable
-private final class FakeEngine: PlaybackEngine {
-    let kind: PlaybackEngineKind
-    var state = PlaybackState.idle
-    var position = Ticks.zero
-    var duration: Ticks?
-    var audioTracks: [PlaybackTrack] = []
-    var subtitleTracks: [PlaybackTrack] = []
-    var selectedAudioTrackID: Int?
-    var selectedSubtitleTrackID: Int?
-    var loaded: PlaybackLoadRequest?
-    var seeks: [Ticks] = []
-    var stopped = false
-
-    init(kind: PlaybackEngineKind) {
-        self.kind = kind
-    }
-
-    func load(_ request: PlaybackLoadRequest) {
-        loaded = request
-        position = request.startPosition
-        audioTracks = request.audioTracks
-        subtitleTracks = request.subtitleTracks
-        selectedAudioTrackID = request.audioStreamIndex
-        selectedSubtitleTrackID = request.subtitleStreamIndex
-        duration = Ticks(seconds: 1000)
-        state = .playing
-    }
-
-    func play() { state = .playing }
-    func pause() { state = .paused }
-    func seek(to position: Ticks) {
-        seeks.append(position)
-        self.position = position
-    }
-    func selectAudioTrack(id: Int) { selectedAudioTrackID = id }
-    func selectSubtitleTrack(id: Int?) { selectedSubtitleTrackID = id }
-    func stop() { stopped = true }
-    func makeRenderView() -> UIView { UIView() }
-}
+private typealias FakeEngine = FakePlaybackEngine
 
 @MainActor
 private final class Harness {
@@ -177,6 +137,153 @@ private final class Harness {
         #expect(await harness.client.stopReports.first?.position == Ticks(seconds: 50))
     }
 
+    /// Finding 1: Back while the first load is still in flight.
+    @Test func backDuringLoadLeavesNothingPlaying() async throws {
+        let harness = Harness(item: episode())
+        try await harness.prepare()
+        let gate = TestGate()
+        await harness.client.configure { $0.playbackInfoGate = { await gate.pass() } }
+        let model = harness.model
+
+        let starting = Task { await model.start() }
+        await gate.waitForArrival()
+        await harness.model.backPressed()
+        await gate.open()
+        await starting.value
+
+        #expect(harness.model.phase == .finished, "Back must not be overwritten when the load returns")
+        #expect(harness.engines.isEmpty)
+    }
+
+    /// Finding 1: autoplay's start runs in its own task, which nothing cancels.
+    @Test func backDuringTheNextEpisodesLoadLeavesNothingPlaying() async throws {
+        let harness = Harness(item: episode())
+        try await harness.prepare(next: episode("next"))
+        await harness.model.start()
+        harness.engine.state = .ended
+        await harness.model.tick()
+        let gate = TestGate()
+        await harness.client.configure { $0.playbackInfoGate = { await gate.pass() } }
+        let model = harness.model
+
+        let playing = Task { await model.playNext() }
+        await gate.waitForArrival()
+        await harness.model.exit()
+        await gate.open()
+        await playing.value
+
+        #expect(harness.model.phase == .finished)
+        #expect(harness.engines.count == 1)
+    }
+
+    /// Finding 1: Try Again also runs in its own task.
+    @Test func backDuringTryAgainLeavesNothingPlaying() async throws {
+        let harness = Harness(item: episode())
+        try await harness.prepare()
+        await harness.model.start()
+        harness.engine.state = .failed("first")
+        await harness.model.tick()
+        harness.engine.state = .failed("second")
+        await harness.model.tick()
+        let gate = TestGate()
+        await harness.client.configure { $0.playbackInfoGate = { await gate.pass() } }
+        let model = harness.model
+
+        let retrying = Task { await model.start() }
+        await gate.waitForArrival()
+        await harness.model.backPressed()
+        await gate.open()
+        await retrying.value
+
+        #expect(harness.model.phase == .finished)
+        #expect(harness.engines.count == 2)
+        #expect(harness.engines.allSatisfy { $0.stopped })
+    }
+
+    /// Finding 1: stop also has to stop what's already running when Back lands mid-start.
+    @Test func exitWhileTheEndOfAnEpisodeIsHandledDoesNotShowUpNext() async throws {
+        let harness = Harness(item: episode())
+        try await harness.prepare(next: episode("next"))
+        await harness.model.start()
+        harness.engine.state = .ended
+        let model = harness.model
+        let ticking = Task { await model.tick() }
+        await model.exit()
+        await ticking.value
+        #expect(harness.model.phase == .finished)
+    }
+
+    /// Finding 2: Try Again carries on from where it failed.
+    @Test func tryAgainResumesFromWherePlaybackFailed() async throws {
+        let harness = Harness(item: episode(), resume: Ticks(seconds: 100))
+        try await harness.prepare()
+        await harness.model.start()
+        harness.engine.state = .failed("first")
+        await harness.model.tick()
+        harness.engine.position = Ticks(seconds: 3600)
+        harness.engine.state = .failed("second")
+        await harness.model.tick()
+        #expect(await harness.client.stopReports.last?.position == Ticks(seconds: 3600))
+
+        await harness.model.start()
+
+        #expect(harness.engine.loaded?.startPosition == Ticks(seconds: 3600))
+        #expect(await harness.client.startReports.last?.position == Ticks(seconds: 3600))
+        await harness.model.exit()
+    }
+
+    /// Finding 2: a failure before anything played keeps the original resume point.
+    @Test func tryAgainAfterAFailedStartKeepsTheResumePoint() async throws {
+        let harness = Harness(item: episode(), resume: Ticks(seconds: 100))
+        _ = try await harness.client.signIn(username: "Test User", password: "password")
+        await harness.model.start()
+        guard case .failed = harness.model.phase else {
+            Issue.record("Expected failed, got \(harness.model.phase)")
+            return
+        }
+        try await harness.prepare()
+        await harness.model.start()
+        #expect(harness.engine.loaded?.startPosition == Ticks(seconds: 100))
+        await harness.model.exit()
+    }
+
+    /// Finding 6: every tick has to read the pause state, or a pause the engine does itself is hidden.
+    @Test func aPauseTheEngineDoesItselfShowsAfterATickEvenWithControlsHidden() async throws {
+        let harness = Harness(item: episode())
+        try await harness.prepare()
+        await harness.model.start()
+        await harness.model.backPressed()
+        #expect(!harness.model.controlsVisible)
+        await harness.model.togglePlayPause()
+        harness.engine.settle()
+        await harness.model.togglePlayPause()
+        harness.engine.settle()
+        await harness.model.backPressed()
+        #expect(!harness.model.controlsVisible)
+        await harness.model.tick()
+
+        harness.engine.state = .paused
+
+        #expect(harness.model.isPaused)
+        await harness.model.exit()
+    }
+
+    /// Finding 6: pressing play/pause twice quickly must not rely on the engine having caught up.
+    @Test func togglingTwiceBeforeTheEngineCatchesUpEndsPlaying() async throws {
+        let harness = Harness(item: episode())
+        try await harness.prepare()
+        await harness.model.start()
+        harness.engine.settle()
+
+        await harness.model.togglePlayPause()
+        #expect(harness.model.isPaused)
+        await harness.model.togglePlayPause()
+        #expect(!harness.model.isPaused)
+        harness.engine.settle()
+        #expect(harness.engine.state == .playing)
+        await harness.model.exit()
+    }
+
     @Test func tryAgainAfterBothFailStartsFreshOnAVPlayer() async throws {
         let harness = Harness(item: episode())
         try await harness.prepare()
@@ -294,11 +401,13 @@ private final class Harness {
         #expect(harness.model.controlsVisible)
 
         harness.date += PlayerModel.controlsTimeout
-        await harness.engine.pause()
+        harness.engine.pause()
+        harness.engine.settle()
         await harness.model.tick()
         #expect(harness.model.controlsVisible)
 
-        await harness.engine.play()
+        harness.engine.play()
+        harness.engine.settle()
         await harness.model.tick()
         #expect(!harness.model.controlsVisible)
         await harness.model.exit()
@@ -333,6 +442,7 @@ private final class Harness {
         await harness.model.tick()
         await harness.model.skipPressed()
         #expect(harness.engine.seeks == [Ticks(seconds: 40)])
+        harness.engine.settle()
         #expect(harness.engine.state == .playing)
 
         // Scrubbing back into a skipped intro doesn't offer it again.

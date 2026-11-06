@@ -46,6 +46,8 @@ final class PlayerModel {
     @ObservationIgnored private var skippedSegmentIDs: Set<String> = []
     @ObservationIgnored private var lastActivity: Date
     @ObservationIgnored private var hasHandledEnd = false
+    /// Set by `exit`. Whatever was in flight checks this when it resumes, because the player is closing.
+    @ObservationIgnored private var isExiting = false
 
     init(
         client: any JellyfinClient,
@@ -77,7 +79,7 @@ final class PlayerModel {
     }
 
     var isPaused: Bool {
-        engine?.state == .paused
+        session?.isPaused ?? false
     }
 
     var isBuffering: Bool {
@@ -88,6 +90,9 @@ final class PlayerModel {
     }
 
     func start() async {
+        guard !isExiting else {
+            return
+        }
         phase = .loading
         hasHandledEnd = false
         skip = nil
@@ -104,19 +109,28 @@ final class PlayerModel {
         self.session = session
         do {
             try await session.start()
+            guard !isExiting, self.session === session else {
+                return
+            }
             phase = .playing
         } catch {
+            guard !isExiting, self.session === session else {
+                return
+            }
             self.session = nil
             phase = .failed(error.userMessage)
             return
         }
         // Most servers have no segments, and playback doesn't depend on them.
-        segments = (try? await client.mediaSegments(itemID: item.id)) ?? []
+        let segments = (try? await client.mediaSegments(itemID: item.id)) ?? []
+        if self.session === session {
+            self.segments = segments
+        }
     }
 
     /// Call a few times a second while the screen is up.
     func tick() async {
-        guard phase == .playing, let engine else {
+        guard phase == .playing, !isExiting, let engine else {
             return
         }
         switch engine.state {
@@ -127,7 +141,17 @@ final class PlayerModel {
             if await session?.recoverFromEngineFailure() == true {
                 return
             }
+            guard !isExiting else {
+                return
+            }
+            // Try Again carries on from here. The stop below has told the server this position.
+            if engine.position > .zero {
+                resumePosition = engine.position
+            }
             await session?.stop()
+            guard !isExiting else {
+                return
+            }
             session = nil
             phase = .failed(message)
             return
@@ -135,6 +159,7 @@ final class PlayerModel {
             break
         }
         updateSkip(position: engine.position)
+        let isPaused = isPaused
         if controlsVisible, !isPaused, scrubPosition == nil, !keepControlsVisible,
            now().timeIntervalSince(lastActivity) >= Self.controlsTimeout {
             controlsVisible = false
@@ -218,6 +243,7 @@ final class PlayerModel {
 
     /// Reports the final position, so anything reloading afterwards sees it.
     func exit() async {
+        isExiting = true
         await session?.stop()
         session = nil
         phase = .finished
@@ -301,16 +327,27 @@ final class PlayerModel {
         hasHandledEnd = true
         skip = nil
         await session?.stop()
+        guard !isExiting else {
+            return
+        }
         session = nil
         guard item.kind == .episode, let seriesID = item.seriesID,
               let next = try? await client.nextUp(seriesID: seriesID), next.id != item.id else {
-            phase = .finished
+            if !isExiting {
+                phase = .finished
+            }
+            return
+        }
+        guard !isExiting else {
             return
         }
         phase = .upNext(next, secondsLeft: Self.upNextSeconds)
     }
 
     private func play(_ next: MediaItem) async {
+        guard !isExiting else {
+            return
+        }
         item = next
         let saved = next.userState.playbackPosition
         resumePosition = saved > .zero ? saved : nil

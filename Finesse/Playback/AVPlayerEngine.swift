@@ -21,6 +21,8 @@ final class AVPlayerEngine: PlaybackEngine {
     @ObservationIgnored private var timeObserver: Any?
     @ObservationIgnored private var pendingStart: Ticks?
     @ObservationIgnored private var hasStarted = false
+    /// What the user asked for before the item was ready, which starting up has to respect.
+    @ObservationIgnored private var wantsPause = false
     @ObservationIgnored private weak var renderView: AVPlayerRenderView?
 
     func load(_ request: PlaybackLoadRequest) {
@@ -32,6 +34,7 @@ final class AVPlayerEngine: PlaybackEngine {
         selectedSubtitleTrackID = request.subtitleStreamIndex
         pendingStart = request.startPosition > .zero ? request.startPosition : nil
         hasStarted = false
+        wantsPause = false
 
         let item = AVPlayerItem(url: request.url)
         observe(item)
@@ -39,15 +42,22 @@ final class AVPlayerEngine: PlaybackEngine {
     }
 
     func play() {
+        wantsPause = false
         player.play()
     }
 
     func pause() {
+        wantsPause = true
         player.pause()
     }
 
     func seek(to position: Ticks) {
         self.position = position
+        // Too early to seek. Starting up goes to this position instead.
+        guard hasStarted else {
+            pendingStart = position
+            return
+        }
         player.seek(to: Self.time(position), toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
@@ -154,15 +164,25 @@ final class AVPlayerEngine: PlaybackEngine {
             if let pendingStart {
                 self.pendingStart = nil
                 player.seek(to: Self.time(pendingStart), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
-                    Task { @MainActor in self?.player.play() }
+                    Task { @MainActor in self?.startPlaying() }
                 }
             } else {
-                player.play()
+                startPlaying()
             }
         case .failed:
             state = .failed(item.error?.localizedDescription ?? "Playback failed")
         default:
             break
+        }
+    }
+
+    /// Staying paused from before the item was ready changes nothing, so no status change will
+    /// come to report it. It has to be set here.
+    private func startPlaying() {
+        if wantsPause {
+            state = .paused
+        } else {
+            player.play()
         }
     }
 

@@ -213,8 +213,10 @@ final class PlayerFlowUITests: XCTestCase {
         XCTAssertTrue(bar.waitForExistence(timeout: 30))
         sleep(2)
         capture("\(label)-3-resumed")
-        let resumed = bar.value as? String
-        XCTAssertFalse(resumed?.hasPrefix("0:0") == true, "Should resume from the saved position, not the start: \(resumed ?? "")")
+        let saved = try XCTUnwrap(Int(try environment("PLAYER_RESUME_SECONDS")))
+        let resumed = try XCTUnwrap(bar.value as? String)
+        let position = resumed.split(separator: ",")[0].split(separator: ":").compactMap { Int($0) }.reduce(0) { $0 * 60 + $1 }
+        XCTAssertLessThan(abs(position - saved), 30, "Should resume at the saved \(saved)s, not \(resumed)")
 
         press(.right, times: presses)
         sleep(2)

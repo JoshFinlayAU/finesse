@@ -22,6 +22,10 @@ private actor ManualClock {
         await withCheckedContinuation { sleepers.append($0) }
     }
 
+    var sleeping: Int {
+        waiting.count
+    }
+
     func tick() {
         guard !waiting.isEmpty else {
             return
@@ -131,6 +135,63 @@ private actor ManualClock {
         #expect(await client.progressReports.isEmpty)
     }
 
+    /// Finding 7.
+    @Test func stopDuringStartLeavesNoTickerAndStartGoesFirst() async throws {
+        let client = try await signedInClient()
+        let gate = TestGate()
+        await client.configure { $0.reportStartGate = { await gate.pass() } }
+        let clock = ManualClock()
+        let reporter = makeReporter(client, Position(), clock: clock)
+
+        let starting = Task { await reporter.start() }
+        await gate.waitForArrival()
+        let stopping = Task { await reporter.stop() }
+        await letOtherTasksRun()
+        #expect(await client.stopReports.isEmpty)
+        await gate.open()
+        await starting.value
+        await stopping.value
+        await letOtherTasksRun()
+
+        #expect(await client.startReports.count == 1)
+        #expect(await client.stopReports.count == 1)
+        #expect(await clock.sleeping == 0, "The ticker would wake every 10 seconds for the life of the app")
+    }
+
+    /// Finding 7.
+    @Test func aDroppedReporterEndsItsTicker() async throws {
+        let client = try await signedInClient()
+        let clock = ManualClock()
+        var reporter: PlaybackProgressReporter? = makeReporter(client, Position(), clock: clock)
+        await reporter?.start()
+        await clock.waitForSleeper()
+        _ = reporter
+        reporter = nil
+
+        await clock.tick()
+        await letOtherTasksRun()
+
+        #expect(await clock.sleeping == 0)
+    }
+
+    @Test func aProgressReportWaitsForStart() async throws {
+        let client = try await signedInClient()
+        let gate = TestGate()
+        await client.configure { $0.reportStartGate = { await gate.pass() } }
+        let reporter = makeReporter(client, Position())
+
+        let starting = Task { await reporter.start() }
+        await gate.waitForArrival()
+        let reporting = Task { await reporter.reportProgress() }
+        await letOtherTasksRun()
+        #expect(await client.progressReports.isEmpty)
+        await gate.open()
+        await starting.value
+        await reporting.value
+        #expect(await client.progressReports.count == 1)
+        await reporter.stop()
+    }
+
     @Test func stopBeforeStartReportsNothing() async throws {
         let client = try await signedInClient()
         let reporter = makeReporter(client, Position())
@@ -157,7 +218,7 @@ private actor ManualClock {
         await reporter.start()
         var switched = route
         switched.method = .transcode
-        reporter.updateRoute(switched)
+        reporter.updateRoute(switched, playSessionID: "session")
         await reporter.reportProgress()
         #expect(await client.progressReports.last?.playMethod == .transcode)
         await reporter.stop()
