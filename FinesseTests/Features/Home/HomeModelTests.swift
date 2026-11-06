@@ -76,6 +76,22 @@ struct HomeModelTests {
         #expect(model.state == before)
     }
 
+    @Test func loadingAgainAfterPlaybackShowsTheNewPosition() async {
+        let client = await signedInClient()
+        await client.configure { $0.resumeValue = [.test("film", position: Ticks(seconds: 60))] }
+        let model = HomeModel(client: client)
+        await model.load()
+
+        await client.configure { $0.resumeValue = [.test("film", position: Ticks(seconds: 600))] }
+        await model.load()
+
+        guard case .loaded(let hubs) = model.state else {
+            Issue.record("Expected hubs, got \(model.state)")
+            return
+        }
+        #expect(hubs.first?.items.first?.resumePosition == Ticks(seconds: 600))
+    }
+
     @Test func refusedTokenIsReportedAsExpired() async {
         let client = InMemoryJellyfinClient()
         let model = HomeModel(client: client)

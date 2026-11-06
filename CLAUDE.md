@@ -186,42 +186,11 @@ TestFlight uploads and any App Store Connect change are outward-facing, so confi
 <!-- aisandbox:multi-agent:start -->
 ## Multi-agent spoke
 
-*Managed by AI Sandbox and rewritten whenever the agent count changes. Do not edit this section.*
+*Managed by AI Sandbox. Do not edit this section.*
 
-**4 Claude agents work this spoke at the same time, in this same folder:** the manager `fin-esse-0-manager` and the workers `fin-esse-1` to `fin-esse-3`. Your number is in `$AISANDBOX_AGENT`, and the manager is 0. AI Sandbox adds your current position to every prompt you receive. Trust it over your memory.
+4 Claude agents share this folder: the manager `fin-esse` and the workers `fin-esse-1` to `fin-esse-3`. Your number is in `$AISANDBOX_AGENT`, and the manager is 0.
 
-### The manager
-- **Delegates everything. It never does the task itself,** however small, and even when the user says "do this": that means get it done. It reads, checks and decides. It does not change files or systems. AI Sandbox refuses its file edits, apart from its own notes in `memory/`. Shell commands are not refused, so that part is on you: use them only to look, never to change anything.
-- **Gives every piece of work one owner:** `aisandbox-agent assign next "task"` starts it on a free worker, or queues it until one comes free and then starts it automatically. `aisandbox-agent assign <number> "task"` does the same for one particular worker. Say what the worker owns, what done looks like and everything it needs to know, because it cannot see your conversation. Never give two workers the same files or systems at the same time. Queue overlapping work on the same worker instead.
-- **Hears about everything automatically:** each worker's final message and the files it changed, anything the user tells a worker directly, a worker stopping or needing input, and any edit to something another agent has claimed. Act on each one: close the task with `aisandbox-agent done <number> "outcome"`, assign the next piece, or settle the conflict. If nothing is needed, say so in a line and stop. Do not message a worker just to acknowledge it.
-- **Keeps the board true.** If a worker is idle with an open task and its last report does not finish it, ask it or reassign the task. `aisandbox-session start fin-esse` restarts a stopped worker.
-- **Is the user's view of the team.** Do not say something is finished until every task on the board is closed and you have checked the result yourself. Report what each worker did, what is still open and what you did not verify.
-
-### Workers
-- **Work only your assigned task.** If you notice something else that needs doing, send it to the manager rather than picking it up. Starting agents have no task until the manager or the user gives them one.
-- **Your final message of each turn goes to the manager automatically,** so do not send it again. Say what is done, what is not, what you verified and anything blocking you.
-- **When your task is finished,** release your claims, run `aisandbox-agent done "outcome"` and stop. Do not go looking for more work.
-- **The user can talk to you directly.** Do what they ask, and the manager is told automatically. If it overlaps work another agent owns, tell the user and pass it to that agent or the manager instead of doing it yourself.
-
-### Never clobber another agent's work
-- **Claim before you change anything**, whether a file, a folder or a system: `aisandbox-agent claim <path-or-system> "why"`.
-- **If another agent holds the claim, do not touch it.** Send that agent a message asking it to make the change, or ask it to release the claim. Editing something claimed by another agent alerts you and the manager.
-- Re-read a file immediately before editing it. Another agent may have just changed it.
-- Release a claim as soon as you finish with it: `aisandbox-agent release <path-or-system>`.
-- In git, stage only the files you changed, and never `git add -A`. Do not run `git stash`, `reset`, `checkout`, `clean` or anything else that affects the whole working tree without first agreeing it with the manager, because those commands hit every agent's work.
-- Claim a shared service, device or deployment before restarting or changing it.
-
-### Talk to each other
-- `aisandbox-agent send <number|manager|all> "message"` queues a message. It reaches the other agent as a prompt once that agent is idle, starting `[message from ...]`.
-- `aisandbox-agent status` shows the board: every agent, its task, its last report and the claims.
-- Ask for work to be done rather than doing it in another agent's territory.
-- Include everything the other agent needs, because it cannot see your conversation.
-- Reply only with a result, a question or a problem. Do not send acknowledgements or thanks, because each message costs the other agent a turn.
-- Use `aisandbox-agent`, not any built-in messaging tool, so the conversation is on the record.
-
-### Keep a strict audit trail
-- This is mandatory. The record is `.aisandbox/agents/audit.log`. It is append-only, so never edit it. Every change you make through a tool is logged automatically, and so is every message.
-- The log cannot record why, so you must. Run `aisandbox-agent log "what and why"` when you start a task, make a decision, change a live system, hand something off, and finish.
-- Never put a password, token or other secret in a log entry or a message.
-- Read `aisandbox-agent audit` before you pick up work that someone else has touched.
+- **Tasks, messages, reports, claims and rules live in the team database.** Use `aisandbox-agent` for all of it. Run `aisandbox-agent rules` once at the start of a conversation.
+- **[aisandbox] means updates are waiting and carries no content:** run `aisandbox-agent inbox` and act on what it shows.
+- **The manager delegates and never does the work itself.** Workers do only their task, and claim before changing anything.
 <!-- aisandbox:multi-agent:end -->

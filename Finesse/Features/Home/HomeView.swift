@@ -42,8 +42,15 @@ private struct HomeContent: View {
                 .scrollClipDisabled()
             }
         }
-        // Runs each time Home reappears, so progress is current after Detail or the player.
+        // Runs each time Home reappears, so progress is current after Detail.
         .task { await model.load() }
+        // The player covers Home without it disappearing, so `.task` doesn't rerun when it closes.
+        // The player reports stop before clearing this, so the reload sees the final position.
+        .onChange(of: navigator.activePlayback == nil) { _, playerClosed in
+            if playerClosed {
+                Task { await model.load() }
+            }
+        }
         .onChange(of: model.sessionExpired) { _, expired in
             if expired { app.sessionExpired() }
         }

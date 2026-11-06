@@ -180,6 +180,24 @@ struct TestServerAPI: Sendable {
         try await setPosition(movie, ticks: 0)
     }
 
+    /// Puts a movie at a given fraction of its length, for tests that need a position other than 30 percent.
+    func setResume(_ movie: Movie, ticks: Int64) async throws {
+        try await setPosition(movie, ticks: ticks)
+    }
+
+    /// The saved position and watched flag, as the server has them now.
+    func userState(_ movie: Movie) async throws -> (positionTicks: Int64, isPlayed: Bool) {
+        let data = try await Self.send("GET", "\(server)/Items/\(movie.id)?userId=\(userID)", token: token, body: nil)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let state = json?["UserData"] as? [String: Any]
+        return ((state?["PlaybackPositionTicks"] as? NSNumber)?.int64Value ?? 0, state?["Played"] as? Bool ?? false)
+    }
+
+    /// Clears position and play count together.
+    func clearPlayedState(_ movie: Movie) async throws {
+        _ = try await Self.send("DELETE", "\(server)/UserPlayedItems/\(movie.id)?userId=\(userID)", token: token, body: nil)
+    }
+
     private func setPosition(_ movie: Movie, ticks: Int64) async throws {
         let body = try JSONSerialization.data(withJSONObject: ["PlaybackPositionTicks": ticks])
         _ = try await Self.send("POST", "\(server)/UserItems/\(movie.id)/UserData?userId=\(userID)", token: token, body: body)

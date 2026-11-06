@@ -86,7 +86,8 @@ final class FakeServerUITests: XCTestCase {
         // Play/Pause on a card resumes straight away, and Menu leaves the player.
         remote.press(.playPause)
         sleep(2)
-        XCTAssertFalse(app.tabBars.firstMatch.isHittable)
+        // The fake has no media, so the real player opens and shows its error.
+        XCTAssertTrue(app.staticTexts["Something Went Wrong"].waitForExistence(timeout: 10))
         capture("fake-8-player")
         remote.press(.menu)
         XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 10))
