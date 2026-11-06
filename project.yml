@@ -5,6 +5,23 @@ options:
   createIntermediateGroups: true
   deploymentTarget:
     tvOS: "26.0"
+  # The project is disposable, so the committed pins live at the repo root and are copied in.
+  postGenCommand: >-
+    if [ -f Package.resolved ]; then
+    mkdir -p Finesse.xcodeproj/project.xcworkspace/xcshareddata/swiftpm &&
+    cp Package.resolved Finesse.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved;
+    fi
+
+packages:
+  JellyfinAPI:
+    url: https://github.com/jellyfin/jellyfin-sdk-swift.git
+    exactVersion: 3.4.0
+  Get:
+    url: https://github.com/kean/Get
+    from: 2.2.1
+  MPVKit:
+    url: https://github.com/mpvkit/MPVKit
+    exactVersion: 1.0.0
 
 settings:
   base:
@@ -19,6 +36,13 @@ targets:
     platform: tvOS
     sources:
       - path: Finesse
+    dependencies:
+      - package: JellyfinAPI
+        product: JellyfinAPI
+      - package: Get
+        product: Get
+      - package: MPVKit
+        product: MPVKit
     settings:
       base:
         PRODUCT_NAME: Finesse
