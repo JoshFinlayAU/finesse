@@ -8,12 +8,12 @@ enum ServerAddress {
     /// server behind a reverse proxy normally answers on the scheme's own port.
     static func normalize(_ input: String) -> URL? {
         var text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasScheme = text.contains("://")
         while text.hasSuffix("/") {
             text.removeLast()
         }
         guard !text.isEmpty else { return nil }
 
-        let hasScheme = text.contains("://")
         guard var components = URLComponents(string: hasScheme ? text : "http://\(text)"),
               let scheme = components.scheme?.lowercased(),
               scheme == "http" || scheme == "https",
