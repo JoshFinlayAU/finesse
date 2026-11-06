@@ -1,26 +1,6 @@
 import Foundation
 import Observation
 
-extension ItemSort {
-    var title: String {
-        switch self {
-        case .name: "Name"
-        case .dateAdded: "Date Added"
-        case .releaseDate: "Release Date"
-        case .communityRating: "Rating"
-        case .criticRating: "Critic Rating"
-        case .runTime: "Runtime"
-        case .datePlayed: "Date Played"
-        case .random: "Random"
-        }
-    }
-
-    /// Names read A to Z. Everything else reads best with the newest or highest first.
-    var naturalDirection: SortDirection {
-        self == .name ? .ascending : .descending
-    }
-}
-
 /// One Movies or TV Shows grid. It lives as long as the tab, so its items and scroll position
 /// are still there when the user comes back from Detail.
 @Observable
@@ -37,6 +17,8 @@ final class LibraryModel {
     private(set) var items: [MediaItem] = []
     private(set) var totalCount = 0
     private(set) var options = FilterOptions()
+    private(set) var choicesPhase = Phase.loading
+    private(set) var isLoadingNameFilters = false
     private(set) var sort = ItemSort.name
     private(set) var direction = SortDirection.ascending
     private(set) var filter = ItemFilter()
@@ -57,20 +39,38 @@ final class LibraryModel {
     private var generation = 0
     /// Bumped by each page, so a refresh asked for before that page can't overwrite it.
     private var pagesApplied = 0
+    /// The choices that narrow this library right now.
+    private var availableChoices = Set<FilterChoice>()
+    private var isLoadingChoices = false
+    private var studios: [FilterValue] = []
+    private var nameFilters = LibraryModel.allNameFilters
+    private var loadedNameFilters = false
+    private let preferences: LibraryPreferencesStore?
 
-    init(kind: ItemKind, client: any JellyfinClient, pageSize: Int = 60, prefetchDistance: Int = 18) {
+    init(
+        kind: ItemKind,
+        client: any JellyfinClient,
+        pageSize: Int = 60,
+        prefetchDistance: Int = 18,
+        preferences: LibraryPreferencesStore? = nil
+    ) {
         self.kind = kind
         self.client = client
         self.pageSize = pageSize
         self.prefetchDistance = prefetchDistance
+        self.preferences = preferences
+        if let saved = preferences?.load() {
+            // A sort saved by an older version may not suit this library any more.
+            if ItemSort.options(for: kind).contains(saved.sort) {
+                sort = saved.sort
+                direction = saved.direction
+            }
+            filter = saved.filter
+        }
     }
 
     var sortOptions: [ItemSort] {
-        var sorts: [ItemSort] = [.name, .dateAdded, .releaseDate, .communityRating]
-        if kind == .movie {
-            sorts += [.criticRating, .runTime]
-        }
-        return sorts + [.datePlayed]
+        ItemSort.options(for: kind)
     }
 
     var hasMore: Bool {
@@ -81,6 +81,54 @@ final class LibraryModel {
         filter != ItemFilter()
     }
 
+    var activeFilterTitles: [String] {
+        filter.activeTitles(kind: kind)
+    }
+
+    var activeFilterCount: Int {
+        activeFilterTitles.count
+    }
+
+    /// Whether the panel shows a choice. One that's on stays, so it can always be turned off.
+    func offers(_ choice: FilterChoice) -> Bool {
+        availableChoices.contains(choice) || choice.isOn(in: filter)
+    }
+
+    func offers(_ list: FilterList) -> Bool {
+        !list.values(in: options, studios: studios).isEmpty || !list.selected(in: filter).isEmpty
+    }
+
+    /// Everything in the list, plus anything saved that the server no longer lists, so it can be turned off.
+    func values(for list: FilterList) -> [FilterValue] {
+        let values = list.values(in: options, studios: studios)
+        let known = Set(values.map(\.id))
+        return values + list.selected(in: filter).filter { !known.contains($0.id) }
+    }
+
+    func selectionSummary(_ list: FilterList) -> String {
+        let selected = list.selected(in: filter)
+        return switch selected.count {
+        case 0: "Any"
+        case 1: selected[0].name
+        default: "\(selected.count) Selected"
+        }
+    }
+
+    var nameTitle: String {
+        filter.name.map(Self.title) ?? "Any"
+    }
+
+    var availableNameFilters: [NameFilter] {
+        nameFilters
+    }
+
+    static func title(of name: NameFilter) -> String {
+        switch name {
+        case .letter(let letter): letter
+        case .beforeA: "#"
+        }
+    }
+
     /// Call each time the screen appears. The first time loads; afterwards it updates what is
     /// already showing, in place, so progress is current and the position is kept.
     func appeared() async {
@@ -89,29 +137,135 @@ final class LibraryModel {
         } else {
             await reload()
         }
-        if options == FilterOptions() {
-            options = (try? await client.filterOptions(libraryID: nil, kinds: [kind])) ?? FilterOptions()
-        }
     }
 
     func setSort(_ sort: ItemSort) async {
         guard sort != self.sort else { return }
         self.sort = sort
         direction = sort.naturalDirection
+        save()
         await reload()
     }
 
     func setDirection(_ direction: SortDirection) async {
         guard direction != self.direction else { return }
         self.direction = direction
+        save()
         await reload()
     }
 
     func setFilter(_ filter: ItemFilter) async {
         guard filter != self.filter else { return }
         self.filter = filter
+        save()
         await reload()
     }
+
+    func clearFilters() async {
+        await setFilter(ItemFilter())
+    }
+
+    func toggle(_ choice: FilterChoice) async {
+        var changed = filter
+        choice.toggle(in: &changed)
+        await setFilter(changed)
+    }
+
+    func toggle(_ value: FilterValue, in list: FilterList) async {
+        var changed = filter
+        list.toggle(value, in: &changed)
+        await setFilter(changed)
+    }
+
+    func toggle(_ name: NameFilter) async {
+        var changed = filter
+        changed.name = changed.name == name ? nil : name
+        await setFilter(changed)
+    }
+
+    private func save() {
+        preferences?.save(LibraryPreferences(sort: sort, direction: direction, filter: filter))
+    }
+
+    /// Call as the filter panel opens. Asks the server about each choice, because what's worth
+    /// offering differs by library and changes as the user watches and adds favourites.
+    func loadFilterChoices() async {
+        guard !isLoadingChoices else { return }
+        isLoadingChoices = true
+        defer { isLoadingChoices = false }
+        if case .failed = choicesPhase {
+            choicesPhase = .loading
+        }
+        do {
+            if options == FilterOptions() {
+                options = try await client.filterOptions(libraryID: nil, kinds: [kind])
+            }
+            // Before the rows appear, so that page is never empty when it opens. Not worth failing
+            // the whole panel over: without them, only the Studios row is missing.
+            if studios.isEmpty {
+                studios = (try? await client.studios(libraryID: nil, kinds: [kind])) ?? []
+            }
+            let total = try await count(ItemFilter())
+            let choices = FilterChoice.all(for: kind)
+            let counted = try await counts(of: choices) { choice in
+                var filter = ItemFilter()
+                choice.toggle(in: &filter)
+                return filter
+            }
+            availableChoices = Set(choices.filter { (1..<max(total, 1)).contains(counted[$0] ?? 0) })
+            choicesPhase = .loaded
+        } catch {
+            guard !(error is CancellationError) else { return }
+            handle(error) { choicesPhase = .failed(error.userMessage) }
+        }
+    }
+
+    /// Every letter shows until they're counted, so the page always has something to focus.
+    func loadNameFilters() async {
+        guard !loadedNameFilters, !isLoadingNameFilters else { return }
+        isLoadingNameFilters = true
+        defer { isLoadingNameFilters = false }
+        guard let counted = try? await counts(of: Self.allNameFilters, filter: { name in
+            var filter = ItemFilter()
+            filter.name = name
+            return filter
+        }) else { return }
+        nameFilters = Self.allNameFilters.filter { (counted[$0] ?? 0) > 0 || filter.name == $0 }
+        loadedNameFilters = true
+    }
+
+    private static let allNameFilters = [NameFilter.beforeA] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map { .letter(String($0)) }
+
+    private func count(_ filter: ItemFilter) async throws -> Int {
+        try await client.items(ItemQuery(kinds: [kind], filter: filter, limit: 0)).totalCount
+    }
+
+    /// A few at a time, so opening the panel doesn't send dozens of requests at once.
+    private func counts<Key: Hashable & Sendable>(
+        of keys: [Key],
+        filter: @escaping @Sendable (Key) -> ItemFilter
+    ) async throws -> [Key: Int] {
+        let client = client
+        let kind = kind
+        var results: [Key: Int] = [:]
+        for start in stride(from: 0, to: keys.count, by: Self.countConcurrency) {
+            let batch = keys[start..<min(start + Self.countConcurrency, keys.count)]
+            try await withThrowingTaskGroup(of: (Key, Int).self) { group in
+                for key in batch {
+                    group.addTask {
+                        let query = ItemQuery(kinds: [kind], filter: filter(key), limit: 0)
+                        return (key, try await client.items(query).totalCount)
+                    }
+                }
+                for try await (key, count) in group {
+                    results[key] = count
+                }
+            }
+        }
+        return results
+    }
+
+    private static let countConcurrency = 4
 
     func reload() async {
         generation += 1

@@ -221,25 +221,33 @@ final class UntestedPathsUITests: XCTestCase {
 
     /// One value from a filter submenu, which has to change the state, then clears it again.
     private func chooseAndClear(_ row: String, filter: XCUIElement, label: String) {
-        remote.press(.select)
-        sleep(1)
-        moveInMenu(to: row)
-        remote.press(.select)
-        sleep(2)
+        let panel = FilterPanelDriver(app: app)
+        panel.open()
+        panel.choose(row)
         capture("paths-\(label)-list")
-        remote.press(.select)
-        sleep(4)
-        capture("paths-\(label)-chosen")
-        XCTAssertEqual(filter.value as? String, "Filtered", "Choosing from \(row) should filter")
-        remote.press(.select)
-        sleep(1)
-        moveInMenu(to: "Clear Filters")
+        press(.down)
         remote.press(.select)
         sleep(3)
+        capture("paths-\(label)-chosen")
+        XCTAssertEqual(filter.value as? String, "Filtered", "Choosing from \(row) should filter")
+        panel.clearFilters()
+        panel.back()
+        panel.close()
         XCTAssertEqual(filter.value as? String, "All")
     }
 
-    func testYearRatingFavouritesEmptyStateAndTVShowsFilter() throws {
+    func testYearRatingFavouritesEmptyStateAndTVShowsFilter() async throws {
+        let server = try environment("JELLYFIN_URL")
+        let username = try environment("JELLYFIN_USERNAME")
+        let password = try environment("JELLYFIN_PASSWORD")
+        // The test user keeps no favourites, so Favourites isn't offered until one exists. A very
+        // high rating and one ordinary favourite together match nothing, which is the empty state.
+        let api = try await TestServerAPI.signIn(server: server, username: username, password: password)
+        let movies = try await api.movies(startIndex: 40, count: 1)
+        let movie = try XCTUnwrap(movies.first)
+        try await api.setFavorite(true, movie)
+        addTeardownBlock { try await api.setFavorite(false, movie) }
+
         try launchSignedIn()
         openTab("Movies")
         let filter = app.buttons["libraryFilter"]
@@ -247,30 +255,31 @@ final class UntestedPathsUITests: XCTestCase {
         sleep(4)
         press(.up)
         press(.right)
-        chooseAndClear("Year", filter: filter, label: "11-year")
-        chooseAndClear("Rating", filter: filter, label: "12-rating")
+        chooseAndClear("Years", filter: filter, label: "11-year")
+        chooseAndClear("Parental Ratings", filter: filter, label: "12-rating")
 
-        // The test user keeps no favourites, so this is also the empty state.
-        remote.press(.select)
-        sleep(1)
-        moveInMenu(to: "Favourites")
-        remote.press(.select)
-        sleep(4)
+        let panel = FilterPanelDriver(app: app)
+        panel.open()
+        panel.choose("Favourites")
+        panel.choose("Community Rating")
+        panel.choose("9 or Higher")
+        panel.back()
+        panel.close()
         XCTAssertEqual(filter.value as? String, "Filtered")
         XCTAssertTrue(app.staticTexts["No Matches"].waitForExistence(timeout: 10), "Empty state should show")
         capture("paths-13-empty-state")
-        let clear = app.buttons["Clear Filters"]
+        let clear = app.buttons["Clear Filters"].firstMatch
         XCTAssertTrue(clear.exists)
         // From Filter, at the top right. Try what a person would before calling it unreachable.
         var route: [String] = []
-        for (name, move) in [("down", XCUIRemote.Button.down), ("down", .down), ("left", .left), ("down", .down), ("left", .left), ("down", .down)] where !clear.hasFocus {
+        for (name, move) in [("down", XCUIRemote.Button.down), ("down", .down), ("left", .left), ("down", .down)] where !app.buttons["emptyClearFilters"].hasFocus {
             press(move)
             sleep(1)
             route.append(name)
             capture("paths-13b-\(route.count)-\(name)")
         }
-        print("EMPTY-STATE route to Clear Filters: \(route) reached \(clear.hasFocus)")
-        XCTAssertTrue(clear.hasFocus, "Clear Filters should be reachable, tried \(route)")
+        print("EMPTY-STATE route to Clear Filters: \(route) reached \(app.buttons["emptyClearFilters"].hasFocus)")
+        XCTAssertTrue(app.buttons["emptyClearFilters"].hasFocus, "Clear Filters should be reachable, tried \(route)")
         XCTAssertEqual(route, ["down"], "One press down should reach Clear Filters")
         remote.press(.select)
         sleep(4)
@@ -283,14 +292,7 @@ final class UntestedPathsUITests: XCTestCase {
         sleep(4)
         press(.up)
         press(.right)
-        remote.press(.select)
-        sleep(2)
-        XCTAssertTrue(menuItem("Unwatched").waitForExistence(timeout: 5), "TV Shows should have the filter menu")
-        capture("paths-15-tv-filter-menu")
-        press(.menu)
-        // A press while the menu is still closing is lost.
-        sleep(2)
-        chooseAndClear("Genre", filter: filter, label: "16-tv-genre")
+        chooseAndClear("Genres", filter: filter, label: "16-tv-genre")
     }
 
     func testErrorStatesOnHomeAndLibrary() throws {

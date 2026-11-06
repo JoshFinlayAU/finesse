@@ -67,6 +67,9 @@ actor GatedJellyfinClient: JellyfinClient {
     func filterOptions(libraryID: String?, kinds: [ItemKind]) async throws -> FilterOptions {
         try await base.filterOptions(libraryID: libraryID, kinds: kinds)
     }
+    func studios(libraryID: String?, kinds: [ItemKind]) async throws -> [FilterValue] {
+        try await base.studios(libraryID: libraryID, kinds: kinds)
+    }
     func search(term: String, kinds: [ItemKind], limit: Int) async throws -> [MediaItem] {
         try await base.search(term: term, kinds: kinds, limit: limit)
     }

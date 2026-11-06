@@ -264,13 +264,104 @@ import Testing
         #expect(sent["includeItemTypes"] == "Movie,Series,Episode")
     }
 
+    /// The legacy endpoint has the years and ratings, and only the newer one has languages.
+    private func serveFilters() throws {
+        let legacy = try Fixture.data("filters")
+        let newer = Data(#"{"Genres":[{"Name":"Drama","Id":"genre"}],"Tags":[],"AudioLanguages":[{"Name":"English (eng)","Value":"eng"},{"Name":"Spanish; Castilian (spa)","Value":"spa"}],"SubtitleLanguages":[{"Name":"French (fre)","Value":"fre"}]}"#.utf8)
+        StubURLProtocol.reset { request in
+            .response(status: 200, body: request.url?.path.hasSuffix("/Items/Filters2") == true ? newer : legacy)
+        }
+    }
+
     @Test func decodesFilterOptions() async throws {
-        try serve("filters")
+        try serveFilters()
         let options = try await signedInClient().filterOptions(libraryID: "library", kinds: [.movie])
         #expect(!options.genres.isEmpty)
         #expect(!options.years.isEmpty)
         #expect(!options.officialRatings.isEmpty)
+        #expect(!options.tags.isEmpty)
+        #expect(options.audioLanguages.map(\.id) == ["eng", "spa"])
+        #expect(options.audioLanguages.map(\.name) == ["English", "Spanish; Castilian"])
+        #expect(options.subtitleLanguages.map(\.name) == ["French"])
         #expect(try lastQuery()["parentId"] == "library")
+    }
+
+    @Test func sendsEveryFilter() async throws {
+        try serve("items-movies")
+        var filter = ItemFilter()
+        filter.isResumable = true
+        filter.tags = ["one", "two"]
+        filter.officialRatings = ["AU-MA 15+"]
+        filter.studios = [FilterValue(id: "s1", name: "A"), FilterValue(id: "s2", name: "B")]
+        filter.audioLanguages = [FilterValue(id: "eng", name: "English")]
+        filter.subtitleLanguages = [FilterValue(id: "fre", name: "French")]
+        filter.hasSubtitles = true
+        filter.hasTrailer = true
+        filter.hasSpecialFeature = true
+        filter.hasThemeSong = true
+        filter.hasThemeVideo = true
+        filter.is3D = true
+        filter.is4K = true
+        filter.isHD = false
+        filter.videoTypes = [.bluRay, .dvd]
+        filter.seriesStatuses = [.continuing, .ended]
+        filter.minCommunityRating = 7
+        filter.name = .letter("M")
+        _ = try await signedInClient().items(ItemQuery(kinds: [.series], sort: .dateEpisodeAdded, filter: filter))
+
+        let sent = try lastQuery()
+        #expect(sent["sortBy"] == "DateLastContentAdded,SortName")
+        #expect(sent["filters"] == "IsResumable")
+        #expect(sent["tags"] == "one,two")
+        #expect(sent["officialRatings"] == "AU-MA 15+")
+        #expect(sent["studioIds"] == "s1,s2")
+        #expect(sent["audioLanguages"] == "eng")
+        #expect(sent["subtitleLanguages"] == "fre")
+        for name in ["hasSubtitles", "hasTrailer", "hasSpecialFeature", "hasThemeSong", "hasThemeVideo", "is3D", "is4K"] {
+            #expect(sent[name] == "true", "\(name)")
+        }
+        #expect(sent["isHd"] == "false")
+        #expect(sent["videoTypes"] == "BluRay,Dvd")
+        #expect(sent["seriesStatus"] == "Continuing,Ended")
+        #expect(sent["minCommunityRating"] == "7.0")
+        #expect(sent["nameStartsWith"] == "M")
+        #expect(sent["nameLessThan"] == nil)
+    }
+
+    /// Only true is ever sent, because some of the false forms are broken on the server.
+    @Test func sendsNoFilterThatIsOff() async throws {
+        try serve("items-movies")
+        _ = try await signedInClient().items(ItemQuery(kinds: [.movie]))
+        let sent = try lastQuery()
+        for name in ["filters", "tags", "studioIds", "hasSubtitles", "is3D", "is4K", "isHd", "videoTypes", "seriesStatus", "minCommunityRating", "nameStartsWith", "nameLessThan"] {
+            #expect(sent[name] == nil, "\(name)")
+        }
+    }
+
+    @Test func digitsAndSymbolsAreEverythingBeforeA() async throws {
+        try serve("items-movies")
+        var filter = ItemFilter()
+        filter.name = .beforeA
+        _ = try await signedInClient().items(ItemQuery(kinds: [.movie], filter: filter))
+        let sent = try lastQuery()
+        #expect(sent["nameLessThan"] == "A")
+        #expect(sent["nameStartsWith"] == nil)
+    }
+
+    @Test func fetchesEveryPageOfStudios() async throws {
+        func page(_ ids: [String], total: Int) -> Data {
+            let items = ids.map { #"{"Id":"\#($0)","Name":"Studio \#($0)"}"# }.joined(separator: ",")
+            return Data(#"{"Items":[\#(items)],"TotalRecordCount":\#(total),"StartIndex":0}"#.utf8)
+        }
+        let first = page((0..<500).map(String.init), total: 502)
+        let second = page(["500", "501"], total: 502)
+        StubURLProtocol.reset { request in
+            .response(status: 200, body: request.url?.query?.contains("startIndex=500") == true ? second : first)
+        }
+        let studios = try await signedInClient().studios(libraryID: "library", kinds: [.movie])
+        #expect(studios.count == 502)
+        #expect(studios.last == FilterValue(id: "501", name: "Studio 501"))
+        #expect(try lastQuery()["includeItemTypes"] == "Movie")
     }
 
     // MARK: Detail

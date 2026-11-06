@@ -21,6 +21,9 @@ actor InMemoryJellyfinClient: JellyfinClient {
     var librariesValue: [Library] = []
     var allItems: [MediaItem] = []
     var filterOptionsValue = FilterOptions()
+    var studiosValue: [FilterValue] = []
+    /// Tests that care about what a filter matches say so here, since a seeded item has no streams or tags.
+    var extraFilterMatch: (@Sendable (MediaItem, ItemFilter) -> Bool)?
     var playbackInfoValue = PlaybackInfo()
     var segments: [String: [MediaSegment]] = [:]
     var chapters: [String: [ItemChapter]] = [:]
@@ -163,6 +166,12 @@ actor InMemoryJellyfinClient: JellyfinClient {
         if !query.filter.genres.isEmpty {
             matches = matches.filter { !Set($0.genres).isDisjoint(with: query.filter.genres) }
         }
+        if query.filter.isResumable == true {
+            matches = matches.filter { $0.userState.playbackPosition != nil }
+        }
+        if let extraFilterMatch {
+            matches = matches.filter { extraFilterMatch($0, query.filter) }
+        }
         matches.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         if query.direction == .descending {
             matches.reverse()
@@ -174,6 +183,11 @@ actor InMemoryJellyfinClient: JellyfinClient {
     func filterOptions(libraryID: String?, kinds: [ItemKind]) async throws -> FilterOptions {
         try checkSession()
         return filterOptionsValue
+    }
+
+    func studios(libraryID: String?, kinds: [ItemKind]) async throws -> [FilterValue] {
+        try checkSession()
+        return studiosValue
     }
 
     func search(term: String, kinds: [ItemKind], limit: Int) async throws -> [MediaItem] {

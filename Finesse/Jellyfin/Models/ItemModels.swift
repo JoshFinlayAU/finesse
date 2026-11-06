@@ -99,51 +99,6 @@ struct Page<Element: Sendable>: Sendable {
 
 extension Page: Equatable where Element: Equatable {}
 
-enum ItemSort: String, Hashable, Sendable, CaseIterable {
-    case name = "SortName"
-    case dateAdded = "DateCreated"
-    case releaseDate = "PremiereDate"
-    case communityRating = "CommunityRating"
-    case criticRating = "CriticRating"
-    case runTime = "Runtime"
-    case datePlayed = "DatePlayed"
-    case random = "Random"
-}
-
-enum SortDirection: String, Hashable, Sendable {
-    case ascending = "Ascending"
-    case descending = "Descending"
-}
-
-struct ItemFilter: Hashable, Sendable {
-    var isPlayed: Bool?
-    var isFavorite: Bool?
-    var isResumable: Bool?
-    var genres: [String] = []
-    var years: [Int] = []
-    var officialRatings: [String] = []
-}
-
-/// Query for one page of a library, or across all libraries when `libraryID` is nil.
-struct ItemQuery: Hashable, Sendable {
-    var libraryID: String?
-    var kinds: [ItemKind] = []
-    var recursive = true
-    var searchTerm: String?
-    var sort: ItemSort = .name
-    var direction: SortDirection = .ascending
-    var filter = ItemFilter()
-    var startIndex = 0
-    var limit = 50
-}
-
-/// The values a library offers for filtering.
-struct FilterOptions: Hashable, Sendable {
-    var genres: [String] = []
-    var years: [Int] = []
-    var officialRatings: [String] = []
-}
-
 enum MediaSegmentKind: Hashable, Sendable {
     case intro
     case outro

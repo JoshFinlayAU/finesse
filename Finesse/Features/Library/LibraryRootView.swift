@@ -2,13 +2,19 @@ import SwiftUI
 
 /// The Movies and TV Shows tabs: a poster grid with sort and filter.
 struct LibraryRootView: View {
+    @Environment(AppModel.self) private var app
     @Environment(\.jellyfinClient) private var client
     let kind: LibraryKind
 
     var body: some View {
+        let itemKind: ItemKind = kind == .movies ? .movie : .series
         LibraryContent(
             title: kind == .movies ? "Movies" : "TV Shows",
-            model: LibraryModel(kind: kind == .movies ? .movie : .series, client: client)
+            model: LibraryModel(
+                kind: itemKind,
+                client: client,
+                preferences: app.session.map { LibraryPreferencesStore(account: $0.accountKey, kind: itemKind) }
+            )
         )
     }
 }
@@ -20,17 +26,22 @@ private struct LibraryContent: View {
     let title: String
     @State var model: LibraryModel
 
+    @State private var showsFilters = false
+
     private let columns = Array(repeating: GridItem(.fixed(MediaCardStyle.poster.size.width), spacing: 40), count: 6)
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 48) {
-                LibraryControls(title: title, model: model)
+                LibraryControls(title: title, model: model, showsFilters: $showsFilters)
                     .focusSection()
                 content
             }
         }
         .scrollClipDisabled()
+        .fullScreenCover(isPresented: $showsFilters) {
+            LibraryFilterPanel(title: title, model: model)
+        }
         // Runs each time the grid reappears, so progress is current after Detail or the player.
         .task { await model.appeared() }
         .onChange(of: navigator.activePlayback == nil) { _, finished in
@@ -61,8 +72,9 @@ private struct LibraryContent: View {
                 )
                 if model.hasActiveFilter {
                     Button("Clear Filters") {
-                        Task { await model.setFilter(ItemFilter()) }
+                        Task { await model.clearFilters() }
                     }
+                    .accessibilityIdentifier("emptyClearFilters")
                 }
             }
             .frame(maxWidth: .infinity)
@@ -121,6 +133,8 @@ private struct LibraryContent: View {
 private struct LibraryControls: View {
     let title: String
     let model: LibraryModel
+    @Binding var showsFilters: Bool
+    @FocusState private var filterHasFocus: Bool
 
     var body: some View {
         HStack(spacing: 32) {
@@ -129,15 +143,35 @@ private struct LibraryControls: View {
                     .font(.title2)
                     .fontWeight(.semibold)
                 if model.phase == .loaded {
-                    Text("\(model.totalCount, format: .number) \(model.totalCount == 1 ? "title" : "titles")")
+                    Text(countText)
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .accessibilityIdentifier("libraryCount")
                 }
             }
             Spacer()
             sortMenu
-            filterMenu
+            filterButton
+            if model.hasActiveFilter {
+                Button("Clear Filters", systemImage: "xmark.circle") {
+                    // This button is about to go, and focus would otherwise drop into the grid.
+                    filterHasFocus = true
+                    Task { await model.clearFilters() }
+                }
+                .labelStyle(.iconOnly)
+                .accessibilityIdentifier("libraryClearFilters")
+            }
         }
+    }
+
+    /// The count, then what's narrowing it, so the grid never looks like the whole library by accident.
+    private var countText: String {
+        let count = "\(model.totalCount.formatted()) \(model.totalCount == 1 ? "title" : "titles")"
+        let titles = model.activeFilterTitles
+        guard !titles.isEmpty else { return count }
+        let shown = titles.prefix(3).joined(separator: ", ")
+        return "\(count) · \(shown)\(titles.count > 3 ? " +\(titles.count - 3)" : "")"
     }
 
     private var sortMenu: some View {
@@ -151,16 +185,19 @@ private struct LibraryControls: View {
                     }
                 }
             }
-            Section("Order") {
-                Button {
-                    Task { await model.setDirection(.ascending) }
-                } label: {
-                    CheckedLabel(title: "Ascending", isChecked: model.direction == .ascending)
-                }
-                Button {
-                    Task { await model.setDirection(.descending) }
-                } label: {
-                    CheckedLabel(title: "Descending", isChecked: model.direction == .descending)
+            // A random order has no direction.
+            if model.sort != .random {
+                Section("Order") {
+                    Button {
+                        Task { await model.setDirection(.ascending) }
+                    } label: {
+                        CheckedLabel(title: "Ascending", isChecked: model.direction == .ascending)
+                    }
+                    Button {
+                        Task { await model.setDirection(.descending) }
+                    } label: {
+                        CheckedLabel(title: "Descending", isChecked: model.direction == .descending)
+                    }
                 }
             }
         } label: {
@@ -170,69 +207,18 @@ private struct LibraryControls: View {
         .accessibilityValue(model.sort.title)
     }
 
-    private var filterMenu: some View {
-        Menu {
-            Section {
-                filterButton("All", isChecked: model.filter.isPlayed == nil) { $0.isPlayed = nil }
-                filterButton("Unwatched", isChecked: model.filter.isPlayed == false) { $0.isPlayed = false }
-                filterButton("Watched", isChecked: model.filter.isPlayed == true) { $0.isPlayed = true }
-            }
-            Section {
-                filterButton("Favourites", isChecked: model.filter.isFavorite == true) {
-                    $0.isFavorite = $0.isFavorite == true ? nil : true
-                }
-            }
-            valueMenu("Genre", values: model.options.genres, selected: model.filter.genres) { $0.genres = $1 }
-            valueMenu("Year", values: model.options.years.map(String.init), selected: model.filter.years.map(String.init)) {
-                $0.years = $1.compactMap(Int.init)
-            }
-            valueMenu("Rating", values: model.options.officialRatings, selected: model.filter.officialRatings) {
-                $0.officialRatings = $1
-            }
-            if model.hasActiveFilter {
-                Section {
-                    Button("Clear Filters") {
-                        Task { await model.setFilter(ItemFilter()) }
-                    }
-                }
-            }
+    private var filterButton: some View {
+        Button {
+            showsFilters = true
         } label: {
             Label(
-                model.hasActiveFilter ? "Filtered" : "Filter",
+                model.hasActiveFilter ? "Filters (\(model.activeFilterCount))" : "Filter",
                 systemImage: model.hasActiveFilter ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
             )
         }
+        .focused($filterHasFocus)
         .accessibilityIdentifier("libraryFilter")
         .accessibilityValue(model.hasActiveFilter ? "Filtered" : "All")
-    }
-
-    private func filterButton(_ title: String, isChecked: Bool, change: @escaping (inout ItemFilter) -> Void) -> some View {
-        Button {
-            var filter = model.filter
-            change(&filter)
-            Task { await model.setFilter(filter) }
-        } label: {
-            CheckedLabel(title: title, isChecked: isChecked)
-        }
-    }
-
-    /// One value at a time, which is what the remote makes comfortable. Choosing it again clears it.
-    @ViewBuilder
-    private func valueMenu(
-        _ title: String,
-        values: [String],
-        selected: [String],
-        change: @escaping (inout ItemFilter, [String]) -> Void
-    ) -> some View {
-        if !values.isEmpty {
-            Menu(title) {
-                ForEach(values, id: \.self) { value in
-                    filterButton(value, isChecked: selected.contains(value)) {
-                        change(&$0, selected.contains(value) ? [] : [value])
-                    }
-                }
-            }
-        }
     }
 }
 

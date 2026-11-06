@@ -223,6 +223,7 @@ actor LiveJellyfinClient: JellyfinClient {
         parameters.genres = query.filter.genres.isEmpty ? nil : query.filter.genres
         parameters.years = query.filter.years.isEmpty ? nil : query.filter.years
         parameters.officialRatings = query.filter.officialRatings.isEmpty ? nil : query.filter.officialRatings
+        query.filter.apply(to: &parameters)
 
         let result = try await send(Paths.getItems(parameters: parameters))
         let items = result.mediaItems
@@ -237,29 +238,64 @@ actor LiveJellyfinClient: JellyfinClient {
         guard let libraryID else {
             // The endpoint returns nothing at all without a parent, so ask each matching library.
             let matching = try await libraries().filter { $0.holds(kinds) }
-            var genres = Set<String>(), years = Set<Int>(), ratings = Set<String>()
+            var merged = FilterOptions()
             for library in matching {
                 let options = try await filterOptions(libraryID: library.id, kinds: kinds)
-                genres.formUnion(options.genres)
-                years.formUnion(options.years)
-                ratings.formUnion(options.officialRatings)
+                merged.genres = Set(merged.genres + options.genres).sorted()
+                merged.years = Set(merged.years + options.years).sorted(by: >)
+                merged.officialRatings = Set(merged.officialRatings + options.officialRatings).sorted()
+                merged.tags = Set(merged.tags + options.tags).sorted()
+                merged.audioLanguages = Self.merge(merged.audioLanguages, options.audioLanguages)
+                merged.subtitleLanguages = Self.merge(merged.subtitleLanguages, options.subtitleLanguages)
             }
-            return FilterOptions(
-                genres: genres.sorted(),
-                years: years.sorted(by: >),
-                officialRatings: ratings.sorted()
-            )
+            return merged
         }
         var parameters = Paths.GetQueryFiltersLegacyParameters()
         parameters.userID = try userID()
         parameters.parentID = libraryID
         parameters.includeItemTypes = kinds.isEmpty ? nil : kinds.compactMap(\.sdkKind)
-        let result = try await send(Paths.getQueryFiltersLegacy(parameters: parameters))
+        let legacy = try await send(Paths.getQueryFiltersLegacy(parameters: parameters))
+        // Only the newer endpoint has languages, and only the legacy one has years and ratings.
+        var newer = Paths.GetQueryFiltersParameters()
+        newer.userID = parameters.userID
+        newer.parentID = libraryID
+        newer.includeItemTypes = parameters.includeItemTypes
+        let filters = try await send(Paths.getQueryFilters(parameters: newer))
         return FilterOptions(
-            genres: result.genres ?? [],
-            years: result.years ?? [],
-            officialRatings: result.officialRatings ?? []
+            genres: legacy.genres ?? [],
+            years: legacy.years ?? [],
+            officialRatings: legacy.officialRatings ?? [],
+            tags: legacy.tags ?? [],
+            audioLanguages: filters.audioLanguages?.compactMap(FilterValue.init) ?? [],
+            subtitleLanguages: filters.subtitleLanguages?.compactMap(FilterValue.init) ?? []
         )
+    }
+
+    func studios(libraryID: String?, kinds: [ItemKind]) async throws -> [FilterValue] {
+        var parameters = Paths.GetStudiosParameters()
+        parameters.userID = try userID()
+        parameters.parentID = libraryID
+        parameters.includeItemTypes = kinds.isEmpty ? nil : kinds.compactMap(\.sdkKind)
+        parameters.enableImages = false
+        parameters.enableUserData = false
+        parameters.enableTotalRecordCount = true
+        parameters.limit = 500
+        var studios: [FilterValue] = []
+        while true {
+            parameters.startIndex = studios.count
+            let result = try await send(Paths.getStudios(parameters: parameters))
+            let page = result.items ?? []
+            studios += page.compactMap { dto in
+                guard let id = dto.id, let name = dto.name else { return nil }
+                return FilterValue(id: id, name: name)
+            }
+            guard !page.isEmpty, studios.count < result.totalRecordCount ?? 0 else { return studios }
+        }
+    }
+
+    private static func merge(_ first: [FilterValue], _ second: [FilterValue]) -> [FilterValue] {
+        var seen = Set<String>()
+        return (first + second).filter { seen.insert($0.id).inserted }.sorted { $0.name < $1.name }
     }
 
     func search(term: String, kinds: [ItemKind], limit: Int) async throws -> [MediaItem] {
@@ -527,7 +563,40 @@ private extension QuickConnectRequest {
     }
 }
 
+private extension FilterValue {
+    /// The server names languages like "English (eng)", and only the code in `value` filters.
+    init?(_ pair: NameValuePair) {
+        guard let value = pair.value, let name = pair.name else { return nil }
+        id = value
+        self.name = name.replacingOccurrences(of: #"\s*\([^)]*\)$"#, with: "", options: .regularExpression)
+    }
+}
+
 private extension ItemFilter {
+    /// Only true is ever sent for these. Their false forms either don't work or aren't offered.
+    func apply(to parameters: inout Paths.GetItemsParameters) {
+        parameters.tags = tags.isEmpty ? nil : tags
+        parameters.studioIDs = studios.isEmpty ? nil : studios.map(\.id)
+        parameters.audioLanguages = audioLanguages.isEmpty ? nil : audioLanguages.map(\.id)
+        parameters.subtitleLanguages = subtitleLanguages.isEmpty ? nil : subtitleLanguages.map(\.id)
+        parameters.hasSubtitles = hasSubtitles ? true : nil
+        parameters.hasTrailer = hasTrailer ? true : nil
+        parameters.hasSpecialFeature = hasSpecialFeature ? true : nil
+        parameters.hasThemeSong = hasThemeSong ? true : nil
+        parameters.hasThemeVideo = hasThemeVideo ? true : nil
+        parameters.isIs3D = is3D ? true : nil
+        parameters.isIs4K = is4K ? true : nil
+        parameters.isHd = isHD
+        parameters.videoTypes = videoTypes.isEmpty ? nil : videoTypes.compactMap { VideoType(rawValue: $0.rawValue) }
+        parameters.seriesStatus = seriesStatuses.isEmpty ? nil : seriesStatuses.compactMap { SeriesStatus(rawValue: $0.rawValue) }
+        parameters.minCommunityRating = minCommunityRating.map(Double.init)
+        switch name {
+        case .letter(let letter): parameters.nameStartsWith = letter
+        case .beforeA: parameters.nameLessThan = "A"
+        case nil: break
+        }
+    }
+
     var sdkFilters: [JellyfinAPI.ItemFilter]? {
         var filters: [JellyfinAPI.ItemFilter] = []
         if let isPlayed {

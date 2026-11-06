@@ -192,10 +192,4 @@ import Testing
 
         #expect(model.items.map(\.id) == (0..<12).map { String(format: "%03d", $0) })
     }
-
-    @Test func showsHaveNoRuntimeSort() async {
-        let model = LibraryModel(kind: .series, client: InMemoryJellyfinClient())
-        #expect(!model.sortOptions.contains(.runTime))
-        #expect(LibraryModel(kind: .movie, client: InMemoryJellyfinClient()).sortOptions.contains(.runTime))
-    }
 }

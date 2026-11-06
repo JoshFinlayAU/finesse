@@ -36,6 +36,7 @@ protocol JellyfinClient: AnyObject, Sendable {
     func libraries() async throws -> [Library]
     func items(_ query: ItemQuery) async throws -> Page<MediaItem>
     func filterOptions(libraryID: String?, kinds: [ItemKind]) async throws -> FilterOptions
+    func studios(libraryID: String?, kinds: [ItemKind]) async throws -> [FilterValue]
     func search(term: String, kinds: [ItemKind], limit: Int) async throws -> [MediaItem]
 
     // MARK: Detail
