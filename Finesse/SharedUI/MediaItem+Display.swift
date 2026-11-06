@@ -29,6 +29,11 @@ extension MediaItem {
         return userState.playbackPosition.seconds / runTime.seconds
     }
 
+    /// True for an item watched to the end. A series or season counts once every episode has been.
+    var isWatched: Bool {
+        userState.isPlayed
+    }
+
     /// The saved position to resume from, or nil to play from the start.
     var resumePosition: Ticks? {
         userState.playbackPosition > .zero ? userState.playbackPosition : nil

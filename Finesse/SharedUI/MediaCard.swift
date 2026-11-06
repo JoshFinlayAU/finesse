@@ -3,11 +3,14 @@ import SwiftUI
 enum MediaCardStyle {
     case poster
     case landscape
+    /// Four of these with 48pt gaps fill the 1760pt between the safe area margins exactly.
+    case landscapeGrid
 
     var size: CGSize {
         switch self {
         case .poster: CGSize(width: 260, height: 390)
         case .landscape: CGSize(width: 440, height: 248)
+        case .landscapeGrid: CGSize(width: 404, height: 227)
         }
     }
 }
@@ -21,6 +24,8 @@ struct MediaCard<Menu: View>: View {
     let imageURL: URL?
     /// Watched fraction from 0 to 1. A nil value shows no progress bar.
     var progress: Double?
+    /// Shows a check mark for an item that has been watched to the end.
+    var isWatched = false
     var onPlay: (() -> Void)?
     let action: () -> Void
     @ViewBuilder var menu: () -> Menu
@@ -37,6 +42,12 @@ struct MediaCard<Menu: View>: View {
                             ProgressBar(fraction: progress)
                         }
                     }
+                    .overlay(alignment: .topTrailing) {
+                        if isWatched {
+                            WatchedBadge()
+                                .padding(12)
+                        }
+                    }
                     .clipped()
             }
             .buttonStyle(.card)
@@ -44,7 +55,7 @@ struct MediaCard<Menu: View>: View {
             .contextMenu(menuItems: menu)
             .onPlayPauseCommand(perform: onPlay)
             .accessibilityLabel(title)
-            .accessibilityValue(subtitle ?? "")
+            .accessibilityValue([subtitle, isWatched ? "Watched" : nil].compactMap(\.self).joined(separator: ", "))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -69,6 +80,7 @@ extension MediaCard where Menu == EmptyView {
         subtitle: String? = nil,
         imageURL: URL?,
         progress: Double? = nil,
+        isWatched: Bool = false,
         onPlay: (() -> Void)? = nil,
         action: @escaping () -> Void
     ) {
@@ -78,10 +90,22 @@ extension MediaCard where Menu == EmptyView {
             subtitle: subtitle,
             imageURL: imageURL,
             progress: progress,
+            isWatched: isWatched,
             onPlay: onPlay,
             action: action,
             menu: { EmptyView() }
         )
+    }
+}
+
+/// A check mark on a dark disc, so it stays readable on bright artwork from across a room.
+struct WatchedBadge: View {
+    var body: some View {
+        Image(systemName: "checkmark")
+            .font(.system(size: 24, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 48, height: 48)
+            .glassEffect(.regular.tint(.black.opacity(0.5)), in: .circle)
     }
 }
 

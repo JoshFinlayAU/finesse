@@ -208,6 +208,7 @@ private struct DetailContent: View {
                     subtitle: item.cardSubtitle,
                     imageURL: client.posterURL(for: item),
                     progress: item.watchedFraction,
+                    isWatched: item.isWatched,
                     onPlay: item.isPlayable ? { navigator.play(item, resumeFrom: item.resumePosition) } : nil,
                     action: { navigator.show(.detail(item)) }
                 )
@@ -232,12 +233,12 @@ private struct DetailContent: View {
                     .font(.title3)
                     .fontWeight(.semibold)
                 LazyVGrid(
-                    columns: Array(repeating: GridItem(.fixed(MediaCardStyle.landscape.size.width), spacing: 48), count: 3),
+                    columns: Array(repeating: GridItem(.fixed(MediaCardStyle.landscapeGrid.size.width), spacing: 48), count: 4),
                     alignment: .leading,
                     spacing: 48
                 ) {
                     ForEach(model.episodes) { item in
-                        episodeCard(item)
+                        episodeCard(item, style: .landscapeGrid)
                     }
                 }
             }
@@ -245,13 +246,14 @@ private struct DetailContent: View {
         }
     }
 
-    private func episodeCard(_ item: MediaItem) -> some View {
+    private func episodeCard(_ item: MediaItem, style: MediaCardStyle = .landscape) -> some View {
         MediaCard(
-            style: .landscape,
+            style: style,
             title: item.indexNumber.map { "\($0). \(item.name)" } ?? item.name,
             subtitle: item.runTime.flatMap(MediaItem.runTimeText),
             imageURL: client.landscapeURL(for: item),
             progress: item.watchedFraction,
+            isWatched: item.isWatched,
             onPlay: { navigator.play(item, resumeFrom: item.resumePosition) },
             action: { navigator.show(.detail(item)) }
         )

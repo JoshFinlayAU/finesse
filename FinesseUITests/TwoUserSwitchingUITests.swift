@@ -203,7 +203,7 @@ struct TestServerAPI: Sendable {
         _ = try await Self.send("POST", "\(server)/UserItems/\(movie.id)/UserData?userId=\(userID)", token: token, body: body)
     }
 
-    private static func send(_ method: String, _ url: String, token: String?, body: Data?) async throws -> Data {
+    static func send(_ method: String, _ url: String, token: String?, body: Data?) async throws -> Data {
         var request = URLRequest(url: URL(string: url)!)
         request.httpMethod = method
         request.httpBody = body

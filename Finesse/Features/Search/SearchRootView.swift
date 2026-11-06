@@ -60,6 +60,7 @@ private struct SearchContent: View {
             subtitle: item.cardSubtitle,
             imageURL: isEpisode ? client.landscapeURL(for: item) : client.posterURL(for: item),
             progress: item.watchedFraction,
+            isWatched: item.isWatched,
             onPlay: item.isPlayable ? { navigator.play(item, resumeFrom: item.resumePosition) } : nil,
             action: { navigator.show(.detail(item)) }
         )

@@ -65,6 +65,7 @@ private struct HomeContent: View {
             subtitle: item.cardSubtitle,
             imageURL: isPoster ? client.posterURL(for: item) : client.landscapeURL(for: item),
             progress: item.watchedFraction,
+            isWatched: item.isWatched,
             onPlay: isPlayable(item) ? { navigator.play(item, resumeFrom: item.resumePosition) } : nil,
             action: { navigator.show(.detail(item)) },
             menu: {
