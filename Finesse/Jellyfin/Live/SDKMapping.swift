@@ -140,6 +140,7 @@ extension MediaStreamInfo {
             index: dto.index ?? -1,
             kind: MediaStreamKind(dto.type),
             codec: dto.codec,
+            codecTag: dto.codecTag,
             language: dto.language,
             title: dto.title,
             displayTitle: dto.displayTitle,

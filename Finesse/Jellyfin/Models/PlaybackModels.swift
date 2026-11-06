@@ -116,6 +116,8 @@ struct MediaStreamInfo: Hashable, Sendable {
     var index: Int
     var kind: MediaStreamKind
     var codec: String?
+    /// For example hvc1 or hev1. AVPlayer refuses hev1-tagged HEVC, so the router needs it.
+    var codecTag: String?
     var language: String?
     var title: String?
     var displayTitle: String?
