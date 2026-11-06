@@ -168,8 +168,7 @@ final class HomeAfterPlaybackUITests: XCTestCase {
 
     /// Other tests may leave items in Continue Watching, so find the card by name along the first row.
     private func focusCard(named name: String) {
-        remote.press(.down)
-        sleep(1)
+        focusFirstHomeCard(in: app)
         let focused = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
         for _ in 0..<12 {
             if focused.label == name { return }

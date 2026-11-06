@@ -17,6 +17,11 @@ final class ImagePipeline: Sendable {
             directory: URL.cachesDirectory.appending(path: "Artwork")
         )
         configuration.requestCachePolicy = .returnCacheDataElseLoad
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-FinesseFakeServer") {
+            configuration.protocolClasses = [FakeArtworkProtocol.self]
+        }
+        #endif
         session = URLSession(configuration: configuration)
     }
 
@@ -26,6 +31,9 @@ final class ImagePipeline: Sendable {
 
     func image(for url: URL) async throws -> UIImage {
         if let cached = memory.image(for: url) { return cached }
+        #if DEBUG
+        Self.recordRequest()
+        #endif
         let (data, _) = try await session.data(from: url)
         guard let decoded = await UIImage(data: data)?.byPreparingForDisplay() else {
             throw URLError(.cannotDecodeContentData)
@@ -34,6 +42,20 @@ final class ImagePipeline: Sendable {
         return decoded
     }
 }
+
+#if DEBUG
+extension ImagePipeline {
+    /// Adds a line per image fetched, with no address, so a UI test can count what a screen loads.
+    private static func recordRequest() {
+        guard let path = ProcessInfo.processInfo.environment["FINESSE_IMAGE_REQUEST_LOG"],
+              let file = FileHandle(forWritingAtPath: path)
+        else { return }
+        defer { try? file.close() }
+        _ = try? file.seekToEnd()
+        try? file.write(contentsOf: Data("1\n".utf8))
+    }
+}
+#endif
 
 /// NSCache is documented as thread-safe but is not marked Sendable.
 private final class ImageMemoryCache: @unchecked Sendable {

@@ -61,15 +61,14 @@ final class SignInFlowUITests: XCTestCase {
         XCTAssertTrue(tabBar.waitForExistence(timeout: 30))
         // Rows below the fold don't exist yet, so wait for whichever hub comes first.
         let firstHub = app.staticTexts.matching(
-            NSPredicate(format: "label IN %@", ["Continue Watching", "Next Up", "Recently Added"])
+            NSPredicate(format: "label IN %@", ["Continue Watching", "Next Up", "Recently Added Movies"])
         ).firstMatch
         XCTAssertTrue(firstHub.waitForExistence(timeout: 30))
         sleep(4)
         capture("4-home")
 
         // Select a card, then Menu comes back to Home with its rows still there.
-        remote.press(.down)
-        sleep(1)
+        focusFirstHomeCard(in: app)
         capture("5-home-focused")
         remote.press(.select)
         sleep(2)

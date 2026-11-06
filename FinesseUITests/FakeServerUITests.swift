@@ -71,8 +71,7 @@ final class FakeServerUITests: XCTestCase {
         launch()
 
         // Tab bar to the first row. Select goes to Detail, Menu comes back with focus on the row.
-        remote.press(.down)
-        sleep(1)
+        focusFirstHomeCard(in: app)
         capture("fake-5-card-focused")
         remote.press(.select)
         XCTAssertTrue(app.buttons["detailPlay"].waitForExistence(timeout: 10))
@@ -102,12 +101,14 @@ final class FakeServerUITests: XCTestCase {
         remote.press(.menu)
         sleep(1)
 
-        // Down to each row in turn, then Menu returns to the tab bar.
+        // Down to each row in turn, then Back steps out through the billboard to the tab bar.
         remote.press(.down)
         sleep(1)
         remote.press(.down)
         sleep(1)
         capture("fake-10-recently-added")
+        remote.press(.menu)
+        sleep(1)
         remote.press(.menu)
         sleep(1)
         capture("fake-11-menu-to-tab-bar")

@@ -2,6 +2,8 @@ import SwiftUI
 
 enum MediaCardStyle {
     case poster
+    /// Home keeps the item's details above the row, so its posters leave them room.
+    case posterCompact
     case landscape
     /// Four of these with 48pt gaps fill the 1760pt between the safe area margins exactly.
     case landscapeGrid
@@ -9,6 +11,7 @@ enum MediaCardStyle {
     var size: CGSize {
         switch self {
         case .poster: CGSize(width: 260, height: 390)
+        case .posterCompact: CGSize(width: 220, height: 330)
         case .landscape: CGSize(width: 440, height: 248)
         case .landscapeGrid: CGSize(width: 404, height: 227)
         }
@@ -27,6 +30,8 @@ struct MediaCard<Menu: View>: View {
     /// Shows a check mark for an item that has been watched to the end.
     var isWatched = false
     var onPlay: (() -> Void)?
+    /// Tells the screen when this card gains or loses focus.
+    var onFocusChange: ((Bool) -> Void)?
     let action: () -> Void
     @ViewBuilder var menu: () -> Menu
 
@@ -35,7 +40,7 @@ struct MediaCard<Menu: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             Button(action: action) {
-                CachedImage(url: imageURL, placeholderSymbol: style == .poster ? "film" : "photo")
+                CachedImage(url: imageURL, placeholderSymbol: style == .poster || style == .posterCompact ? "film" : "photo")
                     .frame(width: style.size.width, height: style.size.height)
                     .overlay(alignment: .bottom) {
                         if let progress {
@@ -52,6 +57,7 @@ struct MediaCard<Menu: View>: View {
             }
             .buttonStyle(.card)
             .focused($isFocused)
+            .onChange(of: isFocused) { _, focused in onFocusChange?(focused) }
             .contextMenu(menuItems: menu)
             .onPlayPauseCommand(perform: onPlay)
             .accessibilityLabel(title)

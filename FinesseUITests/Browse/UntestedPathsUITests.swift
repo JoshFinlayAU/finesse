@@ -122,7 +122,7 @@ final class UntestedPathsUITests: XCTestCase {
         try launchSignedIn()
         XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 20))
         sleep(2)
-        press(.down)
+        focusFirstHomeCard(in: app)
         remote.press(.select)
 
         let play = app.buttons["detailPlay"]
@@ -326,7 +326,7 @@ final class UntestedPathsUITests: XCTestCase {
         case "Movies", "TV Shows": marker = app.staticTexts[tab]
         case "Settings": marker = app.buttons["signOut"]
         case "Search": marker = app.descendants(matching: .any)["Search"]
-        default: marker = app.staticTexts["Next Up"]
+        default: marker = app.buttons["heroMoreInfo"]
         }
         XCTAssertTrue(marker.waitForExistence(timeout: 20), "Should be on \(tab)", file: file, line: line)
     }
@@ -336,7 +336,7 @@ final class UntestedPathsUITests: XCTestCase {
         try launchSignedIn()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
         // Presses are lost until Home has loaded and focus has settled.
-        XCTAssertTrue(app.staticTexts["Recently Added"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["heroMoreInfo"].waitForExistence(timeout: 30))
         sleep(3)
         openTab(tab)
         sleep(2)

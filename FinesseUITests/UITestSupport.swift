@@ -41,6 +41,19 @@ extension XCTestCase {
         return focused.exists && !element.label.isEmpty && focused.label == element.label
     }
 
+    /// From the tab bar or the billboard's buttons, down to the first card on Home.
+    @MainActor
+    func focusFirstHomeCard(in app: XCUIApplication) {
+        let focused = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
+        for _ in 0..<3 {
+            XCUIRemote.shared.press(.down)
+            sleep(1)
+            let isHeroButton = ["heroPlay", "heroMoreInfo"].contains(focused.identifier)
+            if focused.exists, !isHeroButton, !app.tabBars.buttons[focused.label].exists { return }
+        }
+        XCTFail("Could not reach a card on Home")
+    }
+
     /// Types into a field through the full-screen keyboard, replacing what it held.
     @MainActor
     func enter(_ text: String, into field: XCUIElement, in app: XCUIApplication) {
