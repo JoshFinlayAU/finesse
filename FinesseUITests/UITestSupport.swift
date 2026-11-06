@@ -22,6 +22,24 @@ extension XCTestCase {
         return focused.exists && !element.label.isEmpty && focused.label == element.label
     }
 
+    /// Types into a field through the full-screen keyboard, replacing what it held.
+    @MainActor
+    func enter(_ text: String, into field: XCUIElement, in app: XCUIApplication) {
+        focus(field, in: app)
+        XCUIRemote.shared.press(.select)
+        sleep(1)
+        let keyboardField = app.textFields.firstMatch
+        if app.keyboards.firstMatch.exists, let current = keyboardField.value as? String,
+           !current.isEmpty, current != keyboardField.placeholderValue {
+            app.typeText(String(repeating: String(XCUIKeyboardKey.delete.rawValue), count: current.count))
+        }
+        app.typeText(text)
+        sleep(1)
+        // Leave the full-screen keyboard.
+        XCUIRemote.shared.press(.menu)
+        sleep(1)
+    }
+
     @MainActor
     func capture(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

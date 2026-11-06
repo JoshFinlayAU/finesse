@@ -25,14 +25,13 @@ final class SignInFlowUITests: XCTestCase {
         let address = app.textFields["serverAddress"]
         XCTAssertTrue(address.waitForExistence(timeout: 20))
         capture("1-server-entry")
-        enter(server, into: address)
+        enter(server, into: address, in: app)
         focus(app.buttons["connect"], in: app)
         remote.press(.select)
 
         // User picker. The hidden test user isn't listed, so use Other User.
         let other = app.buttons["otherUser"]
         XCTAssertTrue(other.waitForExistence(timeout: 20))
-        capture("2-user-picker")
 
         // Back from the picker returns to the server step, with the address kept.
         remote.press(.menu)
@@ -45,15 +44,15 @@ final class SignInFlowUITests: XCTestCase {
         remote.press(.select)
         let usernameField = app.textFields["username"]
         XCTAssertTrue(usernameField.waitForExistence(timeout: 10))
-        enter(username, into: usernameField)
+        enter(username, into: usernameField, in: app)
         let passwordField = app.secureTextFields["password"]
-        enter("definitely-wrong", into: passwordField)
+        enter("definitely-wrong", into: passwordField, in: app)
         focus(app.buttons["signIn"], in: app)
         remote.press(.select)
         XCTAssertTrue(app.staticTexts["Incorrect username or password."].waitForExistence(timeout: 20))
         capture("3-wrong-password")
 
-        enter(password, into: passwordField)
+        enter(password, into: passwordField, in: app)
         focus(app.buttons["signIn"], in: app)
         remote.press(.select)
 
@@ -100,7 +99,6 @@ final class SignInFlowUITests: XCTestCase {
         focus(signOut, in: app)
         remote.press(.select)
         XCTAssertTrue(app.buttons["otherUser"].waitForExistence(timeout: 20))
-        capture("9-after-sign-out")
     }
 
     func testQuickConnectShowsCodeAndBackLeaves() throws {
@@ -109,7 +107,7 @@ final class SignInFlowUITests: XCTestCase {
         app.launch()
         let address = app.textFields["serverAddress"]
         XCTAssertTrue(address.waitForExistence(timeout: 20))
-        enter(server, into: address)
+        enter(server, into: address, in: app)
         focus(app.buttons["connect"], in: app)
         remote.press(.select)
         let quickConnect = app.buttons["quickConnect"]
@@ -145,25 +143,5 @@ final class SignInFlowUITests: XCTestCase {
         focus(signOut, in: app)
         remote.press(.select)
         XCTAssertTrue(app.buttons["otherUser"].waitForExistence(timeout: 20))
-    }
-
-    private func enter(_ text: String, into field: XCUIElement) {
-        focus(field, in: app)
-        remote.press(.select)
-        sleep(1)
-        clearKeyboardField()
-        app.typeText(text)
-        sleep(1)
-        // Leave the full-screen keyboard.
-        remote.press(.menu)
-        sleep(1)
-    }
-
-    private func clearKeyboardField() {
-        let delete = String(XCUIKeyboardKey.delete.rawValue)
-        let current = app.keyboards.firstMatch.exists ? app.textFields.firstMatch.value as? String : nil
-        if let current, !current.isEmpty, current != app.textFields.firstMatch.placeholderValue {
-            app.typeText(String(repeating: delete, count: current.count))
-        }
     }
 }

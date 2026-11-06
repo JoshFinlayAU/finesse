@@ -90,6 +90,7 @@ sed 's/^/TEST_RUNNER_/' .env.local | ssh fin-mac 'set -a; . /dev/stdin; set +a; 
 
 - `FakeServerUITests` needs no server. It launches with `-FinesseFakeServer`, a DEBUG-only mode with two signed-in users and seeded hubs.
 - `SignInFlowUITests` signs in to the test server using the same stdin credentials as the integration tests, and skips without them. Reset first so it starts signed out: `xcrun simctl keychain "Finesse Apple TV 4K" reset`.
+- `TwoUserSwitchingUITests` and the integration `TwoUserSwitchingTests` need `JELLYFIN_USERNAME_2` and `JELLYFIN_PASSWORD_2` in `.env.local` for the second test user, and skip without them.
 - The real user picker shows household names from `/Users/Public`, so never commit or quote those screenshots.
 
 ### Real Apple TV
