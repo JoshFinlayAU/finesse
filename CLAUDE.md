@@ -23,6 +23,7 @@ These are the owner's choices. Don't change them without asking.
 | Licence | Private for now; open or closed source to be decided before release |
 | Bundle ID | `au.com.athenanetworks.finesse`. Not yet registered: the developer portal and App Store Connect need a separate go-ahead from the owner |
 | Apple team | `4S7BG5A4XV` |
+| Plain HTTP | Allowed to any server (`NSAllowsArbitraryLoads`), because servers are user-configured and self-hosted |
 
 ## Stack
 
@@ -173,7 +174,7 @@ TestFlight uploads and any App Store Connect change are outward-facing, so confi
   - Report start, progress and stop, or resume and Next Up will drift.
   - Check the behaviour against the test server's version rather than assuming it from docs.
 - **libmpv/FFmpeg licensing:** use LGPL-compatible builds only, with no GPL components. Track each dependency's licence, since App Store distribution and LGPL obligations both feed into the pre-release licence decision. Treat Swiftfin and other clients as references only, and don't copy their code without checking the licence.
-- **App Transport Security:** many Jellyfin servers use plain HTTP or local addresses. Keep exceptions as narrow as user-configured servers allow, and be ready to justify them in App Review. AVPlayer and mpv make their own connections, so test both.
+- **App Transport Security:** the app allows plain HTTP to any host, by the owner's decision. `NSAllowsLocalNetworking` must stay out of `Info.plist`, because its presence makes the system ignore `NSAllowsArbitraryLoads`. The App Review justification is in `memory/privacy-and-test-secrets.md`. AVPlayer and mpv make their own connections, so test both.
 - **tvOS storage:** local storage can be purged and `UserDefaults` is small. Keep tokens in the Keychain, treat image and metadata caches as disposable, and don't assume files persist.
 - **tvOS frameworks:** there's no `WKWebView`, so sign-in and help flows must be native.
 - **Display matching:** AVPlayer and mpv handle frame rate and dynamic range differently. Check match-content behaviour for each engine on the real Apple TV.

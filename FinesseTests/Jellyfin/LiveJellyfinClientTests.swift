@@ -448,14 +448,6 @@ import Testing
         }
     }
 
-    @Test func atsRefusalHasItsOwnError() async {
-        let error = URLError(.appTransportSecurityRequiresSecureConnection)
-        StubURLProtocol.reset { _ in .failure(error) }
-        await #expect(throws: JellyfinError.insecureConnectionBlocked) {
-            _ = try await makeClient().serverInfo()
-        }
-    }
-
     @Test func networkErrorHidesURL() async {
         let secretURL = URL(string: "http://jellyfin.invalid/stream?ApiKey=FIXTURE_TOKEN")!
         let error = URLError(.timedOut, userInfo: [NSURLErrorFailingURLErrorKey: secretURL])

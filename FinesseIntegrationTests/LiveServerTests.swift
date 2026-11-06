@@ -334,15 +334,4 @@ struct LiveServerTests {
         #expect(try await client.setFavorite(original, itemID: movie.id).isFavorite == original)
         try await client.signOut()
     }
-
-    /// Pins the ATS configuration: plain HTTP to a public hostname is refused before it connects.
-    @Test func plainHTTPToAHostnameIsBlocked() async throws {
-        let client = LiveJellyfinClient(
-            serverURL: URL(string: "http://example.com")!,
-            device: DeviceIdentity(clientName: "Test", clientVersion: "1", deviceName: "Test", deviceID: "ats-check")
-        )
-        await #expect(throws: JellyfinError.insecureConnectionBlocked) {
-            _ = try await client.serverInfo()
-        }
-    }
 }

@@ -464,7 +464,6 @@ actor LiveJellyfinClient: JellyfinClient {
         case let urlError as URLError:
             switch urlError.code {
             case .cancelled: return CancellationError()
-            case .appTransportSecurityRequiresSecureConnection: return JellyfinError.insecureConnectionBlocked
             default: return JellyfinError.network("URL error \(urlError.code.rawValue)")
             }
         case is DecodingError:
