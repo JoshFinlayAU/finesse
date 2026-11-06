@@ -11,7 +11,7 @@ These are the owner's choices. Don't change them without asking.
 | Area | Decision |
 |---|---|
 | Playback | Hybrid: AVPlayer first, libmpv/FFmpeg fallback |
-| Playback package | Our own dynamic mpv and FFmpeg build, with FFmpeg under LGPLv3 and OpenSSL for TLS 1.3, and no GPL components. MPVKit is development-only until that lands |
+| Playback package | Our own dynamic mpv and FFmpeg build, with FFmpeg under LGPLv3 and OpenSSL for TLS 1.3, and no GPL components. The scripts and licence record are in `tvos-deps/` |
 | mpv certificate verification | Off for now. Revisit before release |
 | UI | SwiftUI first, UIKit where needed |
 | Minimum OS | tvOS 26; no back-deployment or availability shims for older versions |
@@ -30,9 +30,10 @@ These are the owner's choices. Don't change them without asking.
 
 - Swift and SwiftUI on the tvOS 26 SDK, using Xcode on `fin-mac`. Use the Observation framework and structured concurrency.
 - UIKit is for what SwiftUI can't do well: player view hosting, `AVPlayerViewController`, the mpv render surface, and specific focus problems. Wrap it in `UIViewRepresentable` or `UIViewControllerRepresentable` and keep it out of feature code.
-- Playback uses AVFoundation/AVKit plus libmpv/FFmpeg, ideally through a maintained xcframework package. Confirm that it ships tvOS device and simulator slices before adopting it.
+- Playback uses AVFoundation/AVKit plus libmpv/FFmpeg, through our own 14 dynamic xcframeworks: Libmpv, six FFmpeg libraries, OpenSSL, Libuchardet, Libass, Libfribidi, Libdav1d, Libplacebo and MoltenVK. Binaries are never committed. See "Playback frameworks" below.
 - Jellyfin access goes through the official `jellyfin-sdk-swift` if it covers the target server version. Keep it behind our own client layer so views never touch SDK types.
-- Dependencies use Swift Package Manager; commit `Package.resolved`.
+- Swift dependencies use Swift Package Manager; commit `Package.resolved`.
+- Every shipped component is listed in `Finesse/Resources/Licences/licences.json` for the in-app licences screen. The unit plan fails if it falls behind `Package.resolved` or `tvos-deps/versions.sh`, so update its entry and text with any version change. MoltenVK's own dependencies aren't covered by that check.
 - Keep `project.yml` (XcodeGen) as the project source of truth and generate the `.xcodeproj` on the Mac. `.pbxproj` files are impractical to edit from Linux, so don't commit a generated one.
 
 ## How to run / build / test
@@ -47,6 +48,12 @@ Done on 2026-11-06, with the Apple TV added on 2026-11-07.
 - Xcode 27.2 and XcodeGen were already on the Mac, and `~/Developer/Finesse` exists.
 - tvOS 27.2 and 26.5 simulator runtimes are installed. Our simulators are `Finesse Apple TV 4K` (27.2, the default) and `Finesse Apple TV 4K 26` (26.5, the nearest installed to the minimum OS). The 26.5 one needs `OS=26.5` in the destination, because `xcodebuild` otherwise assumes `OS=latest` and reports no matching device.
 - The `Lounge Room` Apple TV is paired and registered, and device builds sign headlessly with the `aisbuild` keychain. No Xcode account sign-in is needed. Details are in `memory/mac-setup.md`.
+
+### Playback frameworks
+
+A clean checkout can't build until `../FinesseDeps/dist` holds the xcframeworks, because `project.yml` links them from there and the app has no fallback. On `fin-mac` that's `~/Developer/FinesseDeps/dist`, outside the synced copy, so `--delete` doesn't touch it.
+
+To fill it, follow "Building" in `tvos-deps/README.md` on the Mac. From an empty work folder this took about 10 minutes on 2026-11-07, needs no sudo and doesn't change Homebrew. No published archive exists yet, and the proposal for one in that README hasn't been approved. Rebuild after changing `tvos-deps/versions.sh` or its patches.
 
 ### Sync
 
@@ -100,6 +107,8 @@ sed 's/^/TEST_RUNNER_/' .env.local | ssh fin-mac 'set -a; . /dev/stdin; set +a; 
 - The real user picker shows household names from `/Users/Public`, so never commit or quote those screenshots.
 
 ### Real Apple TV
+
+`scripts/apple-tv-build.sh` is the device build path. It handles the headless signing and the framework re-signing that a real device insists on, so don't build for the device with plain `xcodebuild`.
 
 Hold `fin-mac-build` and `lounge-room-apple-tv`, sync, then run this from the spoke root. Leave out `install` to build and sign without touching the TV, which is the household's, so don't play anything on it unprompted.
 

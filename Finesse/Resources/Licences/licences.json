@@ -1,8 +1,6 @@
 {
   "sourceOffer": null,
-  "developmentOnlyPackages": [
-    "mpvkit"
-  ],
+  "developmentOnlyPackages": [],
   "components": [
     {
       "id": "ffmpeg",
