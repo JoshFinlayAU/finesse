@@ -63,6 +63,7 @@ protocol JellyfinClient: AnyObject, Sendable {
 
     func playbackInfo(_ request: PlaybackInfoRequest) async throws -> PlaybackInfo
     func mediaSegments(itemID: String) async throws -> [MediaSegment]
+    func chapters(itemID: String) async throws -> [ItemChapter]
     func reportPlaybackStart(_ report: PlaybackReport) async throws
     func reportPlaybackProgress(_ report: PlaybackReport) async throws
     func reportPlaybackStopped(_ report: PlaybackReport) async throws

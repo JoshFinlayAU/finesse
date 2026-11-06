@@ -23,6 +23,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
     var filterOptionsValue = FilterOptions()
     var playbackInfoValue = PlaybackInfo()
     var segments: [String: [MediaSegment]] = [:]
+    var chapters: [String: [ItemChapter]] = [:]
     var failure: JellyfinError?
     /// Hold these calls open, so a test can make something happen during them.
     var playbackInfoGate: (@Sendable () async -> Void)?
@@ -253,6 +254,11 @@ actor InMemoryJellyfinClient: JellyfinClient {
     func mediaSegments(itemID: String) async throws -> [MediaSegment] {
         try checkSession()
         return segments[itemID] ?? []
+    }
+
+    func chapters(itemID: String) async throws -> [ItemChapter] {
+        try checkSession()
+        return chapters[itemID] ?? []
     }
 
     func reportPlaybackStart(_ report: PlaybackReport) async throws {

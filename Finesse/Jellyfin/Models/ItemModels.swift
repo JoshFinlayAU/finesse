@@ -13,6 +13,7 @@ enum ImageKind: String, Hashable, Sendable, Codable {
     case backdrop = "Backdrop"
     case thumb = "Thumb"
     case logo = "Logo"
+    case chapter = "Chapter"
 }
 
 /// Cache tags for the images an item has. A nil tag means the item has no image of that kind.
@@ -150,6 +151,16 @@ enum MediaSegmentKind: Hashable, Sendable {
     case preview
     case commercial
     case unknown
+}
+
+/// A chapter of an item. `imageTag` is nil unless the server has extracted chapter images.
+struct ItemChapter: Identifiable, Hashable, Sendable {
+    var index: Int
+    var name: String?
+    var start: Ticks
+    var imageTag: String?
+
+    var id: Int { index }
 }
 
 struct MediaSegment: Identifiable, Hashable, Sendable {

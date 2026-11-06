@@ -110,6 +110,13 @@ actor GatedJellyfinClient: JellyfinClient {
         try await base.stopTranscoding(playSessionID: playSessionID)
     }
 
+    func chapters(itemID: String) async throws -> [ItemChapter] { try await base.chapters(itemID: itemID) }
+    func reportPlaybackStart(_ report: PlaybackReport) async throws { try await base.reportPlaybackStart(report) }
+    func reportPlaybackProgress(_ report: PlaybackReport) async throws { try await base.reportPlaybackProgress(report) }
+    func stopTranscoding(playSessionID: String) async throws {
+        try await base.stopTranscoding(playSessionID: playSessionID)
+    }
+
     func reportPlaybackStopped(_ report: PlaybackReport) async throws { try await base.reportPlaybackStopped(report) }
 
     /// Returns once a held call has arrived at its gate.

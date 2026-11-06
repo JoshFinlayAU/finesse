@@ -401,6 +401,15 @@ actor LiveJellyfinClient: JellyfinClient {
         )
     }
 
+    func chapters(itemID: String) async throws -> [ItemChapter] {
+        let dto = try await send(Paths.getItem(itemID: itemID, userID: userID()))
+        return (dto.chapters ?? []).enumerated().compactMap { index, chapter in
+            Ticks(chapter.startPositionTicks).map {
+                ItemChapter(index: index, name: chapter.name, start: $0, imageTag: chapter.imageTag)
+            }
+        }
+    }
+
     func mediaSegments(itemID: String) async throws -> [MediaSegment] {
         _ = try userID()
         do {
