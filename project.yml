@@ -43,6 +43,8 @@ targets:
         product: Get
       - package: MPVKit
         product: MPVKit
+      # Only a UIWindow category is used from AVKit, so autolinking would otherwise drop it.
+      - sdk: AVKit.framework
     settings:
       base:
         PRODUCT_NAME: Finesse

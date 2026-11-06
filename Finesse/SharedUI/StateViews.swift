@@ -76,7 +76,6 @@ extension Error {
 
     /// True when the stored token no longer works, so the user has to sign in again.
     var isSessionExpired: Bool {
-        guard let error = self as? JellyfinError else { return false }
-        return error == .notSignedIn || error == .invalidCredentials
+        (self as? JellyfinError) == .notSignedIn
     }
 }
