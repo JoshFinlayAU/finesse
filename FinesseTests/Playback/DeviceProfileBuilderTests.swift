@@ -35,6 +35,20 @@ import Testing
         #expect(external == EngineCapabilities.mpv.externalSubtitleCodecs)
     }
 
+    @Test func mlpIsOfferedForMpvOnly() throws {
+        let profile = DeviceProfileBuilder.make()
+        let entries = zip(profile.directPlayProfiles, EngineCapabilities.routingOrder)
+        let audio = Dictionary(uniqueKeysWithValues: entries.map { ($1.engine, names($0.audioCodec)) })
+        #expect(try #require(audio[.mpv]).contains("mlp"))
+        #expect(try !#require(audio[.avPlayer]).contains("mlp"))
+    }
+
+    /// A transcode goes to AVPlayer, which shows mov_text itself, so the server must not burn it in.
+    @Test func movTextIsDeclaredOnceAsEmbeddedAndNeverBurnedIn() {
+        let movText = DeviceProfileBuilder.make().subtitleProfiles.filter { $0.format == "mov_text" }
+        #expect(movText.map(\.method) == ["Embed"])
+    }
+
     @Test func transcodeTargetIsSomethingAVPlayerPlays() throws {
         let transcode = try #require(DeviceProfileBuilder.make().transcodingProfiles.first)
         #expect(transcode.protocolName == "hls")

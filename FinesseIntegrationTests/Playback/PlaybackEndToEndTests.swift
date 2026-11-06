@@ -111,9 +111,12 @@ struct PlaybackEndToEndTests {
         try await Task.sleep(for: watchTime)
         let stoppedAt = engine.position
         #expect(stoppedAt.seconds > start.seconds + 10)
+        // A move to the other engine would leave `stoppedAt` reading the old one, not what gets reported.
+        #expect(session.engine === engine, "Moved engines during the watch")
         await session.stop()
 
         let saved = try await client.item(id: item.id).userState.playbackPosition
+        print("RESUME \(kind) start \(start.seconds) saved \(saved.seconds) stopped at \(stoppedAt.seconds)")
         #expect(abs(saved.seconds - stoppedAt.seconds) < 3, "saved \(saved.seconds), stopped at \(stoppedAt.seconds)")
 
         // Stopping this early in the runtime makes the server clear the position again.

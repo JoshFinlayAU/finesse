@@ -81,6 +81,7 @@ struct PlaybackTracksEndToEndTests {
         _ itemID: String,
         start: TimeInterval,
         expecting kind: PlaybackEngineKind,
+        engines: [EngineCapabilities] = EngineCapabilities.routingOrder,
         _ body: (PlaybackSession, LiveJellyfinClient) async throws -> Void
     ) async throws {
         let client = try await LiveServer.signedInClient()
@@ -88,7 +89,7 @@ struct PlaybackTracksEndToEndTests {
             Issue.record("Item \(itemID) is no longer in the library, so this test played nothing")
             return
         }
-        let session = PlaybackSession(client: client, itemID: itemID, startPosition: Ticks(seconds: start))
+        let session = PlaybackSession(client: client, itemID: itemID, startPosition: Ticks(seconds: start), engines: engines)
         try await session.start()
         let engine = try #require(session.engine)
         #expect(engine.kind == kind)
@@ -258,6 +259,17 @@ struct PlaybackTracksEndToEndTests {
             #expect(active == 2)
             #expect(session.engine === engine)
             mark("avplayer mov_text on")
+            try await Task.sleep(for: .seconds(35))
+        }
+    }
+
+    /// AVPlayer takes this title in real routing, so mpv only gets it with AVPlayer left out.
+    @Test func mpvSelectsMovText() async throws {
+        try await withPlayback(Item.avMovText, start: 900, expecting: .mpv, engines: [.mpv]) { session, _ in
+            let engine = try #require(session.engine as? MPVEngine)
+            try await session.selectSubtitleTrack(id: 2)
+            #expect(try await waitUntil(timeout: .seconds(5)) { engine.activeSubtitleTrackID == 2 })
+            mark("mpv mov_text on")
             try await Task.sleep(for: .seconds(35))
         }
     }

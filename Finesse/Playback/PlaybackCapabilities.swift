@@ -79,14 +79,14 @@ extension EngineCapabilities {
         rejectedVideoCodecTags: ["hevc": ["hev1"]]
     )
 
-    /// Taken from the decoders and demuxers present in the MPVKit tvOS binaries.
-    /// mov_text has no decoder in that build, so it stays AVPlayer only.
+    /// Taken from the decoders and demuxers present in our own tvOS mpv and FFmpeg build.
+    /// AVPlayer stays first in the routing order, so this only takes mov_text and MLP files it can't play.
     static let mpv = EngineCapabilities(
         engine: .mpv,
         containers: ["mkv", "webm", "mp4", "m4v", "mov", "avi", "ts", "m2ts", "mpegts", "mpg", "mpeg", "vob", "asf", "wmv", "ogv", "ogg", "flv"],
         videoCodecs: ["h264", "hevc", "av1", "vp8", "vp9", "mpeg1video", "mpeg2video", "mpeg4", "vc1", "wmv3"],
-        audioCodecs: ["aac", "ac3", "eac3", "dts", "dca", "truehd", "mp2", "mp3", "flac", "alac", "opus", "vorbis", "pcm_s16le", "pcm_s24le"],
-        embeddedSubtitleCodecs: ["ass", "ssa", "subrip", "srt", "webvtt", "pgssub", "dvdsub", "dvbsub"],
+        audioCodecs: ["aac", "ac3", "eac3", "dts", "dca", "truehd", "mlp", "mp2", "mp3", "flac", "alac", "opus", "vorbis", "pcm_s16le", "pcm_s24le"],
+        embeddedSubtitleCodecs: ["ass", "ssa", "subrip", "srt", "webvtt", "mov_text", "pgssub", "dvdsub", "dvbsub"],
         externalSubtitleCodecs: ["ass", "ssa", "subrip", "srt", "vtt", "webvtt"]
     )
 
