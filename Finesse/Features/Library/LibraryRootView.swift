@@ -165,6 +165,7 @@ private struct LibraryControls: View {
             Label(model.sort.title, systemImage: "arrow.up.arrow.down")
         }
         .accessibilityIdentifier("librarySort")
+        .accessibilityValue(model.sort.title)
     }
 
     private var filterMenu: some View {
@@ -200,6 +201,7 @@ private struct LibraryControls: View {
             )
         }
         .accessibilityIdentifier("libraryFilter")
+        .accessibilityValue(model.hasActiveFilter ? "Filtered" : "All")
     }
 
     private func filterButton(_ title: String, isChecked: Bool, change: @escaping (inout ItemFilter) -> Void) -> some View {
