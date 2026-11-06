@@ -1,5 +1,24 @@
 import XCTest
 
+/// What the tests type instead of a password, because XCTest records typed text in result bundles
+/// and the simulator log. The app swaps these for the real values, in Debug builds only.
+enum TypedPassword {
+    static let first = "ui-test-password-1"
+    static let second = "ui-test-password-2"
+}
+
+extension XCUIApplication {
+    /// An app that can resolve `TypedPassword` values, read from the test's own environment.
+    @MainActor
+    static func forSignIn() -> XCUIApplication {
+        let app = XCUIApplication()
+        let environment = ProcessInfo.processInfo.environment
+        app.launchEnvironment["FINESSE_UI_TEST_PASSWORD_1"] = environment["JELLYFIN_PASSWORD"]
+        app.launchEnvironment["FINESSE_UI_TEST_PASSWORD_2"] = environment["JELLYFIN_PASSWORD_2"]
+        return app
+    }
+}
+
 extension XCTestCase {
     /// Moves focus to an element by trying each direction, as a person would with the remote.
     /// List rows report focus on an inner element, so this also compares the focused element's label.

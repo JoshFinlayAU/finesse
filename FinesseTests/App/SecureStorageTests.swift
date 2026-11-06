@@ -31,3 +31,17 @@ struct SecureStorageTests {
         #expect(accounts.currentSession?.accessToken == "new")
     }
 }
+
+struct PrivacyManifestTests {
+    @Test func theManifestShipsInTheAppAndDeclaresWhatTheBinaryUses() throws {
+        let url = try #require(Bundle.main.url(forResource: "PrivacyInfo", withExtension: "xcprivacy"))
+        let plist = try PropertyListSerialization.propertyList(from: Data(contentsOf: url), format: nil) as? [String: Any]
+        let declared = try #require(plist?["NSPrivacyAccessedAPITypes"] as? [[String: Any]])
+        var reasons: [String: [String]] = [:]
+        for entry in declared {
+            reasons[try #require(entry["NSPrivacyAccessedAPIType"] as? String)] = entry["NSPrivacyAccessedAPITypeReasons"] as? [String]
+        }
+        #expect(reasons["NSPrivacyAccessedAPICategoryFileTimestamp"] == ["C617.1"])
+        #expect(reasons["NSPrivacyAccessedAPICategorySystemBootTime"] == ["35F9.1"])
+    }
+}

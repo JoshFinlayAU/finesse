@@ -9,6 +9,30 @@
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array/>
 	<key>NSPrivacyAccessedAPITypes</key>
-	<array/>
+	<array>
+		<!-- stat, fstat and lstat, from the statically linked mpv, FFmpeg and TLS libraries. They read
+		     size and metadata of files the app opens, and playback hands them only HTTP URLs. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+		<!-- mach_absolute_time, from mpv's and libplacebo's timers. Measures elapsed time inside the
+		     app and is never sent off the device. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
+			</array>
+		</dict>
+		<!-- Not declared: fstatfs, from mpv's stream_file.c, also falls in the disk space category.
+		     It checks whether a local file is on a network filesystem, which no disk space reason
+		     describes, and the app doesn't play local files. Left for the owner to decide. -->
+	</array>
 </dict>
 </plist>

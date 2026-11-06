@@ -28,6 +28,8 @@ final class AppModel {
     let makeClient: JellyfinClientFactory
     private let store: SessionStore
     private let logger = Logger(subsystem: "Finesse", category: "Accounts")
+    /// The Keychain failed when read, so it may still hold other users. Saving would overwrite them.
+    private var storeIsUnread = false
 
     init(store: SessionStore, identity: DeviceIdentity, makeClient: @escaping JellyfinClientFactory) {
         self.store = store
@@ -60,7 +62,11 @@ final class AppModel {
         guard phase == .launching else { return }
         do {
             accounts = try store.load()
+        } catch is DecodingError {
+            // Nothing can ever read this data, so starting afresh loses nothing usable.
+            logger.error("Stored accounts are unreadable, starting afresh")
         } catch {
+            storeIsUnread = true
             logger.error("Could not read stored accounts: \(String(describing: error))")
         }
         guard let current = accounts.currentSession else {
@@ -123,6 +129,12 @@ final class AppModel {
 
     private func save() {
         do {
+            if storeIsUnread {
+                var stored = try store.load()
+                stored.merge(accounts)
+                accounts = stored
+                storeIsUnread = false
+            }
             try store.save(accounts)
         } catch {
             logger.error("Could not store accounts: \(String(describing: error))")

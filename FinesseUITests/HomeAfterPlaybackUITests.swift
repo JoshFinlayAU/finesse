@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class HomeAfterPlaybackUITests: XCTestCase {
     private var remote: XCUIRemote { .shared }
-    private lazy var app = XCUIApplication()
+    private lazy var app = XCUIApplication.forSignIn()
     private static let ticksPerSecond: Int64 = 10_000_000
 
     func testPlayPauseResumesAndHomeReloadsWhenThePlayerCloses() async throws {
@@ -134,7 +134,7 @@ final class HomeAfterPlaybackUITests: XCTestCase {
             let username = app.textFields["username"]
             XCTAssertTrue(username.waitForExistence(timeout: 10))
             enter(environment["JELLYFIN_USERNAME"] ?? "", into: username, in: app)
-            enter(environment["JELLYFIN_PASSWORD"] ?? "", into: app.secureTextFields["password"], in: app)
+            enter(TypedPassword.first, into: app.secureTextFields["password"], in: app)
             focus(app.buttons["signIn"], in: app)
             remote.press(.select)
         }

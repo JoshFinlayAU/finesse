@@ -18,6 +18,35 @@ final class InMemoryStorage: SecureStorage, @unchecked Sendable {
     }
 }
 
+/// Fails reads on demand, to tell a failed read apart from an empty store.
+final class FlakyStorage: SecureStorage, @unchecked Sendable {
+    struct ReadFailure: Error {}
+
+    let backing = InMemoryStorage()
+    private let lock = NSLock()
+    private var failing = true
+    private(set) var writes = 0
+
+    var readsFail: Bool {
+        get { lock.withLock { failing } }
+        set { lock.withLock { failing = newValue } }
+    }
+
+    func data(for account: String) throws -> Data? {
+        if readsFail { throw ReadFailure() }
+        return try backing.data(for: account)
+    }
+
+    func set(_ data: Data, for account: String) throws {
+        lock.withLock { writes += 1 }
+        try backing.set(data, for: account)
+    }
+
+    func remove(_ account: String) throws {
+        try backing.remove(account)
+    }
+}
+
 extension DeviceIdentity {
     static let test = DeviceIdentity(clientName: "Finesse", clientVersion: "0", deviceName: "Test", deviceID: "device-1")
 }

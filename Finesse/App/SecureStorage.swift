@@ -65,6 +65,15 @@ struct StoredAccounts: Codable, Equatable, Sendable {
         sessions.first { $0.accountKey == current }
     }
 
+    /// Folds in what happened this launch while the store couldn't be read, keeping what it held.
+    mutating func merge(_ newer: StoredAccounts) {
+        for session in newer.sessions {
+            upsert(session)
+        }
+        current = newer.current
+        lastServerURL = newer.lastServerURL ?? lastServerURL
+    }
+
     /// Adds the session or refreshes its token, and makes it current.
     mutating func upsert(_ session: UserSession) {
         if let index = sessions.firstIndex(where: { $0.accountKey == session.accountKey }) {
@@ -119,9 +128,17 @@ struct DeviceIdentityStore: Sendable {
         )
     }
 
+    /// A failed read isn't the same as having no ID. The stored one may still be there, so this
+    /// launch uses a temporary ID and leaves the Keychain alone.
     private func deviceID() -> String {
-        if let data = try? storage.data(for: Self.account), let stored = String(data: data, encoding: .utf8) {
-            return stored
+        let stored: Data?
+        do {
+            stored = try storage.data(for: Self.account)
+        } catch {
+            return UUID().uuidString
+        }
+        if let stored, let id = String(data: stored, encoding: .utf8), !id.isEmpty {
+            return id
         }
         let created = UUID().uuidString
         try? storage.set(Data(created.utf8), for: Self.account)

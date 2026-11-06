@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class CardPolishUITests: XCTestCase {
     private var remote: XCUIRemote { .shared }
-    private lazy var app = XCUIApplication()
+    private lazy var app = XCUIApplication.forSignIn()
 
     private var focused: XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
@@ -43,7 +43,7 @@ final class CardPolishUITests: XCTestCase {
             let usernameField = app.textFields["username"]
             XCTAssertTrue(usernameField.waitForExistence(timeout: 10))
             enter(username, into: usernameField, in: app)
-            enter(password, into: app.secureTextFields["password"], in: app)
+            enter(TypedPassword.first, into: app.secureTextFields["password"], in: app)
             focus(app.buttons["signIn"], in: app)
             remote.press(.select)
         }

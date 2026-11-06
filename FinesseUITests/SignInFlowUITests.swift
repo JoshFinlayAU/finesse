@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class SignInFlowUITests: XCTestCase {
     private var remote: XCUIRemote { .shared }
-    private lazy var app = XCUIApplication()
+    private lazy var app = XCUIApplication.forSignIn()
 
     private func environment(_ name: String) throws -> String {
         guard let value = ProcessInfo.processInfo.environment[name] else {
@@ -17,7 +17,7 @@ final class SignInFlowUITests: XCTestCase {
     func testSignInHomeBackPathAndSignOut() throws {
         let server = try environment("JELLYFIN_URL")
         let username = try environment("JELLYFIN_USERNAME")
-        let password = try environment("JELLYFIN_PASSWORD")
+        _ = try environment("JELLYFIN_PASSWORD")
         continueAfterFailure = false
         app.launch()
 
@@ -52,7 +52,7 @@ final class SignInFlowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Incorrect username or password."].waitForExistence(timeout: 20))
         capture("3-wrong-password")
 
-        enter(password, into: passwordField, in: app)
+        enter(TypedPassword.first, into: passwordField, in: app)
         focus(app.buttons["signIn"], in: app)
         remote.press(.select)
 

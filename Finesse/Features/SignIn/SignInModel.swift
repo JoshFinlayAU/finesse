@@ -92,6 +92,9 @@ final class SignInModel {
 
     func signIn(username: String, password: String) async {
         guard let client else { return }
+        #if DEBUG
+        let password = UITestPasswords.resolved(password)
+        #endif
         await perform {
             let session = try await client.signIn(username: username, password: password)
             await app.completeSignIn(session, client: client)

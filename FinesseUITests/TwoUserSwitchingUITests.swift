@@ -6,7 +6,7 @@ import XCTest
 @MainActor
 final class TwoUserSwitchingUITests: XCTestCase {
     private var remote: XCUIRemote { .shared }
-    private lazy var app = XCUIApplication()
+    private lazy var app = XCUIApplication.forSignIn()
 
     private func environment(_ name: String) throws -> String {
         guard let value = ProcessInfo.processInfo.environment[name] else {
@@ -44,7 +44,7 @@ final class TwoUserSwitchingUITests: XCTestCase {
         enter(server, into: address, in: app)
         focus(app.buttons["connect"], in: app)
         remote.press(.select)
-        signInAsOtherUser(firstName, password: firstPassword)
+        signInAsOtherUser(firstName, password: TypedPassword.first)
         expectHome(showing: firstMovie.name, notShowing: secondMovie.name)
         capture("switch-1-first-user-home")
 
@@ -52,7 +52,7 @@ final class TwoUserSwitchingUITests: XCTestCase {
         openSettings()
         focus(app.buttons["addUser"], in: app)
         remote.press(.select)
-        signInAsOtherUser(secondName, password: secondPassword)
+        signInAsOtherUser(secondName, password: TypedPassword.second)
         expectHome(showing: secondMovie.name, notShowing: firstMovie.name)
         capture("switch-2-second-user-home")
 

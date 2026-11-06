@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class BrowseFlowUITests: XCTestCase {
     private var remote: XCUIRemote { .shared }
-    private lazy var app = XCUIApplication()
+    private lazy var app = XCUIApplication.forSignIn()
 
     private func environment(_ name: String) throws -> String {
         guard let value = ProcessInfo.processInfo.environment[name] else {
@@ -34,7 +34,7 @@ final class BrowseFlowUITests: XCTestCase {
     private func launchSignedIn() throws {
         let server = try environment("JELLYFIN_URL")
         let username = try environment("JELLYFIN_USERNAME")
-        let password = try environment("JELLYFIN_PASSWORD")
+        _ = try environment("JELLYFIN_PASSWORD")
         continueAfterFailure = false
         app.launch()
 
@@ -58,7 +58,7 @@ final class BrowseFlowUITests: XCTestCase {
         let usernameField = app.textFields["username"]
         XCTAssertTrue(usernameField.waitForExistence(timeout: 10))
         enter(username, into: usernameField)
-        enter(password, into: app.secureTextFields["password"])
+        enter(TypedPassword.first, into: app.secureTextFields["password"])
         focus(app.buttons["signIn"], in: app)
         remote.press(.select)
         XCTAssertTrue(tabBar.waitForExistence(timeout: 30))
