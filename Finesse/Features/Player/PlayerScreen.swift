@@ -35,7 +35,6 @@ private struct PlayerContent: View {
     private enum Focus: Hashable {
         case transport
         case skip
-        case upNextPlay
     }
 
     let model: PlayerModel
@@ -62,7 +61,6 @@ private struct PlayerContent: View {
                     onPlay: { Task { await model.playNext() } },
                     onCancel: { model.cancelUpNext() }
                 )
-                .focused($focus, equals: .upNextPlay)
             case .failed(let message):
                 ErrorStateView(message: message) {
                     Task { await model.start() }
@@ -92,7 +90,6 @@ private struct PlayerContent: View {
         .onChange(of: model.phase) { _, phase in
             switch phase {
             case .finished: onFinished()
-            case .upNext: focus = .upNextPlay
             case .playing: focus = .transport
             default: break
             }
@@ -322,6 +319,7 @@ private struct PlayerUpNextCard: View {
     let secondsLeft: Int
     let onPlay: () -> Void
     let onCancel: () -> Void
+    @FocusState private var playHasFocus: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -338,6 +336,7 @@ private struct PlayerUpNextCard: View {
                 .font(.callout.monospacedDigit())
             HStack(spacing: 24) {
                 Button("Play Now", action: onPlay)
+                    .focused($playHasFocus)
                     .accessibilityIdentifier("upNextPlay")
                 Button("Cancel", action: onCancel)
                     .accessibilityIdentifier("upNextCancel")
@@ -349,6 +348,7 @@ private struct PlayerUpNextCard: View {
         .frame(maxWidth: 1100)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         .padding(60)
+        .onAppear { playHasFocus = true }
     }
 }
 

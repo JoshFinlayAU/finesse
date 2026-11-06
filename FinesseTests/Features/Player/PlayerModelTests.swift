@@ -50,6 +50,7 @@ private final class FakeEngine: PlaybackEngine {
 private final class Harness {
     let client = InMemoryJellyfinClient()
     var engines: [FakeEngine] = []
+    var startedWhileCancelled = false
     var date = Date(timeIntervalSince1970: 0)
     let model: PlayerModel
 
@@ -70,7 +71,10 @@ private final class Harness {
             makeEngine: factory,
             now: { clock() }
         )
-        made = { [unowned self] in engines.append($0) }
+        made = { [unowned self] in
+            engines.append($0)
+            if Task.isCancelled { startedWhileCancelled = true }
+        }
         clock = { [unowned self] in date }
     }
 
@@ -331,6 +335,30 @@ private final class Harness {
         #expect(await harness.client.startReports.last?.itemID == "next")
         await harness.model.exit()
         #expect(await harness.client.stopReports.count == 2)
+    }
+
+    /// The view's countdown task is cancelled by the phase change that starts the next episode.
+    @Test func theCountdownEndingDoesNotCancelTheNextEpisode() async throws {
+        let harness = Harness(item: episode())
+        try await harness.prepare(next: episode("next"))
+        await harness.model.start()
+        harness.engine.state = .ended
+        await harness.model.tick()
+        for _ in 1..<PlayerModel.upNextSeconds {
+            await harness.model.upNextTick()
+        }
+
+        let model = harness.model
+        let countdown = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            await model.upNextTick()
+        }
+        await countdown.value
+
+        #expect(!harness.startedWhileCancelled)
+        #expect(harness.model.phase == .playing)
+        #expect(harness.model.item.id == "next")
+        await harness.model.exit()
     }
 
     @Test func cancellingUpNextFinishesWithoutPlaying() async throws {

@@ -140,7 +140,9 @@ final class PlayerModel {
             return
         }
         if secondsLeft <= 1 {
-            await play(next)
+            // The countdown's own task ends when the phase changes. If starting the next episode
+            // ran inside it, that would cancel the episode's network requests.
+            await Task { await play(next) }.value
         } else {
             phase = .upNext(next, secondsLeft: secondsLeft - 1)
         }

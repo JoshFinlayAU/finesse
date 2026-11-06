@@ -185,6 +185,75 @@ final class PlayerFlowUITests: XCTestCase {
         capture("\(engine)-9-back-on-detail")
     }
 
+    /// Needs an episode seeded at about 88 percent, so it leads Continue Watching. The server resets
+    /// positions much later than that, so the test scrubs the rest of the way with the remote.
+    func testResumeFromHomeThenUpNext() throws {
+        let presses = Int(try environment("PLAYER_SCRUB_PRESSES")) ?? 0
+        let action = try environment("PLAYER_UP_NEXT_ACTION")
+        let label = "upnext-\(action)"
+        try launchSignedIn()
+        sleep(3)
+        capture("\(label)-1-home")
+
+        let play = app.buttons["detailPlay"]
+        for _ in 0..<4 where !play.exists {
+            remote.press(.select)
+            sleep(2)
+            if !play.exists && !app.buttons["transportBar"].exists {
+                press(.down)
+            }
+        }
+        if play.exists {
+            sleep(1)
+            capture("\(label)-2-detail-resume")
+            remote.press(.select)
+        }
+
+        let bar = app.buttons["transportBar"]
+        XCTAssertTrue(bar.waitForExistence(timeout: 30))
+        sleep(2)
+        capture("\(label)-3-resumed")
+        let resumed = bar.value as? String
+        XCTAssertFalse(resumed?.hasPrefix("0:0") == true, "Should resume from the saved position, not the start: \(resumed ?? "")")
+
+        press(.right, times: presses)
+        sleep(2)
+        capture("\(label)-4-near-end")
+
+        let upNextPlay = app.buttons["upNextPlay"]
+        XCTAssertTrue(upNextPlay.waitForExistence(timeout: 90), "Up next should appear at the end of the episode")
+        sleep(2)
+        capture("\(label)-5-up-next")
+
+        if action == "cancel" {
+            press(.right)
+            remote.press(.select)
+            XCTAssertTrue(bar.waitForNonExistence(timeout: 15), "Cancel should leave the player")
+            sleep(2)
+            capture("\(label)-6-after-cancel")
+            XCTAssertFalse(upNextPlay.exists)
+        } else {
+            // Leave the remote alone: the countdown should start the next episode by itself.
+            XCTAssertTrue(upNextPlay.waitForNonExistence(timeout: 20), "The countdown should finish")
+            XCTAssertTrue(bar.waitForExistence(timeout: 30), "The next episode should start")
+            press(.up)
+            sleep(1)
+            capture("\(label)-6-next-episode")
+            let started = bar.value as? String
+            XCTAssertTrue(started?.hasPrefix("0:") == true, "The next episode should play from its start: \(started ?? "")")
+            sleep(12)
+            capture("\(label)-6b-next-episode-picture")
+            XCTAssertNotEqual(bar.value as? String, started, "The next episode should be moving")
+            press(.up)
+            remote.press(.menu)
+            sleep(1)
+            remote.press(.menu)
+            XCTAssertTrue(bar.waitForNonExistence(timeout: 15), "Back should leave the player")
+            sleep(2)
+            capture("\(label)-7-after-back")
+        }
+    }
+
     func testPlayerOnAVPlayer() throws {
         try checkPlayer(title: try environment("PLAYER_AV_TITLE"), engine: "avplayer")
     }
