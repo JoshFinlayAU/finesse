@@ -42,6 +42,8 @@ struct PrivacyManifestTests {
             reasons[try #require(entry["NSPrivacyAccessedAPIType"] as? String)] = entry["NSPrivacyAccessedAPITypeReasons"] as? [String]
         }
         #expect(reasons["NSPrivacyAccessedAPICategoryFileTimestamp"] == ["C617.1"])
-        #expect(reasons["NSPrivacyAccessedAPICategorySystemBootTime"] == ["35F9.1"])
+        // mach_absolute_time left the main binary with MPVKit. Our frameworks declare it themselves.
+        #expect(reasons["NSPrivacyAccessedAPICategorySystemBootTime"] == nil)
+        #expect(reasons["NSPrivacyAccessedAPICategoryDiskSpace"] == nil)
     }
 }
