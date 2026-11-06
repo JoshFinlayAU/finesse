@@ -20,9 +20,11 @@ final class MPVEngine: PlaybackEngine {
     @ObservationIgnored private let renderView = MPVRenderView()
     @ObservationIgnored private let core: MPVCore?
     @ObservationIgnored private var eventTask: Task<Void, Never>?
-    @ObservationIgnored private var streams: [MediaStreamInfo] = []
-    /// Jellyfin stream index to mpv track id.
+    @ObservationIgnored private var request: PlaybackLoadRequest?
+    /// Jellyfin stream index to mpv track id. mpv numbers each track type separately.
     @ObservationIgnored private var trackIDs: [Int: Int64] = [:]
+    /// The same, for reading a selection back: mpv track type and id to Jellyfin stream index.
+    @ObservationIgnored private var streamIndexes: [String: Int] = [:]
     @ObservationIgnored private var isPaused = false
     @ObservationIgnored private var isWaitingForCache = false
     @ObservationIgnored private var isReady = false
@@ -40,7 +42,7 @@ final class MPVEngine: PlaybackEngine {
         }
         state = .loading
         position = request.startPosition
-        streams = request.streams
+        self.request = request
         audioTracks = request.audioTracks
         subtitleTracks = request.subtitleTracks
         selectedAudioTrackID = request.audioStreamIndex
@@ -92,6 +94,15 @@ final class MPVEngine: PlaybackEngine {
         renderView
     }
 
+    /// What mpv has really selected, as opposed to what was asked for.
+    var activeAudioTrackID: Int? {
+        core?.int64("aid").flatMap { streamIndexes["audio-\($0)"] }
+    }
+
+    var activeSubtitleTrackID: Int? {
+        core?.int64("sid").flatMap { streamIndexes["sub-\($0)"] }
+    }
+
     private func handle(_ event: MPVCore.Event) {
         switch event {
         case .fileLoaded:
@@ -136,15 +147,19 @@ final class MPVEngine: PlaybackEngine {
         }
     }
 
-    /// Jellyfin's stream index is the file's stream index, which mpv exposes as ff-index.
+    /// mpv exposes each track's position in the file as ff-index.
     private func mapTracks() {
-        guard let core else {
+        guard let core, let request else {
             return
         }
         trackIDs = [:]
-        for track in core.tracks() {
-            if let streamIndex = track.streamIndex {
-                trackIDs[streamIndex] = track.id
+        streamIndexes = [:]
+        let tracks = core.tracks()
+        for stream in request.streams {
+            let fileIndex = request.fileStreamIndex(ofStream: stream.index)
+            if let track = tracks.first(where: { $0.streamIndex == fileIndex && fileIndex != nil }) {
+                trackIDs[stream.index] = track.id
+                streamIndexes["\(track.type)-\(track.id)"] = stream.index
             }
         }
     }
@@ -166,10 +181,11 @@ final class MPVEngine: PlaybackEngine {
         }
         if let id = trackIDs[index] {
             core.setString("sid", String(id))
-        } else if let url = streams.first(where: { $0.index == index })?.deliveryURL {
+        } else if let url = request?.streams.first(where: { $0.index == index })?.deliveryURL {
             core.command(["sub-add", url.absoluteString, "select"])
             if let id = core.int64("sid") {
                 trackIDs[index] = id
+                streamIndexes["sub-\(id)"] = index
             }
         }
     }
@@ -191,6 +207,7 @@ private final class MPVCore: @unchecked Sendable {
 
     struct Track {
         var id: Int64
+        var type: String
         var streamIndex: Int?
     }
 
@@ -245,6 +262,14 @@ private final class MPVCore: @unchecked Sendable {
         return mpv_get_property(handle, name, MPV_FORMAT_INT64, &value) >= 0 ? value : nil
     }
 
+    func string(_ name: String) -> String? {
+        guard let value = mpv_get_property_string(handle, name) else {
+            return nil
+        }
+        defer { mpv_free(value) }
+        return String(cString: value)
+    }
+
     func command(_ arguments: [String]) {
         var pointers: [UnsafePointer<CChar>?] = arguments.map { UnsafePointer(strdup($0)) }
         pointers.append(nil)
@@ -260,7 +285,11 @@ private final class MPVCore: @unchecked Sendable {
             guard let id = int64("track-list/\(position)/id") else {
                 return nil
             }
-            return Track(id: id, streamIndex: int64("track-list/\(position)/ff-index").map(Int.init))
+            return Track(
+                id: id,
+                type: string("track-list/\(position)/type") ?? "",
+                streamIndex: int64("track-list/\(position)/ff-index").map(Int.init)
+            )
         }
     }
 

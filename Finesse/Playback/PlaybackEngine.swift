@@ -48,6 +48,15 @@ struct PlaybackLoadRequest: Sendable {
     var subtitleTracks: [PlaybackTrack] {
         streams.filter { $0.kind == .subtitle }.map(PlaybackTrack.init)
     }
+
+    /// Where a stream sits in the file itself. Jellyfin numbers external subtitles in with the
+    /// file's streams, usually first, so its index can be ahead of the file's. Nil for external ones.
+    func fileStreamIndex(ofStream index: Int) -> Int? {
+        guard let stream = streams.first(where: { $0.index == index }), !stream.isExternal else {
+            return nil
+        }
+        return index - streams.filter { $0.isExternal && $0.index < index }.count
+    }
 }
 
 /// The only way into an engine. Feature code never sees AVPlayer or mpv types.

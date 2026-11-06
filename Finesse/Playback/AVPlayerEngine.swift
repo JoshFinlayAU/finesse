@@ -79,6 +79,28 @@ final class AVPlayerEngine: PlaybackEngine {
         return view
     }
 
+    /// How many tracks AVPlayer can actually switch between, which can be fewer than the file has.
+    func selectableTrackCount(_ characteristic: AVMediaCharacteristic) async -> Int {
+        guard let asset = player.currentItem?.asset,
+              let group = try? await asset.loadMediaSelectionGroup(for: characteristic) else {
+            return 0
+        }
+        return group.options.count
+    }
+
+    /// What AVPlayer has really selected, as opposed to what was asked for.
+    func activeTrackID(_ characteristic: AVMediaCharacteristic) async -> Int? {
+        guard let item = player.currentItem,
+              let group = try? await item.asset.loadMediaSelectionGroup(for: characteristic),
+              let option = item.currentMediaSelection.selectedMediaOption(in: group),
+              let offset = group.options.firstIndex(of: option) else {
+            return nil
+        }
+        let tracks = characteristic == .audible ? audioTracks : subtitleTracks
+        let embedded = tracks.filter { !$0.isExternal }
+        return offset < embedded.count ? embedded[offset].id : nil
+    }
+
     private func observe(_ item: AVPlayerItem) {
         cancellables.removeAll()
         item.publisher(for: \.status)

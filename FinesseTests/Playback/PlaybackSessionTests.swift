@@ -161,3 +161,40 @@ private final class FakeEngine: PlaybackEngine {
         await session.stop()
     }
 }
+
+@Suite struct PlaybackLoadRequestTests {
+    private func stream(_ index: Int, _ kind: MediaStreamKind, external: Bool = false) -> MediaStreamInfo {
+        var info = MediaStreamInfo(index: index, kind: kind)
+        info.isExternal = external
+        return info
+    }
+
+    private func request(_ streams: [MediaStreamInfo]) -> PlaybackLoadRequest {
+        PlaybackLoadRequest(url: URL(string: "http://server.invalid/direct")!, startPosition: .zero, streams: streams)
+    }
+
+    @Test func withoutExternalSubtitlesTheIndexesMatchTheFile() {
+        let request = request([stream(0, .video), stream(1, .audio), stream(2, .subtitle)])
+        #expect(request.fileStreamIndex(ofStream: 1) == 1)
+        #expect(request.fileStreamIndex(ofStream: 2) == 2)
+    }
+
+    /// As the server returned it: external subtitle 0, video 1, audio 2 and 3.
+    @Test func anExternalSubtitleNumberedFirstShiftsTheFileStreams() {
+        let request = request([stream(0, .subtitle, external: true), stream(1, .video), stream(2, .audio), stream(3, .audio)])
+        #expect(request.fileStreamIndex(ofStream: 0) == nil)
+        #expect(request.fileStreamIndex(ofStream: 1) == 0)
+        #expect(request.fileStreamIndex(ofStream: 2) == 1)
+        #expect(request.fileStreamIndex(ofStream: 3) == 2)
+    }
+
+    @Test func anExternalSubtitleNumberedLastShiftsNothing() {
+        let request = request([stream(0, .video), stream(1, .audio), stream(2, .subtitle, external: true)])
+        #expect(request.fileStreamIndex(ofStream: 1) == 1)
+        #expect(request.fileStreamIndex(ofStream: 2) == nil)
+    }
+
+    @Test func anUnknownStreamHasNoFileIndex() {
+        #expect(request([stream(0, .video)]).fileStreamIndex(ofStream: 9) == nil)
+    }
+}
