@@ -283,15 +283,10 @@ final class PlayerFlowUITests: XCTestCase {
         sleep(3)
         capture("\(label)-1-home")
 
+        focusFirstHomeCard(in: app)
+        remote.press(.select)
         let play = app.buttons["detailPlay"]
-        for _ in 0..<4 where !play.exists {
-            remote.press(.select)
-            sleep(2)
-            if !play.exists && !app.buttons["transportBar"].exists {
-                press(.down)
-            }
-        }
-        if play.exists {
+        if play.waitForExistence(timeout: 20) {
             sleep(1)
             capture("\(label)-2-detail-resume")
             remote.press(.select)
