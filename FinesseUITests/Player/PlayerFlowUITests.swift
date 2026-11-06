@@ -84,29 +84,73 @@ final class PlayerFlowUITests: XCTestCase {
         remote.press(.select)
     }
 
-    private func checkPlayer(title: String, engine: String, trackMenu: String) throws {
+    private func isPaused(_ bar: XCUIElement) -> Bool {
+        (bar.value as? String)?.contains("paused") == true
+    }
+
+    /// Moves down from the bar to a track button. Left and right scrub while the bar has focus, so
+    /// they're only pressed once focus is known to have left it. Audio is the leftmost button.
+    private func focusTrackButton(_ menu: XCUIElement) {
+        let bar = app.buttons["transportBar"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 5), "\(menu) should show")
+        let onButtons = { (bar.value as? String)?.contains("track buttons focused") == true }
+        for _ in 0..<5 where !onButtons() {
+            press(.down)
+            sleep(1)
+        }
+        XCTAssertTrue(onButtons(), "Down should reach the track buttons")
+        press(.left)
+        if menu.identifier == "subtitleTracks" {
+            press(.right)
+        }
+    }
+
+    /// Opens a track menu, moves to another row and picks it, as a person would.
+    private func pickTrack(in menuID: String, moving: XCUIRemote.Button, engine: String) {
+        let menu = app.buttons[menuID]
+        focusTrackButton(menu)
+        let position = app.buttons["transportBar"].value as? String
+        remote.press(.select)
+        sleep(1)
+        capture("\(engine)-\(menuID)-open")
+        press(moving)
+        remote.press(.select)
+        sleep(4)
+        capture("\(engine)-\(menuID)-picked")
+        XCTAssertNotEqual(app.buttons["transportBar"].value as? String, position)
+    }
+
+    private func checkPlayer(title: String, engine: String) throws {
         try launchSignedIn()
         openPlayer(title: title)
 
         let bar = app.buttons["transportBar"]
         XCTAssertTrue(bar.waitForExistence(timeout: 30))
-        sleep(4)
+        sleep(1)
         capture("\(engine)-1-controls")
-        XCTAssertTrue(bar.hasFocus, "The transport bar should have focus")
 
-        // Controls hide by themselves, and the first press brings them back.
-        sleep(6)
+        // Controls hide by themselves, leaving just the picture, and time keeps moving.
+        let early = bar.value as? String
+        sleep(9)
         capture("\(engine)-2-hidden")
+        XCTAssertNotEqual(bar.value as? String, early, "Playback should be moving")
+        sleep(10)
+        capture("\(engine)-2b-picture-later")
+
+        // The first select only brings the controls back.
         remote.press(.select)
         sleep(1)
         capture("\(engine)-3-shown-again")
+        XCTAssertFalse(isPaused(bar), "Select on hidden controls should not pause")
 
-        // Select pauses, and play/pause on the remote resumes.
+        // The next select pauses, and play/pause on the remote resumes.
         remote.press(.select)
         sleep(1)
         capture("\(engine)-4-paused")
+        XCTAssertTrue(isPaused(bar), "Select on visible controls should pause")
         remote.press(.playPause)
         sleep(2)
+        XCTAssertFalse(isPaused(bar), "Play/pause should resume")
 
         // Clicks add up to a scrub, which commits by itself.
         let before = bar.value as? String
@@ -116,35 +160,36 @@ final class PlayerFlowUITests: XCTestCase {
         capture("\(engine)-6-after-scrub")
         XCTAssertNotEqual(bar.value as? String, before)
 
-        // Track menu.
-        let menu = app.buttons[trackMenu]
-        press(.down)
-        XCTAssertTrue(menu.waitForExistence(timeout: 5), "\(trackMenu) should show")
-        if !menu.hasFocus { press(.right) }
-        XCTAssertTrue(menu.hasFocus, "\(trackMenu) should take focus")
-        remote.press(.select)
-        sleep(1)
-        capture("\(engine)-7-track-menu")
-        remote.press(.menu)
-        sleep(1)
-        press(.up)
+        // Real track changes through the menus, which must leave playback running.
+        pickTrack(in: "subtitleTracks", moving: .up, engine: engine)
+        pickTrack(in: "audioTracks", moving: .down, engine: engine)
+        XCTAssertTrue(bar.waitForExistence(timeout: 30), "The player should still be up")
+        let afterTracks = bar.value as? String
+        sleep(4)
+        XCTAssertNotEqual(bar.value as? String, afterTracks, "Playback should still be moving")
+        capture("\(engine)-7-after-tracks")
 
-        // Back hides the controls, then leaves, returning to the same Detail page.
+        // Back hides the controls, then leaves. The Detail page exists under the player the
+        // whole time, so only the bar disappearing shows the player has really gone.
+        press(.up)
+        sleep(1)
+        capture("\(engine)-8-before-back")
         remote.press(.menu)
         sleep(1)
-        capture("\(engine)-8-back-once")
+        capture("\(engine)-8b-back-once")
         XCTAssertTrue(bar.exists, "First Back should only hide the controls")
         remote.press(.menu)
+        XCTAssertTrue(bar.waitForNonExistence(timeout: 15), "Second Back should leave the player")
         XCTAssertTrue(app.buttons["detailPlay"].waitForExistence(timeout: 15))
         sleep(2)
         capture("\(engine)-9-back-on-detail")
     }
 
     func testPlayerOnAVPlayer() throws {
-        try checkPlayer(title: try environment("PLAYER_AV_TITLE"), engine: "avplayer", trackMenu: "subtitleTracks")
+        try checkPlayer(title: try environment("PLAYER_AV_TITLE"), engine: "avplayer")
     }
 
     func testPlayerOnMpv() throws {
-        try checkPlayer(title: try environment("PLAYER_MPV_TITLE"), engine: "mpv", trackMenu: "subtitleTracks")
+        try checkPlayer(title: try environment("PLAYER_MPV_TITLE"), engine: "mpv")
     }
 }

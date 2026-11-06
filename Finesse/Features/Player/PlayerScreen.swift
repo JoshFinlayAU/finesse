@@ -106,7 +106,7 @@ private struct PlayerContent: View {
             }
         }
         .onChange(of: focus) { _, focus in
-            model.keepControlsVisible = focus != .transport && focus != .skip
+            model.focusMoved(toControls: focus != .transport && focus != .skip)
         }
         .alert(
             "Couldn't Change Track",
@@ -146,12 +146,14 @@ private struct PlayerContent: View {
                 move(direction)
             }
             .focused($focus, equals: .transport)
-            .defaultFocus($focus, .transport)
             if model.controlsVisible {
                 PlayerTrackButtons(model: model)
             }
         }
         .padding(60)
+        .defaultFocus($focus, .transport)
+        // The phase changes before this exists, so focus can only be placed once it has appeared.
+        .onAppear { focus = .transport }
     }
 
     private func move(_ direction: MoveCommandDirection) {
@@ -220,10 +222,18 @@ private struct PlayerTransportBar: View {
             .glassEffect(in: .rect(cornerRadius: 32))
             .opacity(model.controlsVisible ? 1 : 0)
         }
-        .buttonStyle(PlayerBarButtonStyle())
+        .buttonStyle(PlayerBarButtonStyle(showsFocus: model.controlsVisible))
         .onMoveCommand(perform: onMove)
         .accessibilityIdentifier("transportBar")
-        .accessibilityValue(PlayerTime.format(model.displayPosition))
+        .accessibilityValue(accessibilityValue)
+    }
+
+    /// XCUITest can't see focus inside the full-screen cover, so this also says when it has left the bar.
+    private var accessibilityValue: String {
+        var parts = [PlayerTime.format(model.displayPosition)]
+        if model.isPaused { parts.append("paused") }
+        if model.keepControlsVisible { parts.append("track buttons focused") }
+        return parts.joined(separator: ", ")
     }
 
     private var fraction: Double {
@@ -234,10 +244,25 @@ private struct PlayerTransportBar: View {
     }
 }
 
-/// Keeps the bar from lifting or highlighting like a card when it has focus.
+/// A quiet focus ring instead of the lift a card gets, and none while the controls are hidden.
 private struct PlayerBarButtonStyle: ButtonStyle {
+    let showsFocus: Bool
+
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        PlayerBarButtonBody(label: configuration.label, showsFocus: showsFocus)
+    }
+}
+
+private struct PlayerBarButtonBody<Label: View>: View {
+    let label: Label
+    let showsFocus: Bool
+    @Environment(\.isFocused) private var isFocused
+
+    var body: some View {
+        label.overlay {
+            RoundedRectangle(cornerRadius: 32)
+                .strokeBorder(.white.opacity(isFocused && showsFocus ? 0.8 : 0), lineWidth: 3)
+        }
     }
 }
 

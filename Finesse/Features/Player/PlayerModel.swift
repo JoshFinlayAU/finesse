@@ -35,7 +35,7 @@ final class PlayerModel {
     private(set) var controlsVisible = true
     private(set) var trackError: String?
     /// True while focus is away from the transport bar, such as in a track menu.
-    var keepControlsVisible = false
+    private(set) var keepControlsVisible = false
 
     @ObservationIgnored private let client: any JellyfinClient
     @ObservationIgnored private var resumePosition: Ticks?
@@ -181,6 +181,14 @@ final class PlayerModel {
     func noteActivity() {
         lastActivity = now()
         controlsVisible = true
+    }
+
+    /// Coming back from the track buttons counts as activity, or the controls would vanish at once.
+    func focusMoved(toControls: Bool) {
+        if keepControlsVisible, !toControls {
+            noteActivity()
+        }
+        keepControlsVisible = toControls
     }
 
     /// Back steps out one level at a time: a scrub, then the controls, then the player.

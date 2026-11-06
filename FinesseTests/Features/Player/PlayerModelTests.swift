@@ -238,12 +238,17 @@ private final class Harness {
         await harness.model.tick()
         #expect(harness.model.controlsVisible)
 
-        harness.model.keepControlsVisible = true
+        harness.model.focusMoved(toControls: true)
         harness.date += 10
         await harness.model.tick()
         #expect(harness.model.controlsVisible)
 
-        harness.model.keepControlsVisible = false
+        // Returning to the bar restarts the timeout instead of hiding at once.
+        harness.model.focusMoved(toControls: false)
+        await harness.model.tick()
+        #expect(harness.model.controlsVisible)
+
+        harness.date += PlayerModel.controlsTimeout
         await harness.engine.pause()
         await harness.model.tick()
         #expect(harness.model.controlsVisible)
