@@ -109,7 +109,6 @@ private struct HomeLanding: View {
             rows
         }
         .ignoresSafeArea(edges: .top)
-        .defaultFocus($heroFocus, preferredHeroFocus)
         .onExitCommand(perform: backAction)
         .onChange(of: focusedCard?.item.id) { _, _ in
             if let focusedCard {
@@ -134,8 +133,10 @@ private struct HomeLanding: View {
             ScrollView {
                 // The buttons stay outside the lazy stack, so Back can always move focus to them.
                 VStack(alignment: .leading, spacing: 56) {
-                    // Full width, so a move down from anywhere on the tab bar stops here first.
+                    // Full width, so a move down from anywhere on the tab bar stops here first,
+                    // and on Play however far along the tab bar it came from.
                     heroButtons
+                        .defaultFocus($heroFocus, preferredHeroFocus)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, Layout.buttonsTop - Layout.rowsTop)
                         .id(topID)

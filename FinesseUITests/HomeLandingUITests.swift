@@ -254,14 +254,15 @@ final class HomeRealLibraryUITests: XCTestCase {
         for _ in 0..<20 {
             remote.press(.right)
             usleep(300_000)
-            labels.insert(focused.label)
+            // Nothing reports focus in the moment it's moving between cards.
+            if focused.exists { labels.insert(focused.label) }
         }
         let along = Date().timeIntervalSince(start)
         let down = Date()
         for _ in 0..<6 {
             remote.press(.down)
             usleep(500_000)
-            labels.insert(focused.label)
+            if focused.exists { labels.insert(focused.label) }
         }
         let across = Date().timeIntervalSince(down)
         print("HOME scrolling: 20 cards in \(along)s, 6 rows in \(across)s, \(labels.count) distinct cards")
