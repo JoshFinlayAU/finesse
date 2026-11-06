@@ -8,7 +8,7 @@ struct FinesseApp: App {
         WindowGroup {
             RootView()
                 .environment(app)
-                .task { app.restore() }
+                .task { await app.restore() }
         }
     }
 }

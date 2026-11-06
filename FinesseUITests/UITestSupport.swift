@@ -6,7 +6,7 @@ extension XCTestCase {
     @MainActor
     func focus(_ element: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(element.waitForExistence(timeout: 10))
-        let moves: [XCUIRemote.Button] = [.up, .up, .up, .up, .down, .down, .down, .down, .down, .down, .down]
+        let moves = Array(repeating: XCUIRemote.Button.up, count: 4) + Array(repeating: XCUIRemote.Button.down, count: 16)
         for move in moves {
             if isFocused(element, in: app) { return }
             XCUIRemote.shared.press(move)

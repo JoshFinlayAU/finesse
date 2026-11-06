@@ -81,7 +81,7 @@ final class SignInModel {
     func choose(_ choice: UserChoice) async {
         switch choice {
         case .known(let session):
-            app.switchUser(to: session)
+            await app.switchUser(to: session)
         case .publicUser(let user) where user.hasPassword:
             errorMessage = nil
             path.append(.password(username: user.name))
@@ -94,7 +94,7 @@ final class SignInModel {
         guard let client else { return }
         await perform {
             let session = try await client.signIn(username: username, password: password)
-            app.completeSignIn(session, client: client)
+            await app.completeSignIn(session, client: client)
         }
     }
 
@@ -111,7 +111,7 @@ final class SignInModel {
                 request = try await client.quickConnectStatus(request)
             }
             let session = try await client.signIn(quickConnect: request)
-            app.completeSignIn(session, client: client)
+            await app.completeSignIn(session, client: client)
         } catch is CancellationError {
             return
         } catch {

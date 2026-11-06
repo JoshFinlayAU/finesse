@@ -21,6 +21,8 @@ final class AppModel {
     private(set) var accounts = StoredAccounts()
     /// Changes each time the signed-out screen should start afresh.
     private(set) var signInAttempt = 0
+    /// Changes each time a user becomes current, even the same user again.
+    private(set) var activationCount = 0
 
     let identity: DeviceIdentity
     let makeClient: JellyfinClientFactory
@@ -43,8 +45,7 @@ final class AppModel {
         return AppModel(
             store: SessionStore(storage: storage),
             identity: DeviceIdentityStore(storage: storage).identity(deviceName: UIDevice.current.name),
-            // Interim until agent-2's live client lands: replace with the live client's initialiser.
-            makeClient: { url, _ in InMemoryJellyfinClient(serverURL: url) }
+            makeClient: { LiveJellyfinClient(serverURL: $0, device: $1) }
         )
     }
 
@@ -55,7 +56,7 @@ final class AppModel {
     }
 
     /// Restores the last user with no network call. An expired token surfaces on the first request.
-    func restore() {
+    func restore() async {
         guard phase == .launching else { return }
         do {
             accounts = try store.load()
@@ -66,23 +67,23 @@ final class AppModel {
             phase = .signedOut
             return
         }
-        activate(current, using: makeClient(current.serverURL, identity))
+        await activate(current, using: makeClient(current.serverURL, identity))
     }
 
     /// Adopts a session that `client` has just signed in.
-    func completeSignIn(_ session: UserSession, client: any JellyfinClient) {
+    func completeSignIn(_ session: UserSession, client: any JellyfinClient) async {
         accounts.upsert(session)
         save()
-        activate(session, using: client)
+        await activate(session, using: client)
     }
 
     /// Switches to a user who already holds a token, with no password and no network call.
-    func switchUser(to session: UserSession) {
+    func switchUser(to session: UserSession) async {
         let target = client.flatMap { $0.serverURL == session.serverURL ? $0 : nil }
             ?? makeClient(session.serverURL, identity)
         accounts.current = session.accountKey
         save()
-        activate(session, using: target)
+        await activate(session, using: target)
     }
 
     /// Revokes the token where possible. The account is forgotten here even if the server is unreachable.
@@ -111,11 +112,13 @@ final class AppModel {
         phase = .signedOut
     }
 
-    private func activate(_ session: UserSession, using client: any JellyfinClient) {
+    /// The client gets the session before any screen can use it, so a first request is never unauthenticated.
+    private func activate(_ session: UserSession, using client: any JellyfinClient) async {
+        await client.setSession(session)
         self.client = client
         self.session = session
+        activationCount += 1
         phase = .signedIn
-        Task { await client.setSession(session) }
     }
 
     private func save() {

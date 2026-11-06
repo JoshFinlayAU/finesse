@@ -4,9 +4,9 @@ import Testing
 
 @MainActor
 struct AppModelTests {
-    @Test func startsSignedOutWithNoStoredAccounts() {
+    @Test func startsSignedOutWithNoStoredAccounts() async {
         let app = makeApp()
-        app.restore()
+        await app.restore()
         #expect(app.phase == .signedOut)
     }
 
@@ -14,11 +14,11 @@ struct AppModelTests {
         let storage = InMemoryStorage()
         let client = InMemoryJellyfinClient()
         let first = makeApp(client: client, storage: storage)
-        first.restore()
-        first.completeSignIn(.test(), client: client)
+        await first.restore()
+        await first.completeSignIn(.test(), client: client)
 
         let second = makeApp(client: client, storage: storage)
-        second.restore()
+        await second.restore()
 
         #expect(second.phase == .signedIn)
         #expect(second.session == .test())
@@ -28,28 +28,55 @@ struct AppModelTests {
     @Test func switchingNeedsNoPasswordAndChangesTheClientSession() async {
         let client = InMemoryJellyfinClient()
         let app = makeApp(client: client)
-        app.restore()
+        await app.restore()
         let alice = UserSession.test(user: "a", name: "Alice", token: "token-a")
         let bob = UserSession.test(user: "b", name: "Bob", token: "token-b")
-        app.completeSignIn(alice, client: client)
-        app.completeSignIn(bob, client: client)
+        await app.completeSignIn(alice, client: client)
+        await app.completeSignIn(bob, client: client)
 
-        app.switchUser(to: alice)
+        await app.switchUser(to: alice)
 
         #expect(app.session == alice)
         #expect(app.accounts.currentSession == alice)
         #expect(app.knownSessions(on: alice.serverURL).count == 2)
-        await waitForSession(alice, on: client)
+        #expect(await client.currentSession() == alice)
+    }
+
+    @Test func theClientHasTheSessionBeforeTheAppReportsSignedIn() async {
+        let storage = InMemoryStorage()
+        let client = InMemoryJellyfinClient()
+        let first = makeApp(client: client, storage: storage)
+        await first.restore()
+        await first.completeSignIn(.test(), client: client)
+        await client.setSession(nil)
+
+        let second = makeApp(client: client, storage: storage)
+        await second.restore()
+
+        #expect(second.phase == .signedIn)
+        #expect(await client.currentSession() == .test())
+    }
+
+    @Test func choosingTheCurrentUserAgainStillCountsAsAnActivation() async {
+        let client = InMemoryJellyfinClient()
+        let app = makeApp(client: client)
+        await app.restore()
+        await app.completeSignIn(.test(), client: client)
+        let before = app.activationCount
+
+        await app.switchUser(to: .test())
+
+        #expect(app.activationCount == before + 1)
     }
 
     @Test func signOutForgetsOnlyThatUserAndKeepsTheServer() async {
         let client = InMemoryJellyfinClient()
         let app = makeApp(client: client)
-        app.restore()
+        await app.restore()
         let alice = UserSession.test(user: "a", name: "Alice")
         let bob = UserSession.test(user: "b", name: "Bob")
-        app.completeSignIn(alice, client: client)
-        app.completeSignIn(bob, client: client)
+        await app.completeSignIn(alice, client: client)
+        await app.completeSignIn(bob, client: client)
 
         await app.signOut()
 
@@ -63,8 +90,8 @@ struct AppModelTests {
         let client = InMemoryJellyfinClient()
         await client.configure { $0.failure = .network("offline") }
         let app = makeApp(client: client)
-        app.restore()
-        app.completeSignIn(.test(), client: client)
+        await app.restore()
+        await app.completeSignIn(.test(), client: client)
 
         await app.signOut()
 
@@ -72,23 +99,15 @@ struct AppModelTests {
         #expect(app.accounts.sessions.isEmpty)
     }
 
-    @Test func expiredSessionReturnsToSignIn() {
+    @Test func expiredSessionReturnsToSignIn() async {
         let client = InMemoryJellyfinClient()
         let app = makeApp(client: client)
-        app.restore()
-        app.completeSignIn(.test(), client: client)
+        await app.restore()
+        await app.completeSignIn(.test(), client: client)
 
         app.sessionExpired()
 
         #expect(app.phase == .signedOut)
         #expect(app.accounts.sessions.isEmpty)
-    }
-
-    private func waitForSession(_ session: UserSession, on client: InMemoryJellyfinClient) async {
-        for _ in 0..<100 {
-            if await client.currentSession() == session { return }
-            await Task.yield()
-        }
-        Issue.record("Client never received the session")
     }
 }

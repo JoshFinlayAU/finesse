@@ -9,7 +9,7 @@ struct SignInModelTests {
         app: AppModel? = nil
     ) async -> (SignInModel, AppModel) {
         let app = app ?? makeApp(client: client)
-        app.restore()
+        await app.restore()
         let model = SignInModel(app: app, quickConnectInterval: .milliseconds(1))
         model.serverAddress = "fake.invalid"
         await model.connect()
@@ -78,10 +78,10 @@ struct SignInModelTests {
         let client = InMemoryJellyfinClient()
         let held = UserSession.test(user: "hidden", name: "Hidden", server: URL(string: "http://fake.invalid:8096")!)
         let app = makeApp(client: client)
-        app.restore()
-        app.completeSignIn(held, client: client)
+        await app.restore()
+        await app.completeSignIn(held, client: client)
         await app.signOut()
-        app.completeSignIn(held, client: client)
+        await app.completeSignIn(held, client: client)
 
         let (model, _) = await connected(client: client, app: app)
 

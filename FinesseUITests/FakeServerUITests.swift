@@ -33,6 +33,28 @@ final class FakeServerUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Sign Out Bob"].exists || app.staticTexts["Sign Out Bob"].exists)
         capture("fake-3-settings-bob-current")
 
+        // Add User: Menu backs out through the flow to Settings without changing who is signed in.
+        focus(app.buttons["addUser"], in: app)
+        remote.press(.select)
+        XCTAssertTrue(app.buttons["otherUser"].waitForExistence(timeout: 20))
+        capture("fake-3a-add-user")
+        remote.press(.menu)
+        XCTAssertTrue(app.buttons["connect"].waitForExistence(timeout: 10))
+        remote.press(.menu)
+        XCTAssertTrue(app.buttons["signOut"].waitForExistence(timeout: 10))
+        sleep(1)
+
+        // Choosing the current user there closes the flow rather than leaving it on screen.
+        focus(app.buttons["addUser"], in: app)
+        remote.press(.select)
+        let currentUser = app.buttons["user-Bob"]
+        XCTAssertTrue(currentUser.waitForExistence(timeout: 20))
+        focus(currentUser, in: app)
+        remote.press(.select)
+        XCTAssertTrue(app.buttons["signOut"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["otherUser"].exists)
+        sleep(1)
+
         // Sign out Bob: Alice's token is still held, so she is offered with no password.
         focus(app.buttons["signOut"], in: app)
         remote.press(.select)
@@ -53,8 +75,8 @@ final class FakeServerUITests: XCTestCase {
         sleep(1)
         capture("fake-5-card-focused")
         remote.press(.select)
-        XCTAssertTrue(app.staticTexts["A Film in Progress"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["detailPlay"].waitForExistence(timeout: 10))
+        sleep(1)
         capture("fake-6-detail")
         remote.press(.menu)
         XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 10))
@@ -63,7 +85,8 @@ final class FakeServerUITests: XCTestCase {
 
         // Play/Pause on a card resumes straight away, and Menu leaves the player.
         remote.press(.playPause)
-        XCTAssertTrue(app.staticTexts["Player not built yet. Resume at 1500 seconds."].waitForExistence(timeout: 10))
+        sleep(2)
+        XCTAssertFalse(app.tabBars.firstMatch.isHittable)
         capture("fake-8-player")
         remote.press(.menu)
         XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 10))

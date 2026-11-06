@@ -60,8 +60,11 @@ final class SignInFlowUITests: XCTestCase {
         // Home.
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 30))
-        let recentlyAdded = app.staticTexts["Recently Added"]
-        XCTAssertTrue(recentlyAdded.waitForExistence(timeout: 30))
+        // Rows below the fold don't exist yet, so wait for whichever hub comes first.
+        let firstHub = app.staticTexts.matching(
+            NSPredicate(format: "label IN %@", ["Continue Watching", "Next Up", "Recently Added"])
+        ).firstMatch
+        XCTAssertTrue(firstHub.waitForExistence(timeout: 30))
         sleep(4)
         capture("4-home")
 
@@ -73,17 +76,18 @@ final class SignInFlowUITests: XCTestCase {
         sleep(2)
         capture("6-detail-route")
         remote.press(.menu)
-        XCTAssertTrue(recentlyAdded.waitForExistence(timeout: 10))
+        XCTAssertTrue(firstHub.waitForExistence(timeout: 10))
+        sleep(1)
         capture("7-back-on-home")
 
         // Relaunch restores the session with no sign-in.
         app.terminate()
         app.launch()
-        XCTAssertTrue(app.staticTexts["Recently Added"].waitForExistence(timeout: 30))
+        XCTAssertTrue(firstHub.waitForExistence(timeout: 30))
 
         // Settings, then sign out.
-        remote.press(.menu)
         sleep(1)
+        focus(app.tabBars.buttons["Home"], in: app)
         for _ in 0..<4 {
             remote.press(.right)
             usleep(500_000)
@@ -112,10 +116,35 @@ final class SignInFlowUITests: XCTestCase {
         XCTAssertTrue(quickConnect.waitForExistence(timeout: 20))
         focus(quickConnect, in: app)
         remote.press(.select)
-        XCTAssertTrue(app.staticTexts["quickConnectCode"].waitForExistence(timeout: 20))
+        let code = app.staticTexts["quickConnectCode"]
+        XCTAssertTrue(code.waitForExistence(timeout: 20))
         capture("quick-connect")
+
+        // Back cancels the wait, and coming back starts a new code.
         remote.press(.menu)
         XCTAssertTrue(app.buttons["otherUser"].waitForExistence(timeout: 10))
+        focus(quickConnect, in: app)
+        remote.press(.select)
+        XCTAssertTrue(code.waitForExistence(timeout: 20))
+
+        // The driving script approves this code as the test user. Skips approval if nothing does.
+        print("QUICKCONNECT_CODE=\(code.label)")
+        guard app.tabBars.firstMatch.waitForExistence(timeout: 60) else {
+            throw XCTSkip("Nothing approved the Quick Connect code")
+        }
+        sleep(3)
+        capture("quick-connect-signed-in")
+        focus(app.tabBars.buttons["Home"], in: app)
+        for _ in 0..<4 {
+            remote.press(.right)
+            usleep(500_000)
+        }
+        remote.press(.select)
+        let signOut = app.buttons["signOut"]
+        XCTAssertTrue(signOut.waitForExistence(timeout: 10))
+        focus(signOut, in: app)
+        remote.press(.select)
+        XCTAssertTrue(app.buttons["otherUser"].waitForExistence(timeout: 20))
     }
 
     private func enter(_ text: String, into field: XCUIElement) {

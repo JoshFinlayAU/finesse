@@ -84,6 +84,14 @@ sed 's/^/TEST_RUNNER_/' .env.local | ssh fin-mac 'set -a; . /dev/stdin; set +a; 
 - Skip integration tests when the variables are absent, and keep them in their own test plan so unit tests stay offline.
 - Don't log credentials or tokens, including in test output.
 
+### UI flow tests
+
+`-testPlan UI` drives the real app with the Siri Remote API (`XCUIRemote`) and keeps screenshots in the result bundle. It's the only way to send remote input to the simulator from here.
+
+- `FakeServerUITests` needs no server. It launches with `-FinesseFakeServer`, a DEBUG-only mode with two signed-in users and seeded hubs.
+- `SignInFlowUITests` signs in to the test server using the same stdin credentials as the integration tests, and skips without them. Reset first so it starts signed out: `xcrun simctl keychain "Finesse Apple TV 4K" reset`.
+- The real user picker shows household names from `/Users/Public`, so never commit or quote those screenshots.
+
 ### Real Apple TV
 
 ```sh

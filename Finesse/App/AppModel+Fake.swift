@@ -33,6 +33,7 @@ extension AppModel {
                 $0.resumeValue = [resume]
                 $0.nextUpValue = [next]
                 $0.latestValue = (1...8).map { MediaItem(id: "new-\($0)", name: "New Film \($0)", kind: .movie) }
+                $0.allItems = [resume, next] + $0.latestValue
             }
         }
         return AppModel(

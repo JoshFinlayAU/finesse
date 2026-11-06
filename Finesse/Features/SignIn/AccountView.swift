@@ -15,7 +15,9 @@ struct AccountView: View {
             Section("Users on This Server") {
                 ForEach(app.knownSessions(on: currentServer), id: \.accountKey) { session in
                     Button {
-                        if session != app.session { app.switchUser(to: session) }
+                        if session != app.session {
+                            Task { await app.switchUser(to: session) }
+                        }
                     } label: {
                         LabeledContent {
                             if session == app.session {
@@ -53,6 +55,10 @@ struct AccountView: View {
         .task { serverInfo = try? await client.serverInfo() }
         .fullScreenCover(isPresented: $isAddingUser) {
             SignInFlowView(app: app, initialServer: currentServer)
+        }
+        // Choosing the user who is already current changes nothing else, so close the cover here.
+        .onChange(of: app.activationCount) {
+            isAddingUser = false
         }
     }
 }
