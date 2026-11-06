@@ -34,11 +34,14 @@ These are the owner's choices. Don't change them without asking.
 
 This Linux workspace can't compile or run anything tvOS. **A change is only verified once it has built and passed on `fin-mac`.** Linux is the source of truth and `~/Developer/Finesse` on the Mac is a disposable copy, so never edit there.
 
-### First-time setup (not yet done)
+### First-time setup
 
-1. Add a `fin-mac` host entry to `~/.ssh/config` on Linux, using key auth. Ask the owner for the host and user.
-2. On the Mac, install Xcode and XcodeGen and run `mkdir -p ~/Developer/Finesse`.
-3. Sign in to the Apple developer account in Xcode and pair the Apple TV.
+Done on 2026-11-06, except for the last item.
+
+- `fin-mac` is in `~/.ssh/config` on Linux with key auth. It is `user@mac.example`, which also hosts production iMessageAI and other spokes' builds, so touch only `~/Developer/Finesse` and our own simulators.
+- Xcode 27.2 and XcodeGen were already on the Mac, and `~/Developer/Finesse` exists.
+- tvOS 27.2 and 26.5 simulator runtimes are installed. Our simulators are `Finesse Apple TV 4K` (27.2, the default) and `Finesse Apple TV 4K 26` (26.5, the nearest installed to the minimum OS). The 26.5 one needs `OS=26.5` in the destination, because `xcodebuild` otherwise assumes `OS=latest` and reports no matching device.
+- Still needs the owner: sign in to the Apple developer account for this project and pair the Apple TV.
 
 ### Sync
 
@@ -48,7 +51,7 @@ Run from the spoke root:
 rsync -az --delete --exclude-from=.rsyncignore ./ fin-mac:Developer/Finesse/
 ```
 
-`.rsyncignore` must exclude at least `.git/`, `.env.local`, `.claude/`, `memory/`, `skills/`, `build/`, `DerivedData/` and `*.xcodeproj/`. Keep the trailing slashes in the command, and never point `--delete` at any other path.
+`.rsyncignore` must exclude at least `.git/`, `.env.local`, `.claude/`, `.aisandbox/`, `memory/`, `skills/`, `build/`, `DerivedData/` and `*.xcodeproj/`. Keep the trailing slashes in the command, and never point `--delete` at any other path.
 
 ### Build and unit test
 
@@ -57,13 +60,13 @@ Non-interactive SSH doesn't load Homebrew's PATH, so set it explicitly.
 ```sh
 ssh fin-mac 'export PATH=/opt/homebrew/bin:$PATH; cd ~/Developer/Finesse && xcodegen generate && \
   xcodebuild build-for-testing -project Finesse.xcodeproj -scheme Finesse \
-  -destination "platform=tvOS Simulator,name=Apple TV 4K (3rd generation)" -derivedDataPath build'
+  -destination "platform=tvOS Simulator,name=Finesse Apple TV 4K" -derivedDataPath build'
 
 ssh fin-mac 'cd ~/Developer/Finesse && xcodebuild test-without-building -project Finesse.xcodeproj -scheme Finesse \
-  -destination "platform=tvOS Simulator,name=Apple TV 4K (3rd generation)" -derivedDataPath build'
+  -destination "platform=tvOS Simulator,name=Finesse Apple TV 4K" -derivedDataPath build'
 ```
 
-Simulator names change between Xcode versions; check with `ssh fin-mac xcrun simctl list devices available`.
+These names are ours, so they don't change between Xcode versions. To see them, run `ssh fin-mac xcrun simctl list devices available`.
 
 ### Integration tests
 
@@ -73,7 +76,7 @@ The test user's URL and credentials live in a gitignored `.env.local` at the spo
 sed 's/^/TEST_RUNNER_/' .env.local | ssh fin-mac 'set -a; . /dev/stdin; set +a; cd ~/Developer/Finesse && \
   xcodebuild test-without-building -project Finesse.xcodeproj -scheme Finesse \
   -testPlan Integration \
-  -destination "platform=tvOS Simulator,name=Apple TV 4K (3rd generation)" -derivedDataPath build'
+  -destination "platform=tvOS Simulator,name=Finesse Apple TV 4K" -derivedDataPath build'
 ```
 
 - `xcodebuild` strips the `TEST_RUNNER_` prefix, so tests read `JELLYFIN_URL` and the other variables as written in `.env.local`.
@@ -95,10 +98,10 @@ Sign off any playback change on the real device. The simulator doesn't represent
 
 ### Checking UI
 
-Capture the simulator screen and pull it back to review:
+Capture the simulator screen and pull it back to review. Name our simulator rather than using `booted`, because other spokes may have one running on the same Mac:
 
 ```sh
-ssh fin-mac 'xcrun simctl io booted screenshot /tmp/fin.png' && scp fin-mac:/tmp/fin.png /tmp/fin.png
+ssh fin-mac 'xcrun simctl io "Finesse Apple TV 4K" screenshot /tmp/fin.png' && scp fin-mac:/tmp/fin.png /tmp/fin.png
 ```
 
 For UI changes, state which screens were checked and how. Focus behaviour can't be fully judged from a still image, so say when it needs a hands-on check.
