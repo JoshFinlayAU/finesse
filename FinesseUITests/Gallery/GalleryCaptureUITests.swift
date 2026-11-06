@@ -279,6 +279,30 @@ final class GalleryCaptureUITests: XCTestCase {
     // MARK: Player
 
     /// A real file with two audio tracks and subtitles, the same one the track tests use.
+    func testLicences() async throws {
+        _ = try await prepare()
+        app.launchArguments = ["-FinesseFakeServer"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 20))
+        sleep(1)
+        openTab("Settings")
+        let row = app.buttons["licences"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        focus(row, in: app)
+        remote.press(.select)
+        let ffmpeg = app.buttons["licence-ffmpeg"]
+        XCTAssertTrue(ffmpeg.waitForExistence(timeout: 10))
+        sleep(2)
+        capture("g35-licences-list")
+        focus(ffmpeg, in: app)
+        remote.press(.select)
+        XCTAssertTrue(app.staticTexts["Version 8.1.3"].waitForExistence(timeout: 10))
+        sleep(2)
+        press(.down, times: 3)
+        sleep(1)
+        capture("g36-licence-text")
+    }
+
     func testPlayerControlsAndMenus() async throws {
         let api = try await prepare()
         let data = try await TestServerAPI.send(

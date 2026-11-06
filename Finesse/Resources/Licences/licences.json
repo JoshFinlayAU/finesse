@@ -1,0 +1,424 @@
+{
+  "sourceOffer": null,
+  "developmentOnlyPackages": [
+    "mpvkit"
+  ],
+  "components": [
+    {
+      "id": "ffmpeg",
+      "name": "FFmpeg",
+      "version": "8.1.3",
+      "group": "playback",
+      "licence": "LGPL 3 or later",
+      "files": [
+        {
+          "title": "GNU Lesser General Public License, version 3",
+          "file": "licence-ffmpeg-1.txt"
+        },
+        {
+          "title": "GNU General Public License, version 3",
+          "file": "licence-ffmpeg-2.txt"
+        },
+        {
+          "title": "FFmpeg licence notes",
+          "file": "licence-ffmpeg-3.txt"
+        }
+      ],
+      "versionKey": "FFMPEG_VERSION",
+      "note": "Built with --enable-version3, which puts this build under LGPL version 3 or later. Upstream is LGPL 2.1 or later."
+    },
+    {
+      "id": "mpv",
+      "name": "mpv",
+      "version": "0.42.0",
+      "group": "playback",
+      "licence": "LGPL 2.1 or later",
+      "files": [
+        {
+          "title": "GNU Lesser General Public License, version 2.1",
+          "file": "licence-mpv-1.txt"
+        },
+        {
+          "title": "mpv copyright notes",
+          "file": "licence-mpv-2.txt"
+        }
+      ],
+      "versionKey": "MPV_TAG",
+      "note": "Built without GPL-only files, with patches to mpv under the same licence."
+    },
+    {
+      "id": "openssl",
+      "name": "OpenSSL",
+      "version": "3.5.9",
+      "group": "playback",
+      "licence": "Apache 2.0",
+      "files": [
+        {
+          "title": "Apache License 2.0",
+          "file": "licence-openssl-1.txt"
+        }
+      ],
+      "versionKey": "OPENSSL_VERSION"
+    },
+    {
+      "id": "libass",
+      "name": "libass",
+      "version": "0.17.5",
+      "group": "playback",
+      "licence": "ISC",
+      "files": [
+        {
+          "title": "libass licence",
+          "file": "licence-libass-1.txt"
+        }
+      ],
+      "versionKey": "LIBASS_VERSION"
+    },
+    {
+      "id": "libplacebo",
+      "name": "libplacebo",
+      "version": "7.387.0",
+      "group": "playback",
+      "licence": "LGPL 2.1 or later",
+      "files": [
+        {
+          "title": "GNU Lesser General Public License, version 2.1",
+          "file": "licence-libplacebo-1.txt"
+        }
+      ],
+      "versionKey": "LIBPLACEBO_TAG"
+    },
+    {
+      "id": "moltenvk",
+      "name": "MoltenVK",
+      "version": "1.4.2",
+      "group": "playback",
+      "licence": "Apache 2.0",
+      "files": [
+        {
+          "title": "Apache License 2.0",
+          "file": "licence-moltenvk-1.txt"
+        }
+      ],
+      "versionKey": "MOLTENVK_TAG"
+    },
+    {
+      "id": "harfbuzz",
+      "name": "HarfBuzz",
+      "version": "15.1.0",
+      "group": "playback",
+      "licence": "Old MIT, with some parts under other licences",
+      "files": [
+        {
+          "title": "HarfBuzz licence",
+          "file": "licence-harfbuzz-1.txt"
+        },
+        {
+          "title": "HarfBuzz ms-use data licence",
+          "file": "licence-harfbuzz-2.txt"
+        }
+      ],
+      "versionKey": "HARFBUZZ_VERSION",
+      "note": "Part of libass in this build."
+    },
+    {
+      "id": "fribidi",
+      "name": "FriBidi",
+      "version": "1.0.18",
+      "group": "playback",
+      "licence": "LGPL 2.1 or later",
+      "files": [
+        {
+          "title": "GNU Lesser General Public License, version 2.1",
+          "file": "licence-fribidi-1.txt"
+        }
+      ],
+      "versionKey": "FRIBIDI_VERSION"
+    },
+    {
+      "id": "freetype",
+      "name": "FreeType",
+      "version": "2.15.0",
+      "group": "playback",
+      "licence": "FreeType License (FTL)",
+      "files": [
+        {
+          "title": "The FreeType Project License",
+          "file": "licence-freetype-1.txt"
+        }
+      ],
+      "versionKey": "FREETYPE_VERSION",
+      "note": "Part of libass in this build.",
+      "credit": "Portions of this software are copyright © 2026 The FreeType Project (www.freetype.org). All rights reserved."
+    },
+    {
+      "id": "dav1d",
+      "name": "dav1d",
+      "version": "1.5.4",
+      "group": "playback",
+      "licence": "BSD style",
+      "files": [
+        {
+          "title": "dav1d licence",
+          "file": "licence-dav1d-1.txt"
+        }
+      ],
+      "versionKey": "DAV1D_VERSION"
+    },
+    {
+      "id": "uchardet",
+      "name": "uchardet",
+      "version": "0.0.8",
+      "group": "playback",
+      "licence": "MPL 1.1 or LGPL 2.1 or later",
+      "files": [
+        {
+          "title": "uchardet licence, including the Mozilla Public License 1.1",
+          "file": "licence-uchardet-1.txt"
+        }
+      ],
+      "versionKey": "UCHARDET_VERSION",
+      "note": "Upstream offers a choice of MPL 1.1, GPL 2 or later, or LGPL 2.1 or later. This app takes MPL 1.1 or LGPL, not GPL."
+    },
+    {
+      "id": "glslang",
+      "name": "glslang",
+      "version": "vulkan-sdk-1.4.363.0",
+      "group": "playback",
+      "licence": "Mixed permissive licences, with a GPL 3 Bison parser under the Bison exception",
+      "files": [
+        {
+          "title": "glslang licences",
+          "file": "licence-glslang-1.txt"
+        },
+        {
+          "title": "Apache License 2.0",
+          "file": "licence-glslang-2.txt"
+        },
+        {
+          "title": "BSD 2-Clause License",
+          "file": "licence-glslang-3.txt"
+        },
+        {
+          "title": "BSD 3-Clause License",
+          "file": "licence-glslang-4.txt"
+        },
+        {
+          "title": "GNU General Public License, version 3 or later",
+          "file": "licence-glslang-5.txt"
+        },
+        {
+          "title": "Bison exception",
+          "file": "licence-glslang-6.txt"
+        },
+        {
+          "title": "MIT License",
+          "file": "licence-glslang-7.txt"
+        },
+        {
+          "title": "Khronos MIT License",
+          "file": "licence-glslang-8.txt"
+        },
+        {
+          "title": "glslang AML licence",
+          "file": "licence-glslang-9.txt"
+        }
+      ],
+      "versionKey": "GLSLANG_TAG",
+      "note": "Part of libplacebo in this build."
+    },
+    {
+      "id": "spirv-cross",
+      "name": "SPIRV-Cross",
+      "version": "6c09849fe88c",
+      "group": "playback",
+      "licence": "Apache 2.0, with some files under other licences",
+      "files": [
+        {
+          "title": "Apache License 2.0",
+          "file": "licence-moltenvk-1.txt"
+        },
+        {
+          "title": "MIT License",
+          "file": "licence-spirv-cross-2.txt"
+        },
+        {
+          "title": "Creative Commons Attribution 4.0",
+          "file": "licence-spirv-cross-3.txt"
+        },
+        {
+          "title": "Khronos Free Use License",
+          "file": "licence-glslang-8.txt"
+        }
+      ],
+      "note": "Part of MoltenVK in this build."
+    },
+    {
+      "id": "spirv-tools",
+      "name": "SPIRV-Tools",
+      "version": "0d6fd73ca738",
+      "group": "playback",
+      "licence": "Apache 2.0",
+      "files": [
+        {
+          "title": "Apache License 2.0",
+          "file": "licence-moltenvk-1.txt"
+        }
+      ],
+      "note": "Part of MoltenVK in this build."
+    },
+    {
+      "id": "spirv-headers",
+      "name": "SPIRV-Headers",
+      "version": "29981f652416",
+      "group": "playback",
+      "licence": "MIT style",
+      "files": [
+        {
+          "title": "SPIRV-Headers licence",
+          "file": "licence-spirv-headers-1.txt"
+        }
+      ],
+      "note": "Used to build MoltenVK."
+    },
+    {
+      "id": "cereal",
+      "name": "cereal",
+      "version": "a56bad8bbb77",
+      "group": "playback",
+      "licence": "BSD style",
+      "files": [
+        {
+          "title": "cereal licence",
+          "file": "licence-cereal-1.txt"
+        }
+      ],
+      "note": "Part of MoltenVK in this build."
+    },
+    {
+      "id": "vulkan-headers",
+      "name": "Vulkan-Headers",
+      "version": "vulkan-sdk-1.4.363.0",
+      "group": "playback",
+      "licence": "Apache 2.0 and MIT",
+      "files": [
+        {
+          "title": "Vulkan-Headers licence notes",
+          "file": "licence-vulkan-headers-1.txt"
+        },
+        {
+          "title": "Apache License 2.0",
+          "file": "licence-moltenvk-1.txt"
+        },
+        {
+          "title": "MIT License",
+          "file": "licence-vulkan-headers-3.txt"
+        }
+      ],
+      "versionKey": "VULKAN_HEADERS_TAG",
+      "note": "Headers used to build the Vulkan libraries."
+    },
+    {
+      "id": "jellyfin-sdk-swift",
+      "name": "jellyfin-sdk-swift",
+      "version": "3.4.0",
+      "group": "swift",
+      "licence": "MPL 2.0",
+      "files": [
+        {
+          "title": "Mozilla Public License 2.0",
+          "file": "licence-jellyfin-sdk-swift-1.txt"
+        }
+      ],
+      "package": "jellyfin-sdk-swift"
+    },
+    {
+      "id": "get",
+      "name": "Get",
+      "version": "2.2.1",
+      "group": "swift",
+      "licence": "MIT",
+      "files": [
+        {
+          "title": "MIT License",
+          "file": "licence-get-1.txt"
+        }
+      ],
+      "package": "get"
+    },
+    {
+      "id": "swift-nio",
+      "name": "SwiftNIO",
+      "version": "2.105.0",
+      "group": "swift",
+      "licence": "Apache 2.0",
+      "files": [
+        {
+          "title": "Apache License 2.0",
+          "file": "licence-moltenvk-1.txt"
+        },
+        {
+          "title": "SwiftNIO notice",
+          "file": "licence-swift-nio-2.txt"
+        }
+      ],
+      "package": "swift-nio"
+    },
+    {
+      "id": "swift-nio-transport-services",
+      "name": "SwiftNIO Transport Services",
+      "version": "1.28.0",
+      "group": "swift",
+      "licence": "Apache 2.0",
+      "files": [
+        {
+          "title": "Apache License 2.0",
+          "file": "licence-moltenvk-1.txt"
+        }
+      ],
+      "package": "swift-nio-transport-services"
+    },
+    {
+      "id": "swift-atomics",
+      "name": "Swift Atomics",
+      "version": "1.3.1",
+      "group": "swift",
+      "licence": "Apache 2.0 with Runtime Library Exception",
+      "files": [
+        {
+          "title": "Apache License 2.0 with Runtime Library Exception",
+          "file": "licence-swift-atomics-1.txt"
+        }
+      ],
+      "package": "swift-atomics"
+    },
+    {
+      "id": "swift-collections",
+      "name": "Swift Collections",
+      "version": "1.7.5",
+      "group": "swift",
+      "licence": "Apache 2.0 with Runtime Library Exception",
+      "files": [
+        {
+          "title": "Apache License 2.0 with Runtime Library Exception",
+          "file": "licence-swift-atomics-1.txt"
+        }
+      ],
+      "package": "swift-collections"
+    },
+    {
+      "id": "swift-system",
+      "name": "Swift System",
+      "version": "1.8.1",
+      "group": "swift",
+      "licence": "Apache 2.0 with Runtime Library Exception",
+      "files": [
+        {
+          "title": "Apache License 2.0 with Runtime Library Exception",
+          "file": "licence-swift-system-1.txt"
+        }
+      ],
+      "package": "swift-system"
+    }
+  ]
+}

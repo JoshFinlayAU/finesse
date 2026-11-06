@@ -34,7 +34,9 @@
       {"n": 23, "file": "g23-search-empty", "title": "Search, empty", "src": "real"},
       {"n": 24, "file": "g24-search-typed", "title": "Search, typing with results", "src": "real"},
       {"n": 25, "file": "g25-search-results", "title": "Search results", "src": "real"},
-      {"n": 26, "file": "g26-settings", "title": "Settings", "src": "real"}
+      {"n": 26, "file": "g26-settings", "title": "Settings", "src": "real"},
+      {"n": 35, "file": "g35-licences-list", "title": "Licences list, with the source offer placeholder", "src": "real"},
+      {"n": 36, "file": "g36-licence-text", "title": "Licence full text", "src": "real"}
     ]},
     {"name": "Player", "intro": "The player is still being changed, so these shots may change.", "screens": [
       {"n": 27, "file": "g27-player-controls", "title": "Controls", "src": "real"},

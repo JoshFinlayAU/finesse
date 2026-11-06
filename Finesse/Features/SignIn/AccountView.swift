@@ -44,6 +44,14 @@ struct AccountView: View {
                 }
                 .accessibilityIdentifier("signOut")
             }
+            Section("About") {
+                NavigationLink {
+                    LicencesView()
+                } label: {
+                    Label("Licences", systemImage: "doc.text")
+                }
+                .accessibilityIdentifier("licences")
+            }
             Section("Server") {
                 LabeledContent("Address", value: currentServer?.absoluteString ?? "")
                 if let serverInfo {
