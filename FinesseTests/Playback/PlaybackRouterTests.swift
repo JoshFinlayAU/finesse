@@ -10,11 +10,13 @@ private func stream(
     _ kind: MediaStreamKind,
     _ codec: String,
     bitDepth: Int? = nil,
+    codecTag: String? = nil,
     external: Bool = false
 ) -> MediaStreamInfo {
     var info = MediaStreamInfo(index: index, kind: kind)
     info.codec = codec
     info.bitDepth = bitDepth
+    info.codecTag = codecTag
     info.isExternal = external
     return info
 }
@@ -114,6 +116,16 @@ private func source(
         tenBit.streams[0] = stream(0, .video, "h264", bitDepth: 10)
         #expect(try PlaybackRouter.route(sources: [tenBit]).get().engine == .mpv)
 
+    }
+
+    @Test func hev1LeavesAVPlayerButHvc1Stays() throws {
+        var hev1 = source(container: "mp4", video: "hevc")
+        hev1.streams[0] = stream(0, .video, "hevc", bitDepth: 10, codecTag: "hev1")
+        #expect(try PlaybackRouter.route(sources: [hev1]).get().engine == .mpv)
+
+        var hvc1 = source(container: "mp4", video: "hevc")
+        hvc1.streams[0] = stream(0, .video, "hevc", bitDepth: 10, codecTag: "hvc1")
+        #expect(try PlaybackRouter.route(sources: [hvc1]).get().engine == .avPlayer)
     }
 
     @Test func transcodeIsLastResortAndPlaysOnAVPlayer() throws {

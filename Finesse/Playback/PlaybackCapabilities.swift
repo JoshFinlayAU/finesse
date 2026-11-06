@@ -19,6 +19,8 @@ struct EngineCapabilities: Hashable, Sendable {
     var externalSubtitleCodecs: Set<String>
     /// Highest bit depth by video codec. A codec with no entry has no limit.
     var maxVideoBitDepth: [String: Int] = [:]
+    /// Sample entries the engine refuses for a codec, such as hev1 on AVPlayer.
+    var rejectedVideoCodecTags: [String: Set<String>] = [:]
 
     func canPlay(
         container: String?,
@@ -34,6 +36,9 @@ struct EngineCapabilities: Hashable, Sendable {
                 return false
             }
             if let limit = maxVideoBitDepth[codec], let depth = video.bitDepth, depth > limit {
+                return false
+            }
+            if let tag = video.codecTag?.lowercased(), rejectedVideoCodecTags[codec]?.contains(tag) == true {
                 return false
             }
         }
@@ -70,7 +75,8 @@ extension EngineCapabilities {
         audioCodecs: ["aac", "ac3", "eac3", "mp3", "alac"],
         embeddedSubtitleCodecs: ["mov_text"],
         externalSubtitleCodecs: [],
-        maxVideoBitDepth: ["h264": 8, "hevc": 10]
+        maxVideoBitDepth: ["h264": 8, "hevc": 10],
+        rejectedVideoCodecTags: ["hevc": ["hev1"]]
     )
 
     /// Taken from the decoders and demuxers present in the MPVKit tvOS binaries.
