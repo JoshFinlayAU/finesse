@@ -209,6 +209,198 @@ import Testing
         #expect(await client.stopReports.first?.playSessionID == "second")
     }
 
+    // MARK: Staying paused across a move between engines
+
+    /// Starts on mpv only because of the default PGS subtitle, so turning it off moves to AVPlayer.
+    private func makeSubtitleInfo() -> PlaybackInfo {
+        var info = makeInfo()
+        info.mediaSources[0].streams.append(stream(4, .subtitle, "pgssub"))
+        info.mediaSources[0].defaultSubtitleStreamIndex = 4
+        return info
+    }
+
+    private func expectPaused(
+        _ session: PlaybackSession,
+        _ engine: FakePlaybackEngine,
+        at position: Double,
+        client: InMemoryJellyfinClient,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) async {
+        #expect(session.engine === engine, sourceLocation: sourceLocation)
+        #expect(engine.loaded?.startPosition == Ticks(seconds: position), sourceLocation: sourceLocation)
+        #expect(session.isPaused, "Paused straight after the move", sourceLocation: sourceLocation)
+        #expect(await client.progressReports.last?.isPaused == true, sourceLocation: sourceLocation)
+        engine.settle()
+        #expect(engine.state == .paused, "The new engine must not start playing", sourceLocation: sourceLocation)
+        #expect(session.isPaused, sourceLocation: sourceLocation)
+    }
+
+    @Test func aPausedPickMovingFromAVPlayerToMpvStaysPaused() async throws {
+        let client = try await makeClient(makeInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        engines()[0].settle()
+        engines()[0].unreachableAudio = [2]
+        await session.pause()
+        engines()[0].settle()
+        engines()[0].position = Ticks(seconds: 100)
+
+        try await session.selectAudioTrack(id: 2)
+
+        #expect(engines().map(\.kind) == [.avPlayer, .mpv])
+        await expectPaused(session, engines()[1], at: 100, client: client)
+        await session.stop()
+    }
+
+    @Test func aPausedPickMovingFromMpvToAVPlayerStaysPaused() async throws {
+        let client = try await makeClient(makeSubtitleInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        #expect(engines().map(\.kind) == [.mpv])
+        engines()[0].settle()
+        await session.pause()
+        engines()[0].settle()
+        engines()[0].position = Ticks(seconds: 100)
+
+        try await session.selectSubtitleTrack(id: nil)
+
+        #expect(engines().map(\.kind) == [.mpv, .avPlayer])
+        await expectPaused(session, engines()[1], at: 100, client: client)
+        await session.stop()
+    }
+
+    @Test func aMoveWhileThePauseIsStillCatchingUpStaysPaused() async throws {
+        let client = try await makeClient(makeInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        engines()[0].settle()
+        engines()[0].unreachableAudio = [2]
+        await session.pause()
+        #expect(engines()[0].state == .playing, "The pause hasn't landed yet")
+        engines()[0].position = Ticks(seconds: 100)
+
+        try await session.selectAudioTrack(id: 2)
+
+        await expectPaused(session, engines()[1], at: 100, client: client)
+        await session.stop()
+    }
+
+    @Test func aMoveThroughAnEngineThatCannotReachTheAudioStaysPaused() async throws {
+        var info = makeSubtitleInfo()
+        info.mediaSources[0].defaultAudioStreamIndex = 2
+        let client = try await makeClient(info)
+        let (session, engines) = makeSession(client) { engine in
+            engine.unreachableAudio = engine.kind == .avPlayer ? [2] : []
+        }
+        try await session.start()
+        engines()[0].settle()
+        await session.pause()
+        engines()[0].settle()
+        engines()[0].position = Ticks(seconds: 100)
+
+        try await session.selectSubtitleTrack(id: nil)
+
+        #expect(engines().map(\.kind) == [.mpv, .avPlayer, .mpv])
+        await expectPaused(session, engines()[2], at: 100, client: client)
+        await session.stop()
+    }
+
+    @Test func anEngineFailingWhilePausedMovesAndStaysPaused() async throws {
+        let client = try await makeClient(makeInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        engines()[0].settle()
+        await session.pause()
+        engines()[0].settle()
+        #expect(session.isPaused)
+        engines()[0].position = Ticks(seconds: 100)
+        engines()[0].state = .failed("broken")
+
+        #expect(await session.recoverFromEngineFailure())
+
+        await expectPaused(session, engines()[1], at: 100, client: client)
+        await session.stop()
+    }
+
+    @Test func aRebuiltTranscodeStaysPaused() async throws {
+        var info = makeInfo(session: "first")
+        info.mediaSources[0].supportsDirectPlay = false
+        info.mediaSources[0].supportsTranscoding = true
+        info.mediaSources[0].transcodingURL = URL(string: "http://server.invalid/first.m3u8")
+        let client = try await makeClient(info)
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        engines()[0].settle()
+        await session.pause()
+        engines()[0].settle()
+        engines()[0].position = Ticks(seconds: 100)
+
+        info.mediaSources[0].transcodingURL = URL(string: "http://server.invalid/second.m3u8")
+        let next = info
+        await client.configure { $0.playbackInfoValue = next }
+        try await session.selectAudioTrack(id: 2)
+
+        #expect(engines().count == 2)
+        await expectPaused(session, engines()[1], at: 100, client: client)
+        await session.stop()
+    }
+
+    @Test func resumingAfterAMoveLastsThroughTheNextMove() async throws {
+        let client = try await makeClient(makeInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        engines()[0].settle()
+        engines()[0].unreachableAudio = [2]
+        await session.pause()
+        engines()[0].settle()
+        try await session.selectAudioTrack(id: 2)
+        engines()[1].settle()
+        #expect(engines()[1].state == .paused)
+
+        await session.play()
+        engines()[1].settle()
+        #expect(engines()[1].state == .playing)
+        #expect(!session.isPaused)
+
+        engines()[1].state = .failed("broken")
+        #expect(!(await session.recoverFromEngineFailure()), "AVPlayer can't reach this audio")
+        await session.stop()
+    }
+
+    @Test func aMoveWhilePlayingKeepsPlaying() async throws {
+        let client = try await makeClient(makeInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        engines()[0].settle()
+        engines()[0].unreachableAudio = [2]
+
+        try await session.selectAudioTrack(id: 2)
+
+        #expect(!session.isPaused)
+        #expect(await client.progressReports.last?.isPaused == false)
+        engines()[1].settle()
+        #expect(engines()[1].state == .playing)
+        await session.stop()
+    }
+
+    @Test func playingBeforeAMoveClearsAnEarlierPause() async throws {
+        let client = try await makeClient(makeInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        engines()[0].settle()
+        engines()[0].unreachableAudio = [2]
+        await session.pause()
+        engines()[0].settle()
+        await session.play()
+        engines()[0].settle()
+
+        try await session.selectAudioTrack(id: 2)
+
+        engines()[1].settle()
+        #expect(engines()[1].state == .playing)
+        await session.stop()
+    }
+
     // MARK: Finding 6: pause and resume against an asynchronous engine
 
     @Test func pauseIsReportedAsPausedBeforeTheEngineCatchesUp() async throws {

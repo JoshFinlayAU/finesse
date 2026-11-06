@@ -307,6 +307,49 @@ struct PlaybackTracksEndToEndTests {
         engine.stop()
     }
 
+    /// #109: paused, in both directions on real engines. This item starts on mpv for its default
+    /// external subtitle, AVPlayer takes over with subtitles off, and only mpv reaches its audio 3.
+    @Test func pausedStaysPausedAcrossMovesBetweenRealEngines() async throws {
+        #expect(try await remember(audio: 2, on: Item.avMultiAudio) == 2)
+        try await withPlayback(Item.avMultiAudio, start: 600, expecting: .mpv) { session, _ in
+            await session.pause()
+            let onMpv = try #require(session.engine as? MPVEngine)
+            #expect(try await waitUntil { onMpv.state == .paused })
+            try await Task.sleep(for: .seconds(1))
+            let held = onMpv.position
+
+            try await session.selectSubtitleTrack(id: nil)
+            let onAVPlayer = try #require(session.engine as? AVPlayerEngine)
+            let view = show(onAVPlayer)
+            defer { view?.removeFromSuperview() }
+            #expect(session.isPaused)
+            #expect(try await waitUntil { onAVPlayer.state == .paused }, "State \(String(describing: onAVPlayer.state))")
+            try await Task.sleep(for: .seconds(4))
+            #expect(onAVPlayer.state == .paused)
+            #expect(abs(onAVPlayer.position.seconds - held.seconds) < 2, "\(held.seconds) then \(onAVPlayer.position.seconds)")
+            mark("moved to avplayer, still paused at \(onAVPlayer.position.seconds)")
+
+            try await session.selectAudioTrack(id: 3)
+            let backOnMpv = try #require(session.engine as? MPVEngine)
+            let mpvView = show(backOnMpv)
+            defer { mpvView?.removeFromSuperview() }
+            #expect(session.isPaused)
+            #expect(try await waitUntil { backOnMpv.state == .paused }, "State \(String(describing: backOnMpv.state))")
+            try await Task.sleep(for: .seconds(4))
+            #expect(backOnMpv.state == .paused)
+            #expect(abs(backOnMpv.position.seconds - held.seconds) < 2, "\(held.seconds) then \(backOnMpv.position.seconds)")
+            mark("moved to mpv, still paused at \(backOnMpv.position.seconds)")
+
+            await session.play()
+            #expect(try await waitUntil { backOnMpv.state == .playing })
+            #expect(!session.isPaused)
+            let resumed = backOnMpv.position
+            try await Task.sleep(for: .seconds(3))
+            #expect(backOnMpv.position > resumed, "Should be moving again")
+        }
+        #expect(try await remember(audio: 2, on: Item.avMultiAudio) == 2)
+    }
+
     /// Causes a genuine AVPlayer failure by telling the router it can play an MKV, which it can't.
     /// That fails while loading rather than mid-playback, but it's the same path out of the engine.
     @Test func avPlayerFailingForRealMovesToMpvAtThePosition() async throws {

@@ -33,6 +33,9 @@ final class PlaybackSession {
     @ObservationIgnored private var trackChange: Task<Void, any Error>?
     /// What was last asked for, until the engine's state catches up. Engines change state later.
     @ObservationIgnored private var requestedPause: Bool?
+    /// Whether a move to another engine should stay paused. Kept apart from the engine's state,
+    /// because by then the old engine has stopped or failed and can't say.
+    @ObservationIgnored private var staysPaused = false
 
     init(
         client: any JellyfinClient,
@@ -73,6 +76,7 @@ final class PlaybackSession {
             return
         }
         if let moved {
+            noteWhetherPaused()
             engine.stop()
             route = moved
             engine = start(moved, at: startPosition)
@@ -103,12 +107,14 @@ final class PlaybackSession {
     }
 
     func play() async {
+        staysPaused = false
         requestedPause = false
         engine?.play()
         await reporter?.reportProgress()
     }
 
     func pause() async {
+        staysPaused = true
         requestedPause = true
         engine?.pause()
         await reporter?.reportProgress()
@@ -161,6 +167,7 @@ final class PlaybackSession {
         }
         engines = remaining
         let position = engine.position
+        noteWhetherPaused()
         engine.stop()
         start(next, at: position)
         reporter?.updateRoute(next, playSessionID: info.playSessionID)
@@ -191,6 +198,13 @@ final class PlaybackSession {
             audioStreamIndex: engine.selectedAudioTrackID,
             subtitleStreamIndex: engine.selectedSubtitleTrackID
         )
+    }
+
+    /// Catches a pause the engine did itself. Call this before stopping an engine to replace it.
+    private func noteWhetherPaused() {
+        if isPaused {
+            staysPaused = true
+        }
     }
 
     /// False once stop has arrived or the engine has been replaced, so an await's result is stale.
@@ -231,6 +245,7 @@ final class PlaybackSession {
             engine.selectSubtitleTrack(id: next.subtitleStreamIndex)
         } else {
             let position = engine.position
+            noteWhetherPaused()
             engine.stop()
             var moved = start(next, at: position)
             // The route can bring us back to an engine that can't reach the chosen audio.
@@ -239,6 +254,7 @@ final class PlaybackSession {
                 return
             }
             if let elsewhere {
+                noteWhetherPaused()
                 moved.stop()
                 next = elsewhere
                 moved = start(elsewhere, at: position)
@@ -275,7 +291,7 @@ final class PlaybackSession {
     @discardableResult
     private func start(_ route: PlaybackRoute, at position: Ticks) -> any PlaybackEngine {
         let engine = makeEngine(route.engine)
-        requestedPause = nil
+        requestedPause = staysPaused ? true : nil
         self.engine = engine
         self.route = route
         let streams = info.mediaSources.first { $0.id == route.mediaSourceID }?.streams ?? []
@@ -286,6 +302,9 @@ final class PlaybackSession {
             audioStreamIndex: route.audioStreamIndex,
             subtitleStreamIndex: route.subtitleStreamIndex
         ))
+        if staysPaused {
+            engine.pause()
+        }
         return engine
     }
 
