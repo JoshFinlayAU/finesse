@@ -1,49 +1,57 @@
 import SwiftUI
 import UIKit
 
-/// Reads horizontal swipes on the Siri Remote's touch surface. SwiftUI has no equivalent on tvOS.
-/// The recognizer sits on the window because touches go to the focused view's ancestors.
-struct RemotePanRecognizer: UIViewRepresentable {
+/// Reads swipes on the Siri Remote's touch surface, which SwiftUI has no equivalent for on tvOS.
+/// The recognizers sit on the window because touches go to the focused view's ancestors.
+struct RemoteTouchRecognizer: UIViewRepresentable {
     let onPan: (Double) -> Void
-    let onEnded: () -> Void
+    let onSwipe: (MoveCommandDirection) -> Void
 
-    func makeUIView(context: Context) -> PanHostView {
-        PanHostView()
+    func makeUIView(context: Context) -> TouchHostView {
+        TouchHostView()
     }
 
-    func updateUIView(_ uiView: PanHostView, context: Context) {
+    func updateUIView(_ uiView: TouchHostView, context: Context) {
         uiView.onPan = onPan
-        uiView.onEnded = onEnded
+        uiView.onSwipe = onSwipe
     }
 
-    final class PanHostView: UIView, UIGestureRecognizerDelegate {
+    final class TouchHostView: UIView, UIGestureRecognizerDelegate {
         var onPan: ((Double) -> Void)?
-        var onEnded: (() -> Void)?
-        private lazy var recognizer: UIPanGestureRecognizer = {
-            let recognizer = UIPanGestureRecognizer(target: self, action: #selector(panned))
-            recognizer.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirect.rawValue)]
-            recognizer.cancelsTouchesInView = false
-            recognizer.delegate = self
-            return recognizer
+        var onSwipe: ((MoveCommandDirection) -> Void)?
+
+        private lazy var recognizers: [UIGestureRecognizer] = {
+            let pan = UIPanGestureRecognizer(target: self, action: #selector(panned))
+            let up = UISwipeGestureRecognizer(target: self, action: #selector(swiped))
+            up.direction = .up
+            let down = UISwipeGestureRecognizer(target: self, action: #selector(swiped))
+            down.direction = .down
+            return [pan, up, down].map { recognizer in
+                recognizer.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirect.rawValue)]
+                recognizer.cancelsTouchesInView = false
+                recognizer.delegate = self
+                return recognizer
+            }
         }()
 
         override func willMove(toWindow newWindow: UIWindow?) {
             super.willMove(toWindow: newWindow)
-            recognizer.view?.removeGestureRecognizer(recognizer)
-            newWindow?.addGestureRecognizer(recognizer)
+            for recognizer in recognizers {
+                recognizer.view?.removeGestureRecognizer(recognizer)
+                newWindow?.addGestureRecognizer(recognizer)
+            }
         }
 
         @objc private func panned(_ recognizer: UIPanGestureRecognizer) {
-            switch recognizer.state {
-            case .changed:
-                guard let width = recognizer.view?.bounds.width, width > 0 else { return }
-                onPan?(recognizer.translation(in: recognizer.view).x / width)
-                recognizer.setTranslation(.zero, in: recognizer.view)
-            case .ended, .cancelled:
-                onEnded?()
-            default:
-                break
+            guard recognizer.state == .changed, let width = recognizer.view?.bounds.width, width > 0 else {
+                return
             }
+            onPan?(recognizer.translation(in: recognizer.view).x / width)
+            recognizer.setTranslation(.zero, in: recognizer.view)
+        }
+
+        @objc private func swiped(_ recognizer: UISwipeGestureRecognizer) {
+            onSwipe?(recognizer.direction == .up ? .up : .down)
         }
 
         func gestureRecognizer(

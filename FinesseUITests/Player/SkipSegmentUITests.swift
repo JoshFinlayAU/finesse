@@ -40,21 +40,45 @@ final class SkipSegmentUITests: XCTestCase {
         remote.press(.select)
     }
 
-    func testOneClickSkipsOnceTheControlsHideDuringASegment() throws {
+    /// The segment's button holds focus with nothing else showing, so the click skips and doesn't pause.
+    func testOneClickSkipsInsideASegmentAndDoesNotPause() throws {
         openPlayer()
         let bar = app.buttons["transportBar"]
         let skip = app.buttons["skipSegment"]
         XCTAssertTrue(bar.waitForExistence(timeout: 15))
         let start = seconds(bar) - 2
         XCTAssertTrue(skip.waitForExistence(timeout: 12))
-        // Appeared with the controls up. Wait for them to hide while the segment is still running.
-        sleep(4)
-        capture("skip-11-controls-hid-during-intro")
-        XCTAssertTrue(skip.exists, "The intro should still be running")
+        sleep(1)
+        capture("skip-1-intro")
         remote.press(.select)
-        XCTAssertTrue(skip.waitForNonExistence(timeout: 5), "One click should skip, not just show the controls")
+        XCTAssertTrue(skip.waitForNonExistence(timeout: 5), "One click should skip")
         XCTAssertGreaterThanOrEqual(seconds(bar), start + 14)
         XCTAssertFalse(isPaused(bar))
+        XCTAssertFalse((bar.value as? String)?.contains("scrubbing") == true)
+    }
+
+    func testSwipeUpDuringASegmentLeavesTheButtonReachableAndItsFocusComesBack() throws {
+        openPlayer()
+        let player = PlayerDriver(app: app)
+        let skip = app.buttons["skipSegment"]
+        XCTAssertTrue(player.bar.waitForExistence(timeout: 15))
+        XCTAssertTrue(skip.waitForExistence(timeout: 12))
+        sleep(1)
+
+        // Up opens the bar even with the button focused, and takes focus to the bar.
+        remote.press(.up)
+        XCTAssertTrue(player.waitFor("bar"), "Up should show the bar during a segment")
+        XCTAssertTrue(player.waitFor("focus main"), "The bar should take focus")
+        XCTAssertTrue(skip.exists, "The button should stay")
+        capture("skip-2-bar-over-segment")
+
+        // Back hands focus back to the button, which still takes one click.
+        remote.press(.menu)
+        XCTAssertTrue(player.waitFor("hidden"))
+        XCTAssertTrue(player.waitFor("focus skip"), "The button should have focus again")
+        remote.press(.select)
+        XCTAssertTrue(skip.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(isPaused(player.bar))
     }
 
     func testSeededSkipButtonsAppearSkipAndGoAway() throws {
@@ -65,65 +89,46 @@ final class SkipSegmentUITests: XCTestCase {
         // Playback started a moment before the bar could be read, so allow for that.
         let start = seconds(bar) - 2
         XCTAssertFalse(skip.exists, "No button before the segment starts")
-        capture("skip-1-before-intro")
+        capture("skip-3-before-intro")
 
-        // Skip Intro appears with the controls up, and it can wait there while playback carries on.
         XCTAssertTrue(skip.waitForExistence(timeout: 12), "Skip Intro should appear inside the intro")
         XCTAssertEqual(skip.label, "Skip Intro")
-        capture("skip-2-intro")
         let inIntro = seconds(bar)
         sleep(2)
         XCTAssertGreaterThan(seconds(bar), inIntro, "The button must not interrupt playback")
         XCTAssertFalse(isPaused(bar))
 
-        // Reaching it and pressing it goes to the end of the intro, and it goes away.
-        remote.press(.up)
-        sleep(1)
-        capture("skip-3-intro-focused")
-        XCTAssertGreaterThan(seconds(bar), inIntro, "Focusing the button must not stop playback")
-        XCTAssertFalse(isPaused(bar))
         remote.press(.select)
         XCTAssertTrue(skip.waitForNonExistence(timeout: 5), "The button should go once used")
         XCTAssertGreaterThanOrEqual(seconds(bar), start + 14, "Should land at the end of the intro")
         XCTAssertFalse(isPaused(bar), "Skipping should not pause")
-        capture("skip-4-after-intro")
 
-        // With the controls hidden, Skip Credits takes focus by itself, so one press is enough.
         XCTAssertTrue(skip.waitForExistence(timeout: 15), "Skip Credits should appear inside the credits")
         XCTAssertEqual(skip.label, "Skip Credits")
         sleep(1)
-        capture("skip-5-credits-controls-hidden")
-        XCTAssertFalse(isPaused(bar))
+        capture("skip-4-credits")
         remote.press(.select)
         XCTAssertTrue(skip.waitForNonExistence(timeout: 5))
         XCTAssertGreaterThanOrEqual(seconds(bar), start + 30, "Should land at the end of the credits")
         XCTAssertFalse(isPaused(bar))
-        capture("skip-6-after-credits")
 
         // Left alone, a button leaves when its segment ends, and playback never stopped.
         XCTAssertTrue(skip.waitForExistence(timeout: 15), "The third segment's button should appear")
-        capture("skip-7-left-alone")
         XCTAssertTrue(skip.waitForNonExistence(timeout: 10), "It should go when the segment ends")
         XCTAssertGreaterThanOrEqual(seconds(bar), start + 46)
         XCTAssertFalse(isPaused(bar))
-        capture("skip-8-segment-passed")
+        capture("skip-5-segment-passed")
 
-        // Focus is back on the bar: select brings the controls up rather than doing nothing.
+        // Focus is back on the surface, so a click now pauses and starts a scrub.
+        sleep(1)
         remote.press(.select)
         sleep(1)
-        capture("skip-9-controls-back")
-        XCTAssertFalse(isPaused(bar), "The first select on hidden controls should only show them")
-        remote.press(.select)
-        sleep(1)
-        XCTAssertTrue(isPaused(bar), "The bar should have focus again")
-        remote.press(.playPause)
-        sleep(1)
-
-        // Back still leaves the player.
+        XCTAssertTrue(isPaused(bar), "The surface should have focus again")
+        XCTAssertTrue((bar.value as? String)?.contains("scrubbing") == true)
         remote.press(.menu)
         sleep(1)
+
         remote.press(.menu)
         XCTAssertTrue(bar.waitForNonExistence(timeout: 15), "Back should leave the player")
-        capture("skip-10-back-on-detail")
     }
 }

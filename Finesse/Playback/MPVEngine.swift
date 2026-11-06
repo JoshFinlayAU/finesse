@@ -101,6 +101,26 @@ final class MPVEngine: PlaybackEngine {
         applySubtitleSelection()
     }
 
+    func apply(_ options: PlaybackOptions) {
+        guard let core else {
+            return
+        }
+        core.setString("speed", String(options.rate))
+        core.setString("panscan", options.pictureMode == .fill ? "1" : "0")
+        core.setString("keepaspect", options.pictureMode == .stretch ? "no" : "yes")
+        core.setString("sub-scale", String(options.subtitleScale))
+        core.setString("sub-pos", String(100 - options.subtitleRaise))
+        core.setString("sub-delay", String(options.subtitleDelay))
+        core.setString("audio-delay", String(options.audioDelay))
+        if let text = options.subtitleTextColor {
+            core.setString("sub-color", Self.mpvColor(text))
+        }
+        if let background = options.subtitleBackgroundColor {
+            core.setString("sub-border-style", "background-box")
+            core.setString("sub-back-color", Self.mpvColor(background))
+        }
+    }
+
     func stop() {
         eventTask?.cancel()
         eventTask = nil
@@ -110,6 +130,11 @@ final class MPVEngine: PlaybackEngine {
 
     func makeRenderView() -> UIView {
         renderView
+    }
+
+    /// mpv takes colours as red/green/blue/alpha from 0 to 1.
+    private static func mpvColor(_ color: SubtitleColor) -> String {
+        "\(color.red)/\(color.green)/\(color.blue)/\(color.alpha)"
     }
 
     /// What mpv has really selected, as opposed to what was asked for.

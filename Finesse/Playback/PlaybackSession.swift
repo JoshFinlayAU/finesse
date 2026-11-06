@@ -15,12 +15,17 @@ final class PlaybackSession {
 
     private(set) var engine: (any PlaybackEngine)?
     private(set) var route: PlaybackRoute?
+    private(set) var options: PlaybackOptions
+    /// The most the server should send, in bits per second. Nil plays the file as it is.
+    private(set) var maxBitrate: Int?
+    private(set) var preferredSourceID: String?
 
     @ObservationIgnored private let client: any JellyfinClient
     @ObservationIgnored private let itemID: String
     @ObservationIgnored private let startPosition: Ticks
     @ObservationIgnored private let makeEngine: EngineFactory
     @ObservationIgnored private let reportInterval: Duration
+    @ObservationIgnored private let captionStyle: SystemCaptionStyle
     @ObservationIgnored private let deviceProfile: DeviceProfile
     @ObservationIgnored private var info = PlaybackInfo()
     @ObservationIgnored private var reporter: PlaybackProgressReporter?
@@ -30,6 +35,8 @@ final class PlaybackSession {
     /// Set for good by `stop`. Anything still in flight checks this when it resumes, or it would
     /// start an engine nothing is left to stop.
     @ObservationIgnored private var isStopped = false
+    /// True while the player's controls cover the bottom of the screen.
+    @ObservationIgnored private var liftsSubtitles = false
     /// Track changes run one at a time, because each can replace the engine.
     @ObservationIgnored private var trackChange: Task<Void, any Error>?
     /// What was last asked for, until the engine's state catches up. Engines change state later.
@@ -42,6 +49,9 @@ final class PlaybackSession {
         client: any JellyfinClient,
         itemID: String,
         startPosition: Ticks = .zero,
+        options: PlaybackOptions = PlaybackOptions(),
+        maxBitrate: Int? = nil,
+        captionStyle: SystemCaptionStyle = SystemCaptionStyle(),
         reportInterval: Duration = .seconds(10),
         engines: [EngineCapabilities] = EngineCapabilities.routingOrder,
         deviceProfile: DeviceProfile = DeviceProfileBuilder.make(),
@@ -50,6 +60,9 @@ final class PlaybackSession {
         self.client = client
         self.itemID = itemID
         self.startPosition = startPosition
+        self.options = options
+        self.maxBitrate = maxBitrate
+        self.captionStyle = captionStyle
         self.reportInterval = reportInterval
         self.engines = engines
         self.deviceProfile = deviceProfile
@@ -71,10 +84,11 @@ final class PlaybackSession {
         guard !isStopped else {
             return
         }
-        var route = try makeRoute(audioStreamIndex: nil, subtitle: .sourceDefault)
+        let subtitle = initialSubtitle
+        var route = try makeRoute(audioStreamIndex: nil, subtitle: subtitle)
         var engine = start(route, at: startPosition)
         // The server's default audio can be a track this engine can't reach.
-        let moved = await routeAvoidingUnreachableAudio(route, on: engine, subtitle: .sourceDefault)
+        let moved = await routeAvoidingUnreachableAudio(route, on: engine, subtitle: subtitle)
         guard !isStopped else {
             return
         }
@@ -96,6 +110,16 @@ final class PlaybackSession {
         }
         self.reporter = reporter
         await reporter.start()
+    }
+
+    /// The server's choice, which already holds what this person last picked for this item. Only
+    /// when it chose nothing does the system's always-on caption setting get a say.
+    private var initialSubtitle: SubtitleChoice {
+        guard let source = limitedSources.first, source.defaultSubtitleStreamIndex == nil,
+              let index = captionStyle.defaultSubtitle(in: source.streams) else {
+            return .sourceDefault
+        }
+        return .stream(index)
     }
 
     /// Follows what was asked for straight away, so a report or a second press isn't left behind.
@@ -142,15 +166,165 @@ final class PlaybackSession {
 
     /// `choice` runs when its turn comes, so it builds on the change before it.
     private func enqueueTrackChange(_ choice: @escaping @MainActor () -> (Int?, SubtitleChoice)) async throws {
-        let previous = trackChange
-        let change = Task<Void, any Error> { [weak self] in
-            _ = await previous?.result
+        try await enqueue { [weak self] in
             let (audio, subtitle) = choice()
             try await self?.changeTracks(audioStreamIndex: audio, subtitle: subtitle)
+        }
+    }
+
+    private func enqueue(_ work: @escaping @MainActor () async throws -> Void) async throws {
+        let previous = trackChange
+        let change = Task<Void, any Error> {
+            _ = await previous?.result
+            try await work()
         }
         trackChange = change
         try await change.value
     }
+
+    /// The source being played, for the player's info panel.
+    var currentSource: PlaybackMediaSource? {
+        info.mediaSources.first { $0.id == route?.mediaSourceID }
+    }
+
+    var mediaSources: [PlaybackMediaSource] {
+        info.mediaSources
+    }
+
+    /// What changing `option` would do right now.
+    func availability(of option: PlaybackOption) -> PlaybackOptionAvailability {
+        guard let current = route else {
+            return .unavailable("Playback hasn't started yet.")
+        }
+        if option.isSupported(by: current.engine) {
+            return .available
+        }
+        guard current.method == .directPlay else {
+            return .unavailable("Not available while the server is converting this video.")
+        }
+        return routeSupporting(option) == nil ? .unavailable("This video can't play on the player that supports this.") : .movesEngine
+    }
+
+    func setOptions(_ new: PlaybackOptions) async throws {
+        let changed = PlaybackOption.allCases.filter { new.value(of: $0) != options.value(of: $0) }
+        let needed = route.flatMap { current in
+            changed.first { new.optionsInUse.contains($0) && !$0.isSupported(by: current.engine) }
+        }
+        if let needed {
+            guard let next = routeSupporting(needed) else {
+                throw PlaybackSessionError.noPlayableSource
+            }
+            options = new
+            try await enqueue { [weak self] in
+                try await self?.move(to: next, supporting: needed)
+            }
+        } else {
+            options = new
+        }
+        applyOptions()
+    }
+
+    /// Moves subtitles clear of the player's controls while they're showing.
+    func setLiftsSubtitles(_ lifts: Bool) {
+        guard lifts != liftsSubtitles else {
+            return
+        }
+        liftsSubtitles = lifts
+        applyOptions()
+    }
+
+    /// Nil limit plays the file as it is, otherwise the server converts anything above the limit.
+    func setQuality(maxBitrate: Int?, sourceID: String?) async throws {
+        try await enqueue { [weak self] in
+            try await self?.reload(maxBitrate: maxBitrate, sourceID: sourceID)
+        }
+    }
+
+    private func routeSupporting(_ option: PlaybackOption) -> PlaybackRoute? {
+        let supporting = engines.filter { option.isSupported(by: $0.engine) }
+        guard !supporting.isEmpty, case .success(let next) = PlaybackRouter.route(
+            sources: limitedSources,
+            audioStreamIndex: engine?.selectedAudioTrackID,
+            subtitle: currentSubtitleChoice,
+            engines: supporting
+        ), next.method == .directPlay else {
+            return nil
+        }
+        return next
+    }
+
+    /// Stays on the new engine for the rest of the session, so a track change can't lose the setting.
+    private func move(to next: PlaybackRoute, supporting option: PlaybackOption) async throws {
+        guard !isStopped, let engine else {
+            return
+        }
+        engines = engines.filter { option.isSupported(by: $0.engine) }
+        let position = engine.position
+        noteWhetherPaused()
+        engine.stop()
+        start(next, at: position)
+        reporter?.updateRoute(next, playSessionID: info.playSessionID)
+        await reporter?.reportProgress()
+    }
+
+    private func reload(maxBitrate: Int?, sourceID: String?) async throws {
+        guard !isStopped, let engine else {
+            return
+        }
+        let previous = (self.maxBitrate, preferredSourceID, info)
+        let previousPlaySession = info.playSessionID
+        let wasTranscoding = route?.method != .directPlay
+        let position = engine.position
+        let audio = engine.selectedAudioTrackID
+        let subtitle = currentSubtitleChoice
+        self.maxBitrate = maxBitrate
+        preferredSourceID = sourceID
+        do {
+            let subtitleIndex: Int? = if case .stream(let index) = subtitle { index } else { nil }
+            info = try await fetchInfo(startPosition: position, audioStreamIndex: audio, subtitleStreamIndex: subtitleIndex)
+            guard isStillCurrent(engine) else {
+                return
+            }
+            let next = try makeRoute(audioStreamIndex: audio, subtitle: subtitle)
+            noteWhetherPaused()
+            engine.stop()
+            start(next, at: position)
+            reporter?.updateRoute(next, playSessionID: info.playSessionID)
+        } catch {
+            (self.maxBitrate, preferredSourceID, info) = previous
+            throw error
+        }
+        await reporter?.reportProgress()
+        if wasTranscoding, let previousPlaySession, previousPlaySession != info.playSessionID {
+            try? await client.stopTranscoding(playSessionID: previousPlaySession)
+        }
+    }
+
+    /// A server can offer direct play over the limit, so the limit is also enforced here.
+    /// A chosen version comes first, leaving the others for when it can't play.
+    private var limitedSources: [PlaybackMediaSource] {
+        var sources = info.mediaSources
+        if let maxBitrate {
+            for index in sources.indices where (sources[index].bitRate ?? 0) > maxBitrate {
+                sources[index].supportsDirectPlay = false
+            }
+        }
+        if let preferredSourceID, let chosen = sources.firstIndex(where: { $0.id == preferredSourceID }) {
+            sources.insert(sources.remove(at: chosen), at: 0)
+        }
+        return sources
+    }
+
+    private func applyOptions() {
+        var effective = options
+        if liftsSubtitles {
+            effective.subtitleRaise += Self.controlsSubtitleLift
+        }
+        engine?.apply(effective)
+    }
+
+    /// Enough to keep two lines clear of the player's bar at the bottom of the screen.
+    private static let controlsSubtitleLift = 30
 
     /// Moves to another engine at the same position after this one fails. A failed engine is never
     /// tried again in this session, so this can't bounce between engines, and it ends with false
@@ -161,7 +335,7 @@ final class PlaybackSession {
         }
         let remaining = engines.filter { $0.engine != current.engine }
         guard !remaining.isEmpty, case .success(let next) = PlaybackRouter.route(
-            sources: info.mediaSources,
+            sources: limitedSources,
             audioStreamIndex: engine.selectedAudioTrackID,
             subtitle: currentSubtitleChoice,
             engines: remaining
@@ -287,7 +461,7 @@ final class PlaybackSession {
         }
         let remaining = engines.filter { $0.engine != route.engine }
         guard case .success(let moved) = PlaybackRouter.route(
-            sources: info.mediaSources,
+            sources: limitedSources,
             audioStreamIndex: audio,
             subtitle: subtitle,
             engines: remaining
@@ -312,6 +486,7 @@ final class PlaybackSession {
             audioStreamIndex: route.audioStreamIndex,
             subtitleStreamIndex: route.subtitleStreamIndex
         ))
+        applyOptions()
         if staysPaused {
             engine.pause()
         }
@@ -325,9 +500,11 @@ final class PlaybackSession {
     ) async throws -> PlaybackInfo {
         let info = try await client.playbackInfo(PlaybackInfoRequest(
             itemID: itemID,
+            mediaSourceID: preferredSourceID,
             startPosition: startPosition,
             audioStreamIndex: audioStreamIndex,
             subtitleStreamIndex: subtitleStreamIndex,
+            maxStreamingBitrate: maxBitrate,
             deviceProfile: deviceProfile
         ))
         if let code = info.errorCode {
@@ -338,7 +515,7 @@ final class PlaybackSession {
 
     private func makeRoute(audioStreamIndex: Int?, subtitle: SubtitleChoice) throws -> PlaybackRoute {
         switch PlaybackRouter.route(
-            sources: info.mediaSources,
+            sources: limitedSources,
             audioStreamIndex: audioStreamIndex,
             subtitle: subtitle,
             engines: engines

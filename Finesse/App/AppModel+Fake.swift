@@ -27,6 +27,7 @@ extension AppModel {
                 resume.userState.playbackPosition = Ticks(seconds: 1500)
                 resume.productionYear = 2024
                 var next = MediaItem(id: "next", name: "The Next One", kind: .episode)
+                next.seriesID = "a-long-show"
                 next.seriesName = "A Long Show"
                 next.parentIndexNumber = 2
                 next.indexNumber = 5

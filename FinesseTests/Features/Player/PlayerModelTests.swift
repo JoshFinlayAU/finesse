@@ -16,7 +16,12 @@ private final class Harness {
 
     var engine: FakeEngine { engines[engines.count - 1] }
 
-    init(item: MediaItem, resume: Ticks? = nil) {
+    init(
+        item: MediaItem,
+        resume: Ticks? = nil,
+        store: PlayerPreferenceStore = PlayerPreferenceStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+        captions: SystemCaptionStyle = SystemCaptionStyle()
+    ) {
         var factory: PlaybackSession.EngineFactory = { _ in fatalError("set below") }
         var made: (FakeEngine) -> Void = { _ in }
         factory = { kind in
@@ -29,6 +34,8 @@ private final class Harness {
             client: client,
             request: PlaybackRequest(item: item, resumePosition: resume),
             now: { clock() },
+            preferenceStore: store,
+            captionStyle: captions,
             makeEngine: factory
         )
         made = { [unowned self] in
@@ -252,14 +259,8 @@ private final class Harness {
         let harness = Harness(item: episode())
         try await harness.prepare()
         await harness.model.start()
-        await harness.model.backPressed()
-        #expect(!harness.model.controlsVisible)
-        await harness.model.togglePlayPause()
         harness.engine.settle()
-        await harness.model.togglePlayPause()
-        harness.engine.settle()
-        await harness.model.backPressed()
-        #expect(!harness.model.controlsVisible)
+        #expect(!harness.model.controls.isShowing)
         await harness.model.tick()
 
         harness.engine.state = .paused
@@ -305,9 +306,10 @@ private final class Harness {
         try await harness.prepare()
         await harness.model.start()
         harness.engine.position = Ticks(seconds: 42)
+        await harness.model.send(.swipeUp)
 
         await harness.model.backPressed()
-        #expect(!harness.model.controlsVisible)
+        #expect(!harness.model.controls.isShowing)
         #expect(harness.model.phase == .playing)
         #expect(await harness.client.stopReports.isEmpty)
 
@@ -320,96 +322,99 @@ private final class Harness {
         #expect(await harness.client.stopReports.count == 1)
     }
 
-    @Test func backCancelsAScrubWithoutSeeking() async throws {
+    @Test func clickPausesAndBackRestoresWithoutSeeking() async throws {
         let harness = Harness(item: episode())
         try await harness.prepare()
         await harness.model.start()
-        harness.model.scrub(bySeconds: 30)
+        harness.engine.settle()
+
+        await harness.model.send(.click)
+        #expect(harness.model.isPaused)
+        await harness.model.send(.moveRight)
+        #expect(harness.model.scrubPosition == Ticks(seconds: 10))
+
         await harness.model.backPressed()
         #expect(harness.model.scrubPosition == nil)
-        #expect(harness.model.controlsVisible)
+        #expect(!harness.model.isPaused)
         #expect(harness.engine.seeks.isEmpty)
         await harness.model.exit()
     }
 
-    @Test func clicksAddUpAndCommitOneSeekClampedToTheItem() async throws {
+    @Test func clicksAddUpAndTheSecondClickCommitsOneSeekAndResumes() async throws {
         let harness = Harness(item: episode(), resume: Ticks(seconds: 100))
         try await harness.prepare()
         await harness.model.start()
-        harness.model.scrub(bySeconds: 10)
-        harness.model.scrub(bySeconds: 10)
+        harness.engine.settle()
+
+        await harness.model.send(.click)
+        await harness.model.send(.moveRight)
+        await harness.model.send(.moveRight)
         #expect(harness.model.displayPosition == Ticks(seconds: 120))
         #expect(harness.engine.seeks.isEmpty)
 
-        await harness.model.commitScrub()
+        await harness.model.send(.click)
         #expect(harness.engine.seeks == [Ticks(seconds: 120)])
         #expect(harness.model.scrubPosition == nil)
+        #expect(!harness.model.isPaused)
         #expect(await harness.client.progressReports.last?.position == Ticks(seconds: 120))
-
-        harness.model.scrub(bySeconds: -500)
-        #expect(harness.model.displayPosition == .zero)
-        harness.model.scrub(bySeconds: 5000)
-        #expect(harness.model.displayPosition == Ticks(seconds: 1000))
         await harness.model.exit()
     }
 
-    @Test func panFractionScalesToTenMinutesAtMost() async throws {
-        let harness = Harness(item: episode())
+    @Test func leftAndRightDoNothingWhilePlaying() async throws {
+        let harness = Harness(item: episode(), resume: Ticks(seconds: 100))
         try await harness.prepare()
         await harness.model.start()
-        harness.model.scrub(byPanFraction: 0.5)
-        #expect(harness.model.displayPosition == Ticks(seconds: 300))
+        await harness.model.send(.moveRight)
+        await harness.model.send(.moveLeft)
+        await harness.model.send(.panned(0.5))
+        #expect(harness.model.scrubPosition == nil)
+        #expect(harness.engine.seeks.isEmpty)
         await harness.model.exit()
     }
 
-    @Test func selectShowsHiddenControlsThenTogglesPause() async throws {
+    @Test func subtitlesLiftOnlyWhileTheControlsShow() async throws {
         let harness = Harness(item: episode())
         try await harness.prepare()
         await harness.model.start()
+
+        await harness.model.send(.swipeUp)
+        #expect(harness.engine.applied.last?.subtitleRaise ?? 0 > 0)
+
+        await harness.model.send(.swipeDown)
+        #expect(harness.engine.applied.last?.subtitleRaise == 0)
+        await harness.model.exit()
+    }
+
+    @Test func barHidesAfterTimeoutUnlessPausedAndAPanelStaysOpen() async throws {
+        let harness = Harness(item: episode())
+        try await harness.prepare()
+        await harness.model.start()
+        harness.engine.settle()
+        await harness.model.send(.swipeUp)
+
+        harness.date += PlayerControls.hideAfter - 1
+        await harness.model.tick()
+        #expect(harness.model.controls.mode == .bar)
+
+        await harness.model.send(.openPanel(.audio))
+        harness.date += 60
+        await harness.model.tick()
+        #expect(harness.model.controls.panel == .audio)
+
         await harness.model.backPressed()
-
-        await harness.model.selectPressed()
-        #expect(harness.model.controlsVisible)
-        #expect(!harness.model.isPaused)
-
-        await harness.model.selectPressed()
-        #expect(harness.model.isPaused)
-        #expect(await harness.client.progressReports.last?.isPaused == true)
-
-        await harness.model.selectPressed()
-        #expect(!harness.model.isPaused)
-        await harness.model.exit()
-    }
-
-    @Test func controlsHideAfterTimeoutUnlessPausedOrInUse() async throws {
-        let harness = Harness(item: episode())
-        try await harness.prepare()
-        await harness.model.start()
-
-        harness.date += PlayerModel.controlsTimeout - 1
         await harness.model.tick()
-        #expect(harness.model.controlsVisible)
+        #expect(harness.model.controls.mode == .bar)
 
-        harness.model.focusMoved(toControls: true)
-        harness.date += 10
-        await harness.model.tick()
-        #expect(harness.model.controlsVisible)
-
-        // Returning to the bar restarts the timeout instead of hiding at once.
-        harness.model.focusMoved(toControls: false)
-        await harness.model.tick()
-        #expect(harness.model.controlsVisible)
-
-        harness.date += PlayerModel.controlsTimeout
-        harness.engine.pause()
+        harness.date += PlayerControls.hideAfter
+        await harness.model.togglePlayPause()
         harness.engine.settle()
         await harness.model.tick()
-        #expect(harness.model.controlsVisible)
+        #expect(harness.model.controls.mode == .bar)
 
-        harness.engine.play()
+        await harness.model.togglePlayPause()
         harness.engine.settle()
         await harness.model.tick()
-        #expect(!harness.model.controlsVisible)
+        #expect(harness.model.controls.mode == .hidden)
         await harness.model.exit()
     }
 
@@ -573,5 +578,251 @@ private final class Harness {
     @Test func timesFormatForTheBar() {
         #expect(PlayerTime.format(Ticks(seconds: 59)) == "0:59")
         #expect(PlayerTime.format(Ticks(seconds: 3725)) == "1:02:05")
+    }
+}
+
+/// Every option in the player's panels, from the model down to the engine.
+@MainActor
+@Suite struct PlayerOptionsModelTests {
+    private func episode(_ id: String, position: Double = 0) -> MediaItem {
+        var item = MediaItem(id: id, name: id, kind: .episode)
+        item.seriesID = "series"
+        item.runTime = Ticks(seconds: 1000)
+        item.userState.playbackPosition = Ticks(seconds: position)
+        return item
+    }
+
+    private func harness(
+        item: MediaItem? = nil,
+        store: PlayerPreferenceStore? = nil,
+        captions: SystemCaptionStyle = SystemCaptionStyle()
+    ) async throws -> (Harness, PlayerModel) {
+        let harness = Harness(
+            item: item ?? episode("two"),
+            store: store ?? PlayerPreferenceStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            captions: captions
+        )
+        try await harness.prepare()
+        let series = [episode("one"), episode("two"), episode("three", position: 50)]
+        await harness.client.configure {
+            $0.allItems = series
+            $0.chapters["two"] = [
+                ItemChapter(index: 0, name: "Start", start: .zero),
+                ItemChapter(index: 1, name: "Middle", start: Ticks(seconds: 500)),
+            ]
+        }
+        await harness.model.start()
+        return (harness, harness.model)
+    }
+
+    @Test func audioAndSubtitleSelectionReachTheEngine() async throws {
+        let (harness, model) = try await harness()
+        await model.selectAudioTrack(id: 1)
+        #expect(harness.engine.selectedAudioTrackID == 1)
+        await model.selectSubtitleTrack(id: nil)
+        #expect(harness.engine.selectedSubtitleTrackID == nil)
+        await model.exit()
+    }
+
+    @Test func speedAppliesButIsNotSaved() async throws {
+        let store = PlayerPreferenceStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let (harness, model) = try await harness(store: store)
+        await model.setRate(1.5)
+        #expect(harness.engine.applied.last?.rate == 1.5)
+        #expect(model.preferences == PlayerPreferences())
+        await model.exit()
+    }
+
+    @Test func theSystemCaptionSizeAppliesUntilThePersonPicksTheirOwn() async throws {
+        var style = SystemCaptionStyle()
+        style.scale = 1.5
+        style.textColor = SubtitleColor(red: 1, green: 1, blue: 0, alpha: 1)
+        let (harness, model) = try await harness(captions: style)
+        #expect(harness.engine.applied.last?.subtitleScale == 1.5)
+        #expect(harness.engine.applied.last?.subtitleTextColor == style.textColor)
+        #expect(model.preferences.subtitleScale == nil)
+
+        await model.adjustSubtitleScale(by: 1)
+        #expect(model.options.subtitleScale == 1.6)
+        #expect(model.preferences.subtitleScale == 1.6)
+        await model.exit()
+    }
+
+    @Test func aPickedSizeBeatsTheSystemsOnTheNextPlayback() async throws {
+        let store = PlayerPreferenceStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        var saved = PlayerPreferences()
+        saved.subtitleScale = 0.8
+        let session = try await InMemoryJellyfinClient().signIn(username: "Test User", password: "password")
+        store.save(saved, userID: session.user.id)
+        var style = SystemCaptionStyle()
+        style.scale = 1.5
+
+        let (harness, model) = try await harness(store: store, captions: style)
+
+        #expect(harness.engine.applied.last?.subtitleScale == 0.8)
+        await model.exit()
+    }
+
+    @Test func anOutOfRangeSystemSizeStaysWithinOurLimits() async throws {
+        var style = SystemCaptionStyle()
+        style.scale = 4
+        let (harness, model) = try await harness(captions: style)
+        #expect(harness.engine.applied.last?.subtitleScale == PlaybackOptions.subtitleScales.upperBound)
+        await model.exit()
+    }
+
+    @Test func pictureModeAppliesAndSticks() async throws {
+        let (harness, model) = try await harness()
+        await model.setPictureMode(.fill)
+        #expect(harness.engine.applied.last?.pictureMode == .fill)
+        #expect(model.preferences.pictureMode == .fill)
+        await model.exit()
+    }
+
+    @Test func subtitleSizeStepsStopAtTheLimitsAndStick() async throws {
+        let (harness, model) = try await harness()
+        await model.adjustSubtitleScale(by: 2)
+        #expect(harness.engine.applied.last?.subtitleScale == 1.2)
+        #expect(model.preferences.subtitleScale == 1.2)
+        await model.adjustSubtitleScale(by: 50)
+        #expect(model.options.subtitleScale == PlaybackOptions.subtitleScales.upperBound)
+        await model.adjustSubtitleScale(by: -50)
+        #expect(model.options.subtitleScale == PlaybackOptions.subtitleScales.lowerBound)
+        await model.exit()
+    }
+
+    @Test func subtitlePositionStepsStopAtTheLimitsAndStick() async throws {
+        let (harness, model) = try await harness()
+        await model.adjustSubtitleRaise(by: 2)
+        #expect(harness.engine.applied.last?.subtitleRaise == 2 * PlayerModel.subtitleRaiseStep)
+        #expect(model.preferences.subtitleRaise == 2 * PlayerModel.subtitleRaiseStep)
+        await model.adjustSubtitleRaise(by: -9)
+        #expect(model.options.subtitleRaise == 0)
+        await model.adjustSubtitleRaise(by: 99)
+        #expect(model.options.subtitleRaise == PlaybackOptions.subtitleRaises.upperBound)
+        await model.exit()
+    }
+
+    @Test func delaysMoveToMpvStopAtTheLimitsAndAreNotSaved() async throws {
+        let (harness, model) = try await harness()
+        #expect(harness.engine.kind == .avPlayer)
+        await model.adjustAudioDelay(by: 3)
+        #expect(harness.engine.kind == .mpv)
+        #expect(harness.engine.applied.last?.audioDelay == 0.3)
+        await model.adjustSubtitleDelay(by: -2)
+        #expect(harness.engine.applied.last?.subtitleDelay == -0.2)
+        await model.adjustSubtitleDelay(by: -500)
+        #expect(model.options.subtitleDelay == PlaybackOptions.delays.lowerBound)
+        #expect(model.preferences == PlayerPreferences())
+        await model.exit()
+    }
+
+    @Test func offsetsResetForTheNextEpisodeAndSpeedCarriesOn() async throws {
+        let (harness, model) = try await harness()
+        await model.setRate(1.25)
+        await model.adjustAudioDelay(by: 3)
+        await model.playEpisode(try #require(model.nextEpisode))
+        #expect(harness.engine.applied.last?.rate == 1.25)
+        #expect(harness.engine.applied.last?.audioDelay == 0)
+        await model.exit()
+    }
+
+    @Test func savedPreferencesApplyWhenPlaybackStarts() async throws {
+        let store = PlayerPreferenceStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        var saved = PlayerPreferences()
+        saved.subtitleScale = 1.5
+        saved.subtitleRaise = 10
+        saved.pictureMode = .stretch
+        saved.maxBitrate = 2_000_000
+        let session = try await InMemoryJellyfinClient().signIn(username: "Test User", password: "password")
+        store.save(saved, userID: session.user.id)
+
+        let (harness, model) = try await harness(store: store)
+
+        #expect(harness.engine.applied.last?.subtitleScale == 1.5)
+        #expect(harness.engine.applied.last?.subtitleRaise == 10)
+        #expect(harness.engine.applied.last?.pictureMode == .stretch)
+        #expect(model.session?.maxBitrate == 2_000_000)
+        await model.exit()
+    }
+
+    @Test func aQualityChoiceSticks() async throws {
+        let (kept, model) = try await harness()
+        defer { withExtendedLifetime(kept) {} }
+        await model.setMaxBitrate(8_000_000)
+        #expect(model.preferences.maxBitrate == 8_000_000)
+        #expect(model.qualityNote != nil)
+        await model.setMaxBitrate(nil)
+        #expect(model.preferences.maxBitrate == nil)
+        #expect(model.qualityNote == nil)
+        await model.exit()
+    }
+
+    @Test func chaptersLoadAndChoosingOneSeeksAndHidesTheControls() async throws {
+        let (harness, model) = try await harness()
+        #expect(model.chapters.count == 2)
+        #expect(model.panels.contains(.chapters))
+        await model.send(.swipeUp)
+        await model.send(.openPanel(.chapters))
+
+        await model.selectChapter(model.chapters[1])
+
+        #expect(harness.engine.seeks == [Ticks(seconds: 500)])
+        #expect(model.controls.mode == .hidden)
+        #expect(model.chapter(at: Ticks(seconds: 600))?.name == "Middle")
+        await model.exit()
+    }
+
+    @Test func aMovieOffersNeitherChaptersItLacksNorEpisodes() async throws {
+        var movie = MediaItem(id: "movie", name: "movie", kind: .movie)
+        movie.runTime = Ticks(seconds: 1000)
+        let (kept, model) = try await harness(item: movie)
+        defer { withExtendedLifetime(kept) {} }
+        #expect(model.episodes.isEmpty)
+        #expect(model.previousEpisode == nil)
+        #expect(model.nextEpisode == nil)
+        #expect(!model.panels.contains(.episodes))
+        #expect(!model.panels.contains(.chapters))
+        #expect(model.panels.contains(.audio))
+        #expect(model.panels.contains(.info))
+        await model.exit()
+    }
+
+    @Test func previousAndNextFollowTheSeriesOrder() async throws {
+        let (kept, model) = try await harness()
+        defer { withExtendedLifetime(kept) {} }
+        #expect(model.previousEpisode?.id == "one")
+        #expect(model.nextEpisode?.id == "three")
+        await model.exit()
+    }
+
+    @Test func anotherEpisodeReportsStopThenResumesFromItsOwnPosition() async throws {
+        let (harness, model) = try await harness()
+        harness.engine.position = Ticks(seconds: 42)
+        let first = harness.engine
+
+        await model.playEpisode(try #require(model.nextEpisode))
+
+        #expect(first.stopped)
+        #expect(await harness.client.stopReports.first?.position == Ticks(seconds: 42))
+        #expect(model.item.id == "three")
+        #expect(harness.engine.loaded?.startPosition == Ticks(seconds: 50))
+        #expect(model.phase == .playing)
+        #expect(model.controls.mode == .hidden)
+        await model.exit()
+    }
+
+    @Test func infoDescribesTheCurrentEngineAndRoute() async throws {
+        let (kept, model) = try await harness()
+        defer { withExtendedLifetime(kept) {} }
+        #expect(model.infoRows.contains { $0.title == "Player" && $0.value == "AVPlayer" })
+        await model.exit()
+    }
+
+    @Test func oneVersionOffersNoChoice() async throws {
+        let (kept, model) = try await harness()
+        defer { withExtendedLifetime(kept) {} }
+        #expect(model.versions.isEmpty)
+        await model.exit()
     }
 }

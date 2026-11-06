@@ -50,6 +50,7 @@ final class FakePlaybackEngine: PlaybackEngine {
     var stopped = false
     var unreachableAudio: Set<Int> = []
     var canSelectGate: TestGate?
+    var applied: [PlaybackOptions] = []
     private var pendingState: PlaybackState?
 
     init(kind: PlaybackEngineKind) {
@@ -87,6 +88,7 @@ final class FakePlaybackEngine: PlaybackEngine {
     }
     func selectAudioTrack(id: Int) { selectedAudioTrackID = id }
     func selectSubtitleTrack(id: Int?) { selectedSubtitleTrackID = id }
+    func apply(_ options: PlaybackOptions) { applied.append(options) }
     func stop() { stopped = true }
     func makeRenderView() -> UIView { UIView() }
 }

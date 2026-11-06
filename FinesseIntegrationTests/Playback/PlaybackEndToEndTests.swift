@@ -134,4 +134,48 @@ struct PlaybackEndToEndTests {
     @Test func mpvPlaysAndResumePositionReachesServer() async throws {
         try await playAndConfirmResume(.mpv)
     }
+
+    /// The test server only transcodes in software, so this stays brief and asks for little.
+    @Test func aQualityLimitMovesToARealTranscodeAndRemovingItGoesBack() async throws {
+        let client = try await LiveServer.signedInClient()
+        guard let item = try await findItem(for: .avPlayer, client: client), let runTime = item.runTime else {
+            Issue.record("No unwatched direct play item routes to AVPlayer")
+            return
+        }
+        let start = Ticks(seconds: runTime.seconds * 0.3)
+        let session = PlaybackSession(client: client, itemID: item.id, startPosition: start)
+        try await session.start()
+        #expect(session.route?.method == .directPlay)
+
+        try await session.setQuality(maxBitrate: 500_000, sourceID: nil)
+        #expect(session.route?.method == .transcode)
+        #expect(session.route?.engine == .avPlayer)
+        let engine = try #require(session.engine)
+        let view = show(engine)
+        defer { view?.removeFromSuperview() }
+        let played = try await wait(timeout: .seconds(60)) { engine.state == .playing }
+        #expect(played, "state \(String(describing: engine.state))")
+        #expect(abs(engine.position.seconds - start.seconds) < 60, "Should carry on from the same place")
+
+        try await session.setQuality(maxBitrate: nil, sourceID: nil)
+        #expect(session.route?.method == .directPlay)
+        await session.stop()
+        try await client.reportPlaybackStopped(PlaybackReport(itemID: item.id, position: .zero, playMethod: .directPlay))
+    }
+
+    @Test func chaptersComeBackInOrder() async throws {
+        let client = try await LiveServer.signedInClient()
+        let movies = try await client.items(ItemQuery(kinds: [.movie], limit: 60)).items
+        for movie in movies {
+            let chapters = try await client.chapters(itemID: movie.id)
+            guard chapters.count > 1 else {
+                continue
+            }
+            #expect(chapters.map(\.index) == Array(chapters.indices))
+            #expect(chapters.map(\.start) == chapters.map(\.start).sorted())
+            #expect(chapters.allSatisfy { $0.imageTag == nil || client.imageURL(itemID: movie.id, kind: .chapter, tag: $0.imageTag, index: $0.index, maxWidth: nil) != nil })
+            return
+        }
+        Issue.record("None of the first \(movies.count) movies has chapters")
+    }
 }

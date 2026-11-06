@@ -22,20 +22,24 @@ final class PlayerModel {
     }
 
     static let upNextSeconds = 10
-    static let clickScrubSeconds: TimeInterval = 10
-    /// A full swipe across the touch surface covers this much, or the whole item if shorter.
-    static let panScrubSeconds: TimeInterval = 600
-    static let controlsTimeout: TimeInterval = 5
+    /// Rows in the quality panel, in bits per second. Nil plays the file as it is.
+    static let bitrateChoices: [Int?] = [nil, 40_000_000, 20_000_000, 10_000_000, 8_000_000, 4_000_000, 2_000_000]
+    static let delayStep: TimeInterval = 0.1
+    static let subtitleScaleStep = 0.1
+    static let subtitleRaiseStep = 5
 
     private(set) var item: MediaItem
     private(set) var phase = Phase.loading
     private(set) var session: PlaybackSession?
     private(set) var skip: PlayerSkip?
-    private(set) var scrubPosition: Ticks?
-    private(set) var controlsVisible = true
+    private(set) var controls = PlayerControls()
     private(set) var trackError: String?
-    /// True while focus is away from the transport bar, such as in a track menu.
-    private(set) var keepControlsVisible = false
+    private(set) var chapters: [ItemChapter] = []
+    /// Every episode of the series, in order. Empty for a movie.
+    private(set) var episodes: [MediaItem] = []
+    /// Survives moving to another episode, so the next one starts the same way.
+    private(set) var options = PlaybackOptions()
+    private(set) var preferences = PlayerPreferences()
 
     @ObservationIgnored private let client: any JellyfinClient
     @ObservationIgnored private var resumePosition: Ticks?
@@ -44,8 +48,10 @@ final class PlayerModel {
     @ObservationIgnored private let now: @MainActor () -> Date
     @ObservationIgnored private var segments: [MediaSegment] = []
     @ObservationIgnored private var skippedSegmentIDs: Set<String> = []
-    @ObservationIgnored private var lastActivity: Date
     @ObservationIgnored private var hasHandledEnd = false
+    @ObservationIgnored private let preferenceStore: PlayerPreferenceStore
+    @ObservationIgnored private let captionStyle: SystemCaptionStyle
+    @ObservationIgnored private var preferencesUserID: String?
     /// Set by `exit`. Whatever was in flight checks this when it resumes, because the player is closing.
     @ObservationIgnored private var isExiting = false
 
@@ -54,6 +60,8 @@ final class PlayerModel {
         request: PlaybackRequest,
         engines: [EngineCapabilities] = EngineCapabilities.routingOrder,
         now: @escaping @MainActor () -> Date = { .now },
+        preferenceStore: PlayerPreferenceStore = PlayerPreferenceStore(),
+        captionStyle: SystemCaptionStyle = .current(),
         makeEngine: @escaping PlaybackSession.EngineFactory = PlaybackSession.makeDefaultEngine
     ) {
         self.client = client
@@ -62,16 +70,90 @@ final class PlayerModel {
         self.makeEngine = makeEngine
         self.engines = engines
         self.now = now
-        lastActivity = now()
+        self.preferenceStore = preferenceStore
+        self.captionStyle = captionStyle
     }
 
     var engine: (any PlaybackEngine)? {
         session?.engine
     }
 
-    /// Where the transport bar should show, which leads the engine during a scrub.
+    var scrubPosition: Ticks? {
+        controls.scrub?.target
+    }
+
+    /// Where the bar should show, which leads the engine during a scrub.
     var displayPosition: Ticks {
         scrubPosition ?? engine?.position ?? .zero
+    }
+
+    var previousEpisode: MediaItem? {
+        episodes.firstIndex { $0.id == item.id }.flatMap { $0 > 0 ? episodes[$0 - 1] : nil }
+    }
+
+    var nextEpisode: MediaItem? {
+        episodes.firstIndex { $0.id == item.id }.flatMap { $0 + 1 < episodes.count ? episodes[$0 + 1] : nil }
+    }
+
+    /// The panels worth opening for this item, in the order the bar shows them.
+    var panels: [PlayerPanel] {
+        PlayerPanel.allCases.filter {
+            switch $0 {
+            case .chapters: !chapters.isEmpty
+            case .episodes: !episodes.isEmpty
+            default: true
+            }
+        }
+    }
+
+    /// The row a panel opens on, which is whatever is in use. Also the row's accessibility identifier.
+    func initialRowID(of panel: PlayerPanel) -> String {
+        switch panel {
+        case .audio: "audio-\(engine?.selectedAudioTrackID ?? 0)"
+        case .subtitles: engine?.selectedSubtitleTrackID.map { "subtitle-\($0)" } ?? "subtitle-off"
+        case .playback: "rate-\(options.rate)"
+        case .chapters: "chapter-\(chapter(at: displayPosition)?.index ?? 0)"
+        case .episodes: "episode-\(item.id)"
+        case .quality: "bitrate-\(preferences.maxBitrate ?? 0)"
+        case .info: "infoRows"
+        }
+    }
+
+    /// The chapter playing at `position`, for showing while scrubbing.
+    func chapter(at position: Ticks) -> ItemChapter? {
+        chapters.last { $0.start <= position }
+    }
+
+    func chapterImageURL(_ chapter: ItemChapter) -> URL? {
+        client.imageURL(itemID: item.id, kind: .chapter, tag: chapter.imageTag, index: chapter.index, maxWidth: 480)
+    }
+
+    func thumbnailURL(_ episode: MediaItem) -> URL? {
+        client.imageURL(itemID: episode.id, kind: .primary, tag: episode.images.primaryTag, index: nil, maxWidth: 480)
+    }
+
+    var infoRows: [PlayerInfo.Row] {
+        PlayerInfo.rows(
+            source: session?.currentSource,
+            route: session?.route,
+            audioIndex: engine?.selectedAudioTrackID,
+            subtitleIndex: engine?.selectedSubtitleTrackID
+        )
+    }
+
+    /// Versions of this item when the server has more than one.
+    var versions: [PlaybackMediaSource] {
+        let sources = session?.mediaSources ?? []
+        return sources.count > 1 ? sources : []
+    }
+
+    func availability(of option: PlaybackOption) -> PlaybackOptionAvailability {
+        session?.availability(of: option) ?? .unavailable("Playback hasn't started yet.")
+    }
+
+    /// A limit makes the server convert the video, which is the one thing here that costs it anything.
+    var qualityNote: String? {
+        preferences.maxBitrate == nil ? nil : "The server converts anything above this, which uses its processor."
     }
 
     var duration: Ticks? {
@@ -98,11 +180,19 @@ final class PlayerModel {
         skip = nil
         skippedSegmentIDs = []
         segments = []
-        noteActivity()
+        chapters = []
+        controls.reset()
+        await loadPreferences()
+        guard !isExiting else {
+            return
+        }
         let session = PlaybackSession(
             client: client,
             itemID: item.id,
             startPosition: resumePosition ?? .zero,
+            options: options,
+            maxBitrate: preferences.maxBitrate,
+            captionStyle: captionStyle,
             engines: engines,
             makeEngine: makeEngine
         )
@@ -121,11 +211,39 @@ final class PlayerModel {
             phase = .failed(error.userMessage)
             return
         }
-        // Most servers have no segments, and playback doesn't depend on them.
-        let segments = (try? await client.mediaSegments(itemID: item.id)) ?? []
+        // Most servers have no segments, and playback doesn't depend on any of these.
+        async let segments = try? client.mediaSegments(itemID: item.id)
+        async let chapters = try? client.chapters(itemID: item.id)
+        async let episodes = loadEpisodes()
+        let (loadedSegments, loadedChapters, loadedEpisodes) = await (segments, chapters, episodes)
         if self.session === session {
-            self.segments = segments
+            self.segments = loadedSegments ?? []
+            self.chapters = loadedChapters ?? []
+            self.episodes = loadedEpisodes
         }
+    }
+
+    private func loadEpisodes() async -> [MediaItem] {
+        guard item.kind == .episode, let seriesID = item.seriesID else {
+            return []
+        }
+        if episodes.first?.seriesID == seriesID {
+            return episodes
+        }
+        return (try? await client.episodes(seriesID: seriesID, seasonID: nil)) ?? []
+    }
+
+    private func loadPreferences() async {
+        guard preferencesUserID == nil, let userID = await client.currentSession()?.user.id else {
+            return
+        }
+        preferencesUserID = userID
+        preferences = preferenceStore.load(userID: userID)
+        options.subtitleScale = preferences.subtitleScale ?? captionStyle.scale.map(Self.clampedScale) ?? 1
+        options.subtitleTextColor = captionStyle.textColor
+        options.subtitleBackgroundColor = captionStyle.backgroundColor
+        options.subtitleRaise = preferences.subtitleRaise
+        options.pictureMode = preferences.pictureMode
     }
 
     /// Call a few times a second while the screen is up.
@@ -159,10 +277,30 @@ final class PlayerModel {
             break
         }
         updateSkip(position: engine.position)
-        let isPaused = isPaused
-        if controlsVisible, !isPaused, scrubPosition == nil, !keepControlsVisible,
-           now().timeIntervalSince(lastActivity) >= Self.controlsTimeout {
-            controlsVisible = false
+        await send(.tick)
+    }
+
+    /// Everything the remote does while playing goes through here.
+    func send(_ event: PlayerControls.Event) async {
+        guard phase == .playing else {
+            return
+        }
+        let context = PlayerControls.Context(
+            position: engine?.position ?? .zero,
+            duration: duration,
+            isPaused: isPaused,
+            now: now()
+        )
+        let effects = controls.handle(event, context)
+        session?.setLiftsSubtitles(controls.isShowing)
+        for effect in effects {
+            switch effect {
+            case .pause: await session?.pause()
+            case .play: await session?.play()
+            case .toggle: await togglePlayPause()
+            case .seek(let position): await session?.seek(to: position)
+            case .exit: await exit()
+            }
         }
     }
 
@@ -193,7 +331,6 @@ final class PlayerModel {
     }
 
     func togglePlayPause() async {
-        noteActivity()
         if isPaused {
             await session?.play()
         } else {
@@ -201,41 +338,12 @@ final class PlayerModel {
         }
     }
 
-    /// Select on the transport bar: commits a scrub, shows hidden controls, otherwise toggles.
-    func selectPressed() async {
-        if scrubPosition != nil {
-            await commitScrub()
-        } else if !controlsVisible {
-            noteActivity()
-        } else {
-            await togglePlayPause()
-        }
-    }
-
-    func noteActivity() {
-        lastActivity = now()
-        controlsVisible = true
-    }
-
-    /// Coming back from the track buttons counts as activity, or the controls would vanish at once.
-    func focusMoved(toControls: Bool) {
-        if keepControlsVisible, !toControls {
-            noteActivity()
-        }
-        keepControlsVisible = toControls
-    }
-
-    /// Back steps out one level at a time: a scrub, then the controls, then the player.
+    /// Back steps out one level at a time, and with nothing showing it leaves the player.
     func backPressed() async {
         if case .upNext = phase {
             cancelUpNext()
-        } else if phase != .playing {
-            await exit()
-        } else if scrubPosition != nil {
-            scrubPosition = nil
-            noteActivity()
-        } else if controlsVisible {
-            controlsVisible = false
+        } else if phase == .playing {
+            await send(.back)
         } else {
             await exit()
         }
@@ -249,34 +357,6 @@ final class PlayerModel {
         phase = .finished
     }
 
-    func scrub(bySeconds seconds: TimeInterval) {
-        guard let engine else {
-            return
-        }
-        noteActivity()
-        let current = scrubPosition ?? engine.position
-        var target = max(current.seconds + seconds, 0)
-        if let duration = duration?.seconds, duration > 0 {
-            target = min(target, duration)
-        }
-        scrubPosition = Ticks(seconds: target)
-    }
-
-    /// `fraction` is the part of the touch surface swiped since the last call.
-    func scrub(byPanFraction fraction: Double) {
-        let span = min(duration?.seconds ?? Self.panScrubSeconds, Self.panScrubSeconds)
-        scrub(bySeconds: fraction * span)
-    }
-
-    func commitScrub() async {
-        guard let target = scrubPosition else {
-            return
-        }
-        scrubPosition = nil
-        noteActivity()
-        await session?.seek(to: target)
-    }
-
     func skipPressed() async {
         guard let skip else {
             return
@@ -287,7 +367,6 @@ final class PlayerModel {
     }
 
     func selectAudioTrack(id: Int) async {
-        noteActivity()
         do {
             try await session?.selectAudioTrack(id: id)
         } catch {
@@ -296,11 +375,112 @@ final class PlayerModel {
     }
 
     func selectSubtitleTrack(id: Int?) async {
-        noteActivity()
         do {
             try await session?.selectSubtitleTrack(id: id)
         } catch {
             trackError = error.userMessage
+        }
+    }
+
+    func setRate(_ rate: Double) async {
+        await update { $0.rate = rate }
+    }
+
+    func setPictureMode(_ mode: PictureMode) async {
+        preferences.pictureMode = mode
+        savePreferences()
+        await update { $0.pictureMode = mode }
+    }
+
+    func adjustSubtitleScale(by steps: Int) async {
+        let clamped = Self.clampedScale(options.subtitleScale + Double(steps) * Self.subtitleScaleStep)
+        preferences.subtitleScale = clamped
+        savePreferences()
+        await update { $0.subtitleScale = clamped }
+    }
+
+    func adjustSubtitleRaise(by steps: Int) async {
+        let limits = PlaybackOptions.subtitleRaises
+        let clamped = min(max(options.subtitleRaise + steps * Self.subtitleRaiseStep, limits.lowerBound), limits.upperBound)
+        preferences.subtitleRaise = clamped
+        savePreferences()
+        await update { $0.subtitleRaise = clamped }
+    }
+
+    func adjustSubtitleDelay(by steps: Int) async {
+        let delay = stepped(options.subtitleDelay, by: steps)
+        await update { $0.subtitleDelay = delay }
+    }
+
+    func adjustAudioDelay(by steps: Int) async {
+        let delay = stepped(options.audioDelay, by: steps)
+        await update { $0.audioDelay = delay }
+    }
+
+    func setMaxBitrate(_ bitrate: Int?) async {
+        let source = session?.preferredSourceID
+        do {
+            try await session?.setQuality(maxBitrate: bitrate, sourceID: source)
+            preferences.maxBitrate = bitrate
+            savePreferences()
+        } catch {
+            trackError = error.userMessage
+        }
+    }
+
+    func selectVersion(id: String) async {
+        do {
+            try await session?.setQuality(maxBitrate: session?.maxBitrate, sourceID: id)
+        } catch {
+            trackError = error.userMessage
+        }
+    }
+
+    func selectChapter(_ chapter: ItemChapter) async {
+        await session?.seek(to: chapter.start)
+        controls.reset()
+        session?.setLiftsSubtitles(false)
+    }
+
+    /// Stop goes first, so the server has this episode's position before the next one starts.
+    func playEpisode(_ episode: MediaItem) async {
+        guard phase == .playing else {
+            return
+        }
+        controls.reset()
+        await session?.stop()
+        guard !isExiting else {
+            return
+        }
+        session = nil
+        await play(episode)
+    }
+
+    private static func clampedScale(_ scale: Double) -> Double {
+        let limits = PlaybackOptions.subtitleScales
+        return min(max((scale * 10).rounded() / 10, limits.lowerBound), limits.upperBound)
+    }
+
+    private func stepped(_ delay: TimeInterval, by steps: Int) -> TimeInterval {
+        let limits = PlaybackOptions.delays
+        let value = ((delay + Double(steps) * Self.delayStep) * 10).rounded() / 10
+        return min(max(value, limits.lowerBound), limits.upperBound)
+    }
+
+    private func update(_ change: (inout PlaybackOptions) -> Void) async {
+        var new = options
+        change(&new)
+        do {
+            try await session?.setOptions(new)
+            options = new
+        } catch {
+            trackError = error.userMessage
+        }
+    }
+
+    private func savePreferences() {
+        if let preferencesUserID {
+            preferenceStore.save(preferences, userID: preferencesUserID)
         }
     }
 
@@ -351,6 +531,9 @@ final class PlayerModel {
         item = next
         let saved = next.userState.playbackPosition
         resumePosition = saved > .zero ? saved : nil
+        // A timing offset fixes one file, so it doesn't carry over.
+        options.subtitleDelay = 0
+        options.audioDelay = 0
         await start()
     }
 }

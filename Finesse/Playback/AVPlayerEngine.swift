@@ -24,6 +24,21 @@ final class AVPlayerEngine: PlaybackEngine {
     /// What the user asked for before the item was ready, which starting up has to respect.
     @ObservationIgnored private var wantsPause = false
     @ObservationIgnored private weak var renderView: AVPlayerRenderView?
+    @ObservationIgnored private var options = PlaybackOptions()
+    /// AVPlayer ignores text style rules on an MP4's subtitles, so it hands them over to be drawn here.
+    @ObservationIgnored private let subtitleOutput = AVPlayerItemLegibleOutput(mediaSubtypesForNativeRepresentation: [])
+    @ObservationIgnored private let subtitleReceiver = SubtitleReceiver()
+    /// What's showing now. Internal so a test can read it.
+    @ObservationIgnored private(set) var subtitleText = ""
+
+    init() {
+        subtitleOutput.suppressesPlayerRendering = true
+        subtitleOutput.setDelegate(subtitleReceiver, queue: .main)
+        subtitleReceiver.onText = { [weak self] text in
+            self?.subtitleText = text
+            self?.renderView?.showSubtitle(text)
+        }
+    }
 
     func load(_ request: PlaybackLoadRequest) {
         state = .loading
@@ -37,6 +52,8 @@ final class AVPlayerEngine: PlaybackEngine {
         wantsPause = false
 
         let item = AVPlayerItem(url: request.url)
+        item.audioTimePitchAlgorithm = .timeDomain
+        item.add(subtitleOutput)
         observe(item)
         player.replaceCurrentItem(with: item)
     }
@@ -77,7 +94,18 @@ final class AVPlayerEngine: PlaybackEngine {
 
     func selectSubtitleTrack(id: Int?) {
         selectedSubtitleTrackID = id
+        subtitleText = ""
+        renderView?.showSubtitle("")
         applySelection(.legible, trackID: id, tracks: subtitleTracks)
+    }
+
+    func apply(_ options: PlaybackOptions) {
+        self.options = options
+        player.defaultRate = Float(options.rate)
+        if player.rate != 0 {
+            player.rate = Float(options.rate)
+        }
+        renderView?.apply(options)
     }
 
     func stop() {
@@ -94,6 +122,8 @@ final class AVPlayerEngine: PlaybackEngine {
 
     func makeRenderView() -> UIView {
         let view = AVPlayerRenderView(player: player)
+        view.apply(options)
+        view.showSubtitle(subtitleText)
         renderView = view
         return view
     }
@@ -239,7 +269,27 @@ final class AVPlayerEngine: PlaybackEngine {
     }
 }
 
+/// Delivered on the main queue, as asked for in `setDelegate`.
+private final class SubtitleReceiver: NSObject, AVPlayerItemLegibleOutputPushDelegate {
+    var onText: (@MainActor (String) -> Void)?
+
+    func legibleOutput(
+        _ output: AVPlayerItemLegibleOutput,
+        didOutputAttributedStrings strings: [NSAttributedString],
+        nativeSampleBuffers nativeSamples: [Any],
+        forItemTime itemTime: CMTime
+    ) {
+        let text = strings.map(\.string).joined(separator: "\n")
+        MainActor.assumeIsolated { onText?(text) }
+    }
+}
+
 private final class AVPlayerRenderView: UIView {
+    private let subtitleLabel = UILabel()
+    private var subtitleScale = 1.0
+    private var subtitleRaise = 0
+    private var subtitleText = ""
+    private var subtitleColor = UIColor.white
     override class var layerClass: AnyClass { AVPlayerLayer.self }
 
     init(player: AVPlayer) {
@@ -247,6 +297,11 @@ private final class AVPlayerRenderView: UIView {
         backgroundColor = .black
         playerLayer.player = player
         playerLayer.videoGravity = .resizeAspect
+        subtitleLabel.numberOfLines = 0
+        subtitleLabel.textAlignment = .center
+        subtitleLabel.clipsToBounds = true
+        subtitleLabel.layer.cornerRadius = 8
+        addSubview(subtitleLabel)
     }
 
     @available(*, unavailable)
@@ -256,6 +311,47 @@ private final class AVPlayerRenderView: UIView {
 
     private var playerLayer: AVPlayerLayer {
         layer as! AVPlayerLayer
+    }
+
+    func apply(_ options: PlaybackOptions) {
+        switch options.pictureMode {
+        case .fit: playerLayer.videoGravity = .resizeAspect
+        case .fill: playerLayer.videoGravity = .resizeAspectFill
+        case .stretch: playerLayer.videoGravity = .resize
+        }
+        subtitleScale = options.subtitleScale
+        subtitleRaise = options.subtitleRaise
+        subtitleColor = options.subtitleTextColor.map(Self.color) ?? .white
+        subtitleLabel.backgroundColor = options.subtitleBackgroundColor.map(Self.color) ?? .clear
+        setNeedsLayout()
+    }
+
+    func showSubtitle(_ text: String) {
+        subtitleText = text
+        setNeedsLayout()
+    }
+
+    private static func color(_ color: SubtitleColor) -> UIColor {
+        UIColor(red: color.red, green: color.green, blue: color.blue, alpha: color.alpha)
+    }
+
+    /// Sizes follow the screen, as mpv's do, so the two engines look alike.
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // A soft shadow keeps white text readable on a white frame. A stroke leaves marks across the letters.
+        let shadow = NSShadow()
+        shadow.shadowColor = UIColor.black
+        shadow.shadowBlurRadius = bounds.height * 0.005
+        shadow.shadowOffset = CGSize(width: 0, height: bounds.height * 0.001)
+        subtitleLabel.attributedText = NSAttributedString(string: subtitleText, attributes: [
+            .font: UIFont.systemFont(ofSize: bounds.height * 0.042 * subtitleScale, weight: .medium),
+            .foregroundColor: subtitleColor,
+            .shadow: shadow,
+        ])
+        let width = bounds.width * 0.8
+        let height = subtitleLabel.sizeThatFits(CGSize(width: width, height: bounds.height)).height
+        let bottom = bounds.height * (0.95 - Double(subtitleRaise) / 100)
+        subtitleLabel.frame = CGRect(x: (bounds.width - width) / 2, y: bottom - height, width: width, height: height)
     }
 
     /// AVPlayerLayer doesn't request match-content by itself the way AVPlayerViewController does.

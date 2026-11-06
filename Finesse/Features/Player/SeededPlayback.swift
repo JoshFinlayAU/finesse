@@ -20,6 +20,30 @@ enum SeededPlayback {
         return arguments.contains("-FinesseSeededAVPlayerFails") ? [.avPlayer] : []
     }
 
+    /// `-FinesseSeededNoSegments` keeps skip buttons out of a test about something else.
+    static var hasSegments: Bool {
+        !ProcessInfo.processInfo.arguments.contains("-FinesseSeededNoSegments")
+    }
+
+    /// `-FinesseSeededBrightFrame` and `-FinesseSeededDarkFrame` are the worst cases for the glass.
+    static var frameColor: UIColor {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-FinesseSeededBrightFrame") { return .white }
+        if arguments.contains("-FinesseSeededDarkFrame") { return .black }
+        return .darkGray
+    }
+
+    /// Its own place, emptied on launch, so one test's saved choices can't reach the next.
+    /// `-FinesseSeededKeepPreferences` is for the test that checks they survive a relaunch.
+    @MainActor static let preferenceStore: PlayerPreferenceStore = {
+        let name = "SeededPlayback"
+        let defaults = UserDefaults(suiteName: name) ?? .standard
+        if !ProcessInfo.processInfo.arguments.contains("-FinesseSeededKeepPreferences") {
+            defaults.removePersistentDomain(forName: name)
+        }
+        return PlayerPreferenceStore(defaults: defaults)
+    }()
+
     /// Seconds after the start position: Skip Intro, Skip Credits, then one left to pass by itself.
     static let introRange = 4.0..<14.0
     static let creditsRange = 24.0..<30.0
@@ -40,11 +64,11 @@ enum SeededPlayback {
                 end: Ticks(seconds: start + range.upperBound)
             )
         }
-        let segments = [
+        let segments = hasSegments ? [
             segment("seeded-intro", .intro, introRange),
             segment("seeded-credits", .outro, creditsRange),
             segment("seeded-unused", .outro, unusedRange),
-        ]
+        ] : []
         var source = PlaybackMediaSource(id: itemID)
         source.container = "mp4"
         source.supportsDirectPlay = true
@@ -53,11 +77,35 @@ enum SeededPlayback {
         video.codec = "h264"
         var audio = MediaStreamInfo(index: 1, kind: .audio)
         audio.codec = "aac"
-        source.streams = [video, audio]
+        audio.displayTitle = "English AAC Stereo"
+        var otherAudio = MediaStreamInfo(index: 2, kind: .audio)
+        otherAudio.codec = "aac"
+        otherAudio.displayTitle = "French AAC Stereo"
+        var subtitle = MediaStreamInfo(index: 3, kind: .subtitle)
+        subtitle.codec = "mov_text"
+        subtitle.displayTitle = "English"
+        var image = MediaStreamInfo(index: 4, kind: .subtitle)
+        image.codec = "pgssub"
+        image.displayTitle = "French PGS"
+        source.streams = [video, audio, otherAudio, subtitle, image]
+        source.bitRate = 5_000_000
+        source.supportsTranscoding = true
+        source.transcodingURL = URL(string: "http://seeded.invalid/master.m3u8")
         let info = PlaybackInfo(playSessionID: "seeded", mediaSources: [source])
         await fake.configure {
             $0.playbackInfoValue = info
             $0.segments[itemID] = segments
+            if let seriesID = request.item.seriesID {
+                $0.allItems = (1...5).map {
+                    var episode = MediaItem(id: "seeded-episode-\($0)", name: "Episode \($0)", kind: .episode)
+                    episode.seriesID = seriesID
+                    return episode
+                }
+                $0.allItems.insert(request.item, at: 2)
+            }
+            $0.chapters[itemID] = (0..<8).map {
+                ItemChapter(index: $0, name: "Chapter \($0 + 1)", start: Ticks(seconds: Double($0) * 600))
+            }
         }
     }
 }
@@ -101,6 +149,7 @@ final class SeededPlaybackEngine: PlaybackEngine {
     func seek(to position: Ticks) { self.position = position }
     func selectAudioTrack(id: Int) { selectedAudioTrackID = id }
     func selectSubtitleTrack(id: Int?) { selectedSubtitleTrackID = id }
+    func apply(_ options: PlaybackOptions) {}
 
     func stop() {
         clock?.cancel()
@@ -114,8 +163,8 @@ final class SeededPlaybackEngine: PlaybackEngine {
         label.isAccessibilityElement = true
         label.accessibilityIdentifier = "seededEngine"
         label.textAlignment = .center
-        label.textColor = .white
-        label.backgroundColor = .darkGray
+        label.textColor = SeededPlayback.frameColor == .white ? .black : .white
+        label.backgroundColor = SeededPlayback.frameColor
         return label
     }
 

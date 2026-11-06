@@ -81,6 +81,8 @@ protocol PlaybackEngine: AnyObject, Observable {
     func selectAudioTrack(id: Int)
     /// Nil turns subtitles off.
     func selectSubtitleTrack(id: Int?)
+    /// Applies whatever this engine supports. See `PlaybackOption.isSupported(by:)`.
+    func apply(_ options: PlaybackOptions)
     /// Stops for good. An engine is not reused after this.
     func stop()
     /// The view video is drawn into. Only `PlaybackSurface` calls this.

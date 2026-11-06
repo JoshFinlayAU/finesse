@@ -24,7 +24,12 @@ struct PlayerScreen: View {
             #if DEBUG
             if SeededPlayback.isEnabled {
                 await SeededPlayback.prepare(client: client, request: request)
-                model = PlayerModel(client: client, request: request, makeEngine: { SeededPlaybackEngine(kind: $0) })
+                model = PlayerModel(
+                    client: client,
+                    request: request,
+                    preferenceStore: SeededPlayback.preferenceStore,
+                    makeEngine: { SeededPlaybackEngine(kind: $0) }
+                )
                 return
             }
             #endif
@@ -40,15 +45,11 @@ struct PlayerScreen: View {
 }
 
 private struct PlayerContent: View {
-    private enum Focus: Hashable {
-        case transport
-        case skip
-    }
-
     let model: PlayerModel
     let onFinished: () -> Void
-    @FocusState private var focus: Focus?
-    @State private var scrubCommit: Task<Void, Never>?
+    @FocusState private var focus: PlayerFocus?
+    /// A move that took focus somewhere isn't also a swipe that should close the bar.
+    @State private var lastFocusChange = Date.distantPast
 
     var body: some View {
         ZStack {
@@ -77,9 +78,15 @@ private struct PlayerContent: View {
                 EmptyView()
             }
         }
-        .background { RemotePanRecognizer(onPan: pan, onEnded: scheduleScrubCommit) }
+        .background {
+            RemoteTouchRecognizer(
+                onPan: { fraction in Task { await model.send(.panned(fraction)) } },
+                onSwipe: moved
+            )
+        }
+        .onMoveCommand(perform: moved)
         .onExitCommand { Task { await model.backPressed() } }
-        .onPlayPauseCommand { Task { await model.togglePlayPause() } }
+        .onPlayPauseCommand { Task { await model.send(.playPause) } }
         .task { await model.start() }
         .task {
             while !Task.isCancelled {
@@ -98,34 +105,27 @@ private struct PlayerContent: View {
         .onChange(of: model.phase) { _, phase in
             switch phase {
             case .finished: onFinished()
-            case .playing: focus = .transport
+            case .playing: placeFocus()
             default: break
             }
         }
         .onChange(of: model.skip) { _, skip in
             // Takes focus only when nothing else is in use, so it never interrupts the controls.
-            if skip != nil, !model.controlsVisible {
+            if skip != nil, model.controls.mode == .hidden {
                 focus = .skip
             } else if skip == nil, focus == .skip {
-                focus = .transport
+                placeFocus()
             }
         }
-        .onChange(of: model.controlsVisible) { _, visible in
-            // With the controls gone there's nothing else to press, so one click should skip.
-            if !visible, model.skip != nil, focus == .transport {
-                focus = .skip
-            }
+        .onChange(of: model.controls.mode) { old, _ in
+            placeFocus(leaving: old)
         }
-        .onChange(of: focus) { old, focus in
-            // A skip button going away leaves focus empty for a moment. That isn't the user moving
-            // to the track buttons, and treating it as that would bring the controls up by themselves.
-            if old == .skip, focus == nil {
-                return
-            }
-            model.focusMoved(toControls: focus != .transport && focus != .skip)
+        .onChange(of: focus) { _, _ in
+            lastFocusChange = .now
+            Task { await model.send(.activity) }
         }
         .alert(
-            "Couldn't Change Track",
+            "Couldn't Change That",
             isPresented: Binding(get: { model.trackError != nil }, set: { if !$0 { model.clearTrackError() } })
         ) {
             Button("OK", role: .cancel) {}
@@ -140,196 +140,136 @@ private struct PlayerContent: View {
     }
 
     private var playing: some View {
-        VStack(alignment: .trailing, spacing: 24) {
-            Spacer()
+        ZStack {
+            PlayerRemoteSurface(model: model, focus: $focus) {
+                Task { await model.send(.click) }
+            }
             if model.isBuffering {
                 ProgressView()
                     .controlSize(.large)
-                    .frame(maxWidth: .infinity)
+            }
+            VStack(alignment: .trailing, spacing: 24) {
                 Spacer()
-            }
-            if let skip = model.skip {
-                Button(skip.title) {
-                    Task { await model.skipPressed() }
+                if let panel = model.controls.panel {
+                    PlayerPanelView(panel: panel, model: model, focus: $focus)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                .buttonStyle(.glass)
-                .focused($focus, equals: .skip)
-                .accessibilityIdentifier("skipSegment")
-            }
-            PlayerTransportBar(model: model) {
-                Task { await model.selectPressed() }
-            } onMove: { direction in
-                move(direction)
-            }
-            .focused($focus, equals: .transport)
-            if model.controlsVisible {
-                PlayerTrackButtons(model: model)
+                if let skip = model.skip, model.controls.scrub == nil {
+                    Button(skip.title) {
+                        Task { await model.skipPressed() }
+                    }
+                    .buttonStyle(.glass)
+                    .focused($focus, equals: .skip)
+                    .accessibilityIdentifier("skipSegment")
+                }
+                if model.controls.hasButtons {
+                    PlayerHUDBar(model: model, focus: $focus)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if let scrub = model.controls.scrub {
+                    PlayerScrubBar(model: model, scrub: scrub)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if model.isPaused {
+                    PlayerPausedPill(position: model.displayPosition)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transition(.opacity)
+                }
             }
         }
-        .padding(60)
-        .defaultFocus($focus, .transport)
-        // The phase changes before this exists, so focus can only be placed once it has appeared.
-        .onAppear { focus = .transport }
+        .animation(.smooth(duration: 0.35), value: animationKey)
+        .onAppear { placeFocus() }
     }
 
-    private func move(_ direction: MoveCommandDirection) {
+    /// Changes with what's showing but not with every step of a scrub, which has its own motion.
+    private var animationKey: String {
+        switch model.controls.mode {
+        case .hidden: model.isPaused ? "paused" : "hidden"
+        case .bar: "bar"
+        case .panel(let panel): panel.rawValue
+        case .scrubbing: "scrubbing"
+        }
+    }
+
+    private func moved(_ direction: MoveCommandDirection) {
+        let event: PlayerControls.Event
         switch direction {
-        case .left:
-            model.scrub(bySeconds: -PlayerModel.clickScrubSeconds)
-            scheduleScrubCommit()
-        case .right:
-            model.scrub(bySeconds: PlayerModel.clickScrubSeconds)
-            scheduleScrubCommit()
-        default:
-            model.noteActivity()
+        case .up: event = .swipeUp
+        case .left: event = .moveLeft
+        case .right: event = .moveRight
+        case .down:
+            guard Date.now.timeIntervalSince(lastFocusChange) > 0.25 else { return }
+            event = .swipeDown
+        @unknown default: return
         }
+        Task { await model.send(event) }
     }
 
-    private func pan(_ fraction: Double) {
-        guard focus == .transport else { return }
-        scrubCommit?.cancel()
-        model.scrub(byPanFraction: fraction)
-    }
-
-    /// Lets repeated presses add up before the engine has to seek.
-    private func scheduleScrubCommit() {
-        scrubCommit?.cancel()
-        scrubCommit = Task {
-            try? await Task.sleep(for: .milliseconds(800))
-            guard !Task.isCancelled else { return }
-            await model.commitScrub()
+    /// New targets don't exist or can't take focus until this update has finished.
+    private func placeFocus(leaving old: PlayerControls.Mode? = nil) {
+        let target: PlayerFocus
+        switch model.controls.mode {
+        case .hidden:
+            target = model.skip == nil ? .surface : .skip
+        case .scrubbing:
+            target = .surface
+        case .bar:
+            if case .panel(let panel)? = old {
+                target = .panelButton(panel)
+            } else {
+                target = .main
+            }
+        case .panel(let panel):
+            target = .panelRow(model.initialRowID(of: panel))
+        }
+        Task { @MainActor in
+            await Task.yield()
+            focus = target
         }
     }
 }
 
-/// Always focusable, even when invisible, so the first press after the controls hide still lands here.
-private struct PlayerTransportBar: View {
+/// Invisible and full screen. It has focus while nothing else shows, so the first click lands here.
+private struct PlayerRemoteSurface: View {
     let model: PlayerModel
-    let onSelect: () -> Void
-    let onMove: (MoveCommandDirection) -> Void
+    let focus: FocusState<PlayerFocus?>.Binding
+    let onClick: () -> Void
 
     var body: some View {
-        Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(model.item.cardTitle)
-                    .font(.title3.weight(.semibold))
-                    .lineLimit(1)
-                if let subtitle = model.item.cardSubtitle {
-                    Text(subtitle)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                ProgressView(value: fraction)
-                    .tint(.white)
-                HStack {
-                    Text(PlayerTime.format(model.displayPosition))
-                    Spacer()
-                    if model.isPaused {
-                        Image(systemName: "pause.fill")
-                    }
-                    Spacer()
-                    Text(model.duration.map(PlayerTime.format) ?? "")
-                }
-                .font(.callout.monospacedDigit())
-            }
-            .padding(32)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .glassEffect(in: .rect(cornerRadius: 32))
-            .opacity(model.controlsVisible ? 1 : 0)
+        Button(action: onClick) {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(.rect)
         }
-        .buttonStyle(PlayerBarButtonStyle(showsFocus: model.controlsVisible))
-        .onMoveCommand(perform: onMove)
+        .buttonStyle(PlayerInvisibleButtonStyle())
+        .focused(focus, equals: .surface)
+        .disabled(model.controls.hasButtons)
+        .ignoresSafeArea()
         .accessibilityIdentifier("transportBar")
         .accessibilityValue(accessibilityValue)
     }
 
-    /// XCUITest can't see focus inside the full-screen cover, so this also says when it has left the bar.
+    /// XCUITest can't see focus inside the full-screen cover, so this says what's showing.
     private var accessibilityValue: String {
         var parts = [PlayerTime.format(model.displayPosition)]
         if model.isPaused { parts.append("paused") }
-        if model.keepControlsVisible { parts.append("track buttons focused") }
+        switch model.controls.mode {
+        case .hidden: parts.append("hidden")
+        case .bar: parts.append("bar")
+        case .panel(let panel): parts.append("panel \(panel.rawValue)")
+        case .scrubbing: parts.append("scrubbing")
+        }
+        switch focus.wrappedValue {
+        case .main: parts.append("focus main")
+        case .panelButton(let panel): parts.append("focus \(panel.rawValue)")
+        case .skip: parts.append("focus skip")
+        default: break
+        }
         return parts.joined(separator: ", ")
     }
-
-    private var fraction: Double {
-        guard let duration = model.duration?.seconds, duration > 0 else {
-            return 0
-        }
-        return min(max(model.displayPosition.seconds / duration, 0), 1)
-    }
 }
 
-/// A quiet focus ring instead of the lift a card gets, and none while the controls are hidden.
-private struct PlayerBarButtonStyle: ButtonStyle {
-    let showsFocus: Bool
-
+private struct PlayerInvisibleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        PlayerBarButtonBody(label: configuration.label, showsFocus: showsFocus)
-    }
-}
-
-private struct PlayerBarButtonBody<Label: View>: View {
-    let label: Label
-    let showsFocus: Bool
-    @Environment(\.isFocused) private var isFocused
-
-    var body: some View {
-        label.overlay {
-            RoundedRectangle(cornerRadius: 32)
-                .strokeBorder(.white.opacity(isFocused && showsFocus ? 0.8 : 0), lineWidth: 3)
-        }
-    }
-}
-
-private struct PlayerTrackButtons: View {
-    let model: PlayerModel
-
-    var body: some View {
-        HStack(spacing: 24) {
-            if let engine = model.engine {
-                if engine.audioTracks.count > 1 {
-                    Menu {
-                        ForEach(engine.audioTracks) { track in
-                            trackButton(track.title, selected: engine.selectedAudioTrackID == track.id) {
-                                await model.selectAudioTrack(id: track.id)
-                            }
-                        }
-                    } label: {
-                        Label("Audio", systemImage: "speaker.wave.2")
-                    }
-                    .accessibilityIdentifier("audioTracks")
-                }
-                if !engine.subtitleTracks.isEmpty {
-                    Menu {
-                        trackButton("Off", selected: engine.selectedSubtitleTrackID == nil) {
-                            await model.selectSubtitleTrack(id: nil)
-                        }
-                        ForEach(engine.subtitleTracks) { track in
-                            trackButton(track.title, selected: engine.selectedSubtitleTrackID == track.id) {
-                                await model.selectSubtitleTrack(id: track.id)
-                            }
-                        }
-                    } label: {
-                        Label("Subtitles", systemImage: "captions.bubble")
-                    }
-                    .accessibilityIdentifier("subtitleTracks")
-                }
-            }
-        }
-        .buttonStyle(.glass)
-    }
-
-    private func trackButton(_ title: String, selected: Bool, action: @escaping () async -> Void) -> some View {
-        Button {
-            Task { await action() }
-        } label: {
-            if selected {
-                Label(title, systemImage: "checkmark")
-            } else {
-                Text(title)
-            }
-        }
+        configuration.label
     }
 }
 
