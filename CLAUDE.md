@@ -22,7 +22,7 @@ These are the owner's choices. Don't change them without asking.
 | Test server | Existing Jellyfin server, test user only |
 | Distribution | TestFlight first, kept App Store-ready |
 | Licence | Private for now; open or closed source to be decided before release |
-| Bundle ID | `au.com.athenanetworks.finesse`. Not yet registered: the developer portal and App Store Connect need a separate go-ahead from the owner |
+| Bundle ID | `au.com.athenanetworks.finesse`. Registered in the developer portal on 2026-11-07. An App Store Connect record needs a separate go-ahead from the owner |
 | Apple team | `4S7BG5A4XV` |
 | Plain HTTP | Allowed to any server (`NSAllowsArbitraryLoads`), because servers are user-configured and self-hosted |
 
@@ -41,12 +41,12 @@ This Linux workspace can't compile or run anything tvOS. **A change is only veri
 
 ### First-time setup
 
-Done on 2026-11-06, except for the last item.
+Done on 2026-11-06, with the Apple TV added on 2026-11-07.
 
 - `fin-mac` is in `~/.ssh/config` on Linux with key auth. It is `user@mac.example`, which also hosts production iMessageAI and other spokes' builds, so touch only `~/Developer/Finesse` and our own simulators.
 - Xcode 27.2 and XcodeGen were already on the Mac, and `~/Developer/Finesse` exists.
 - tvOS 27.2 and 26.5 simulator runtimes are installed. Our simulators are `Finesse Apple TV 4K` (27.2, the default) and `Finesse Apple TV 4K 26` (26.5, the nearest installed to the minimum OS). The 26.5 one needs `OS=26.5` in the destination, because `xcodebuild` otherwise assumes `OS=latest` and reports no matching device.
-- Still needs the owner: sign in to the Apple developer account for this project and pair the Apple TV.
+- The `Lounge Room` Apple TV is paired and registered, and device builds sign headlessly with the `aisbuild` keychain. No Xcode account sign-in is needed. Details are in `memory/mac-setup.md`.
 
 ### Sync
 
@@ -101,12 +101,11 @@ sed 's/^/TEST_RUNNER_/' .env.local | ssh fin-mac 'set -a; . /dev/stdin; set +a; 
 
 ### Real Apple TV
 
+Hold `fin-mac-build` and `lounge-room-apple-tv`, sync, then run this from the spoke root. Leave out `install` to build and sign without touching the TV, which is the household's, so don't play anything on it unprompted.
+
 ```sh
-ssh fin-mac 'xcrun devicectl list devices'
-ssh fin-mac 'cd ~/Developer/Finesse && xcodebuild build -project Finesse.xcodeproj -scheme Finesse \
-  -destination "platform=tvOS,id=<UDID>" -derivedDataPath build -allowProvisioningUpdates'
-ssh fin-mac 'xcrun devicectl device install app --device <UDID> \
-  ~/Developer/Finesse/build/Build/Products/Debug-appletvos/Finesse.app'
+ssh fin-mac 'bash -s install' < scripts/apple-tv-build.sh
+ssh fin-mac 'xcrun devicectl device capture screenshot --device 00000000-0000000000000000 --destination /tmp/fin-tv.png' && scp fin-mac:/tmp/fin-tv.png /tmp/fin-tv.png
 ```
 
 Sign off any playback change on the real device. The simulator doesn't represent hardware decode, HDR/Dolby Vision, display mode switching, audio passthrough or Siri Remote feel.
