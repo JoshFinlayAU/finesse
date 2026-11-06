@@ -51,6 +51,8 @@ enum JellyfinError: Error, Hashable, Sendable {
     case forbidden
     case notFound
     case quickConnectDisabled
+    /// App Transport Security refused a plain HTTP connection. Ask for HTTPS or a local address.
+    case insecureConnectionBlocked
     case server(status: Int)
     case network(String)
     case decoding(String)
