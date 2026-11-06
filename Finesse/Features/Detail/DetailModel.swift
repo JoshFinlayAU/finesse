@@ -1,0 +1,200 @@
+import Foundation
+import Observation
+
+extension MediaItem {
+    /// A series or season has no single thing to play, so it plays one of its episodes instead.
+    var isPlayable: Bool {
+        kind == .movie || kind == .episode
+    }
+
+    /// The line under the title: year or episode number, runtime and ratings.
+    var detailMetadata: [String] {
+        var parts: [String] = []
+        if kind == .episode {
+            if let season = parentIndexNumber, let episode = indexNumber {
+                parts.append("S\(season) E\(episode)")
+            }
+            if let seasonlessEpisode = parentIndexNumber == nil ? indexNumber : nil {
+                parts.append("E\(seasonlessEpisode)")
+            }
+        }
+        if let productionYear {
+            parts.append(String(productionYear))
+        }
+        if let runTime, let formatted = Self.runTimeText(runTime) {
+            parts.append(formatted)
+        }
+        if let officialRating {
+            parts.append(officialRating)
+        }
+        if let communityRating {
+            parts.append("\u{2605} \(communityRating.formatted(.number.precision(.fractionLength(1))))")
+        }
+        if let criticRating {
+            parts.append("\(Int(criticRating.rounded()))% critics")
+        }
+        return parts
+    }
+
+    static func runTimeText(_ runTime: Ticks) -> String? {
+        let minutes = Int((runTime.seconds / 60).rounded())
+        guard minutes > 0 else { return nil }
+        let hours = minutes / 60
+        if hours == 0 { return "\(minutes)m" }
+        return minutes % 60 == 0 ? "\(hours)h" : "\(hours)h \(minutes % 60)m"
+    }
+}
+
+/// One movie, show, season or episode page, and the items that hang off it.
+@Observable
+@MainActor
+final class DetailModel {
+    enum Phase: Equatable {
+        case loading
+        case loaded
+        case failed(String)
+    }
+
+    private(set) var phase = Phase.loading
+    private(set) var item: MediaItem
+    private(set) var seasons: [MediaItem] = []
+    private(set) var episodes: [MediaItem] = []
+    private(set) var similar: [MediaItem] = []
+    /// What Play starts. For a show or season, this is the next episode to watch.
+    private(set) var playTarget: MediaItem?
+    /// A failed Mark Watched or Favourite, shown once and then cleared.
+    var actionError: String?
+    /// Set when the server refused the token, so the app should return to sign-in.
+    private(set) var sessionExpired = false
+
+    private let client: any JellyfinClient
+    private let similarLimit: Int
+
+    init(item: MediaItem, client: any JellyfinClient, similarLimit: Int = 18) {
+        self.item = item
+        self.client = client
+        self.similarLimit = similarLimit
+    }
+
+    var playTitle: String {
+        guard let playTarget else { return "Play" }
+        let verb = playTarget.resumePosition == nil ? "Play" : "Resume"
+        guard item.kind != playTarget.kind,
+              let season = playTarget.parentIndexNumber,
+              let episode = playTarget.indexNumber
+        else { return verb }
+        return "\(verb) S\(season) E\(episode)"
+    }
+
+    /// Other episodes in this season, for an episode's page.
+    var otherEpisodes: [MediaItem] {
+        episodes.filter { $0.id != item.id }
+    }
+
+    /// Loads the page, and updates it quietly if it is already showing. Only the item itself can
+    /// fail the page. A row that can't load just stays hidden.
+    func load() async {
+        if case .failed = phase {
+            phase = .loading
+        }
+        do {
+            let loaded = try await client.item(id: item.id)
+            guard !Task.isCancelled else { return }
+            item = loaded
+            await loadRelated()
+            phase = .loaded
+        } catch {
+            guard !(error is CancellationError) else { return }
+            if error.isSessionExpired {
+                sessionExpired = true
+            } else if phase != .loaded {
+                phase = .failed(error.userMessage)
+            }
+        }
+    }
+
+    func toggleWatched() async {
+        await change { client, id, state in
+            try await client.setPlayed(!state.isPlayed, itemID: id)
+        }
+        // Marking a show or season also changes its episodes, and so what Play should start.
+        await load()
+    }
+
+    func toggleFavorite() async {
+        await change { client, id, state in
+            try await client.setFavorite(!state.isFavorite, itemID: id)
+        }
+    }
+
+    private func change(
+        _ update: @Sendable (any JellyfinClient, String, UserItemState) async throws -> UserItemState
+    ) async {
+        do {
+            item.userState = try await update(client, item.id, item.userState)
+        } catch {
+            if error.isSessionExpired {
+                sessionExpired = true
+            } else {
+                actionError = error.userMessage
+            }
+        }
+    }
+
+    private func loadRelated() async {
+        switch item.kind {
+        case .movie:
+            similar = await optional { try await $0.similarItems(id: $1.id, limit: self.similarLimit) } ?? []
+            playTarget = item
+        case .series:
+            seasons = await optional { try await $0.seasons(seriesID: $1.id) } ?? []
+            similar = await optional { try await $0.similarItems(id: $1.id, limit: self.similarLimit) } ?? []
+            playTarget = await seriesPlayTarget()
+        case .season:
+            if let seriesID = item.seriesID {
+                episodes = await optional { client, item in
+                    try await client.episodes(seriesID: seriesID, seasonID: item.id)
+                } ?? []
+            }
+            playTarget = Self.nextEpisode(in: episodes)
+        case .episode:
+            if let seriesID = item.seriesID, let seasonID = item.seasonID {
+                episodes = await optional { client, _ in
+                    try await client.episodes(seriesID: seriesID, seasonID: seasonID)
+                } ?? []
+            }
+            playTarget = item
+        case .other:
+            playTarget = nil
+        }
+    }
+
+    private func seriesPlayTarget() async -> MediaItem? {
+        if let next = await optional({ client, item in try await client.nextUp(seriesID: item.id) }) ?? nil {
+            return next
+        }
+        // Next Up is empty when everything has been watched, so offer the show from the start.
+        let all = await optional { client, item in try await client.episodes(seriesID: item.id, seasonID: nil) } ?? []
+        return Self.nextEpisode(in: all)
+    }
+
+    /// The first episode started and not finished, else the first unwatched, else the first.
+    static func nextEpisode(in episodes: [MediaItem]) -> MediaItem? {
+        episodes.first { $0.resumePosition != nil && !$0.userState.isPlayed }
+            ?? episodes.first { !$0.userState.isPlayed }
+            ?? episodes.first
+    }
+
+    private func optional<T: Sendable>(
+        _ load: @Sendable (any JellyfinClient, MediaItem) async throws -> T
+    ) async -> T? {
+        do {
+            return try await load(client, item)
+        } catch {
+            if error.isSessionExpired {
+                sessionExpired = true
+            }
+            return nil
+        }
+    }
+}

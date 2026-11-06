@@ -29,6 +29,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
     private(set) var progressReports: [PlaybackReport] = []
     private(set) var stopReports: [PlaybackReport] = []
     private(set) var playbackInfoRequests: [PlaybackInfoRequest] = []
+    private(set) var itemQueries: [ItemQuery] = []
 
     private var session: UserSession?
     private var quickConnectPolls = 0
@@ -139,6 +140,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
 
     func items(_ query: ItemQuery) async throws -> Page<MediaItem> {
         try checkSession()
+        itemQueries.append(query)
         var matches = allItems
         if !query.kinds.isEmpty {
             matches = matches.filter { query.kinds.contains($0.kind) }
