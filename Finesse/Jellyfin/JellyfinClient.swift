@@ -66,4 +66,6 @@ protocol JellyfinClient: AnyObject, Sendable {
     func reportPlaybackStart(_ report: PlaybackReport) async throws
     func reportPlaybackProgress(_ report: PlaybackReport) async throws
     func reportPlaybackStopped(_ report: PlaybackReport) async throws
+    /// Ends the server's transcode for a play session that is no longer in use.
+    func stopTranscoding(playSessionID: String) async throws
 }

@@ -31,6 +31,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
     private(set) var startReports: [PlaybackReport] = []
     private(set) var progressReports: [PlaybackReport] = []
     private(set) var stopReports: [PlaybackReport] = []
+    private(set) var stoppedTranscodes: [String] = []
     private(set) var playbackInfoRequests: [PlaybackInfoRequest] = []
     private(set) var itemQueries: [ItemQuery] = []
 
@@ -262,6 +263,11 @@ actor InMemoryJellyfinClient: JellyfinClient {
     func reportPlaybackProgress(_ report: PlaybackReport) async throws {
         try checkSession()
         progressReports.append(report)
+    }
+
+    func stopTranscoding(playSessionID: String) async throws {
+        try checkSession()
+        stoppedTranscodes.append(playSessionID)
     }
 
     func reportPlaybackStopped(_ report: PlaybackReport) async throws {

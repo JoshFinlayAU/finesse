@@ -350,6 +350,46 @@ struct PlaybackTracksEndToEndTests {
         #expect(try await remember(audio: 2, on: Item.avMultiAudio) == 2)
     }
 
+    /// Real transcodes on a server that only does them in software, so this runs only when asked,
+    /// while a script reads the host's process list. Set FINESSE_TRANSCODE_PROBE to run it.
+    @Test(.enabled(if: LiveServer.environment["FINESSE_TRANSCODE_PROBE"] != nil))
+    func aTranscodeTrackChangeEndsTheOldJob() async throws {
+        let client = try await LiveServer.signedInClient()
+        var profile = DeviceProfileBuilder.make()
+        profile.directPlayProfiles = []
+        profile.maxStreamingBitrate = 1_500_000
+        let session = PlaybackSession(
+            client: client,
+            itemID: Item.mpvMultiAudio,
+            startPosition: Ticks(seconds: 300),
+            deviceProfile: profile
+        )
+        try await session.start()
+        #expect(session.route?.method == .transcode)
+        let engine = try #require(session.engine)
+        let view = show(engine)
+        defer { view?.removeFromSuperview() }
+        #expect(try await waitUntil { engine.state == .playing })
+        print("PROBE \(Date.now.timeIntervalSince1970) playing first transcode")
+        try await Task.sleep(for: .seconds(8))
+
+        try await session.selectAudioTrack(id: 2)
+        print("PROBE \(Date.now.timeIntervalSince1970) track changed")
+        #expect(session.route?.method == .transcode)
+        let second = try #require(session.engine)
+        let secondView = show(second)
+        defer { secondView?.removeFromSuperview() }
+        #expect(try await waitUntil { second.state == .playing })
+        try await Task.sleep(for: .seconds(10))
+
+        print("PROBE \(Date.now.timeIntervalSince1970) stopping")
+        await session.stop()
+        print("PROBE \(Date.now.timeIntervalSince1970) stopped")
+        try await Task.sleep(for: .seconds(15))
+        try await client.reportPlaybackStopped(PlaybackReport(itemID: Item.mpvMultiAudio, position: .zero, playMethod: .directPlay))
+        #expect(try await remember(audio: 1, on: Item.mpvMultiAudio) == 1)
+    }
+
     /// Causes a genuine AVPlayer failure by telling the router it can play an MKV, which it can't.
     /// That fails while loading rather than mid-playback, but it's the same path out of the engine.
     @Test func avPlayerFailingForRealMovesToMpvAtThePosition() async throws {

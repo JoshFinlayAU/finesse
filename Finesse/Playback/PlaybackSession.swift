@@ -21,6 +21,7 @@ final class PlaybackSession {
     @ObservationIgnored private let startPosition: Ticks
     @ObservationIgnored private let makeEngine: EngineFactory
     @ObservationIgnored private let reportInterval: Duration
+    @ObservationIgnored private let deviceProfile: DeviceProfile
     @ObservationIgnored private var info = PlaybackInfo()
     @ObservationIgnored private var reporter: PlaybackProgressReporter?
     /// Narrowed for good once an engine turns out not to reach a track this file has,
@@ -43,6 +44,7 @@ final class PlaybackSession {
         startPosition: Ticks = .zero,
         reportInterval: Duration = .seconds(10),
         engines: [EngineCapabilities] = EngineCapabilities.routingOrder,
+        deviceProfile: DeviceProfile = DeviceProfileBuilder.make(),
         makeEngine: @escaping EngineFactory = PlaybackSession.makeDefaultEngine
     ) {
         self.client = client
@@ -50,6 +52,7 @@ final class PlaybackSession {
         self.startPosition = startPosition
         self.reportInterval = reportInterval
         self.engines = engines
+        self.deviceProfile = deviceProfile
         self.makeEngine = makeEngine
     }
 
@@ -216,6 +219,7 @@ final class PlaybackSession {
         guard !isStopped, let engine, let current = route else {
             return
         }
+        let previousPlaySession = info.playSessionID
         // A transcode's tracks are burned into its URL, so the server has to make a new one.
         if current.method != .directPlay {
             let subtitleIndex: Int? = if case .stream(let index) = subtitle { index } else { nil }
@@ -262,6 +266,10 @@ final class PlaybackSession {
             reporter?.updateRoute(next, playSessionID: info.playSessionID)
         }
         await reporter?.reportProgress()
+        // Otherwise the old ffmpeg job runs on until the server's idle cleanup, about a minute later.
+        if current.method != .directPlay, let previousPlaySession, previousPlaySession != info.playSessionID {
+            try? await client.stopTranscoding(playSessionID: previousPlaySession)
+        }
     }
 
     /// A route on another engine when this one can't reach the route's audio, otherwise nil.
@@ -318,7 +326,7 @@ final class PlaybackSession {
             startPosition: startPosition,
             audioStreamIndex: audioStreamIndex,
             subtitleStreamIndex: subtitleStreamIndex,
-            deviceProfile: DeviceProfileBuilder.make()
+            deviceProfile: deviceProfile
         ))
         if let code = info.errorCode {
             throw PlaybackSessionError.refusedByServer(code)

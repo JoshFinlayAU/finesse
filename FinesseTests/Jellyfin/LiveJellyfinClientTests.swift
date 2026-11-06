@@ -57,6 +57,20 @@ import Testing
 
     // MARK: Server and sign-in
 
+    @Test func stopTranscodingNamesThisDeviceAndThePlaySession() async throws {
+        StubURLProtocol.reset { _ in .response(status: 204, body: Data()) }
+        let client = await signedInClient()
+
+        try await client.stopTranscoding(playSessionID: "old-session")
+
+        let request = try #require(StubURLProtocol.recorded.last?.request)
+        #expect(request.httpMethod == "DELETE")
+        #expect(request.url?.path() == "/Videos/ActiveEncodings")
+        let query = try lastQuery()
+        #expect(query["deviceId"] == "fixture-device")
+        #expect(query["playSessionId"] == "old-session")
+    }
+
     @Test func readsServerInfo() async throws {
         try serve("system-info-public")
         let info = try await makeClient().serverInfo()

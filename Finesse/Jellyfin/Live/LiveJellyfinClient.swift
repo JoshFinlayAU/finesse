@@ -13,7 +13,7 @@ actor LiveJellyfinClient: JellyfinClient {
     init(
         serverURL: URL,
         device: DeviceIdentity,
-        makeSessionConfiguration: @escaping @Sendable () -> URLSessionConfiguration = { .default }
+        makeSessionConfiguration: @escaping @Sendable () -> URLSessionConfiguration = LiveJellyfinClient.sessionConfiguration
     ) {
         self.serverURL = serverURL
         self.device = device
@@ -24,6 +24,16 @@ actor LiveJellyfinClient: JellyfinClient {
             accessToken: nil,
             sessionConfiguration: makeSessionConfiguration()
         )
+    }
+
+    /// Keeps nothing on disk. A default session writes each request to `Cache.db`, and those carry
+    /// the password when signing in and the access token on every other call.
+    @Sendable
+    static func sessionConfiguration() -> URLSessionConfiguration {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.urlCache = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return configuration
     }
 
     private static func makeSDK(
@@ -408,6 +418,15 @@ actor LiveJellyfinClient: JellyfinClient {
     func reportPlaybackProgress(_ report: PlaybackReport) async throws {
         _ = try userID()
         try await sendVoid(Paths.reportPlaybackProgress(PlaybackStateInfo(report)))
+    }
+
+    func stopTranscoding(playSessionID: String) async throws {
+        _ = try userID()
+        try await sendVoid(Request<Void>(
+            path: "/Videos/ActiveEncodings",
+            method: .delete,
+            query: [("deviceId", device.deviceID), ("playSessionId", playSessionID)]
+        ))
     }
 
     func reportPlaybackStopped(_ report: PlaybackReport) async throws {

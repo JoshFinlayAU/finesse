@@ -401,6 +401,43 @@ import Testing
         await session.stop()
     }
 
+    // MARK: Ending the old transcode
+
+    private func transcodeInfo(session: String) -> PlaybackInfo {
+        var info = makeInfo(session: session)
+        info.mediaSources[0].supportsDirectPlay = false
+        info.mediaSources[0].supportsTranscoding = true
+        info.mediaSources[0].transcodingURL = URL(string: "http://server.invalid/\(session).m3u8")
+        return info
+    }
+
+    @Test func aTranscodeTrackChangeEndsTheOldJobAfterTheNewOneIsUp() async throws {
+        let client = try await makeClient(transcodeInfo(session: "first"))
+        let (session, engines) = makeSession(client)
+        try await session.start()
+
+        let next = transcodeInfo(session: "second")
+        await client.configure { $0.playbackInfoValue = next }
+        try await session.selectAudioTrack(id: 2)
+
+        #expect(engines().count == 2)
+        #expect(engines()[0].stopped, "The old stream goes first, or ending its job looks like a failure")
+        #expect(await client.stoppedTranscodes == ["first"])
+        await session.stop()
+        #expect(await client.stoppedTranscodes == ["first"], "Stop itself ends the current job")
+        #expect(await client.stopReports.first?.playSessionID == "second")
+    }
+
+    @Test func aDirectPlayTrackChangeEndsNoTranscode() async throws {
+        let client = try await makeClient(makeInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        engines()[0].unreachableAudio = [2]
+        try await session.selectAudioTrack(id: 2)
+        #expect(await client.stoppedTranscodes.isEmpty)
+        await session.stop()
+    }
+
     // MARK: Finding 6: pause and resume against an asynchronous engine
 
     @Test func pauseIsReportedAsPausedBeforeTheEngineCatchesUp() async throws {
