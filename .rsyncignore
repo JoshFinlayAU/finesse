@@ -1,0 +1,13 @@
+.git/
+.gitignore
+.rsyncignore
+.env.local
+.claude/
+.aisandbox/
+memory/
+skills/
+.sandbox.toml
+build/
+DerivedData/
+*.xcodeproj/
+.DS_Store

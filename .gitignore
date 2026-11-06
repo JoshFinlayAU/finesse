@@ -1,0 +1,9 @@
+.env.local
+build/
+DerivedData/
+*.xcodeproj/
+.aisandbox/
+.claude/
+memory/
+.sandbox.toml
+.DS_Store
