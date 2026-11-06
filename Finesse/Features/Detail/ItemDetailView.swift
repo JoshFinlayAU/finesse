@@ -21,13 +21,15 @@ private struct DetailContent: View {
     @Environment(\.jellyfinClient) private var client
     @State var model: DetailModel
     @FocusState private var focus: Focus?
+    /// How far the page has scrolled, so the backdrop can dim behind the text moving over it.
+    @State private var scrollOffset: CGFloat = 0
 
     private var item: MediaItem { model.item }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            DetailBackdrop(url: client.heroURL(for: item))
+            DetailBackdrop(url: client.heroURL(for: item), dimming: min(max(scrollOffset, 0) / 400, 1))
             switch model.phase {
             case .loading:
                 LoadingStateView()
@@ -40,6 +42,7 @@ private struct DetailContent: View {
             }
         }
         .environment(\.colorScheme, .dark)
+        .toolbar(.hidden, for: .tabBar)
         .task { await model.load() }
         .onChange(of: navigator.activePlayback == nil) { _, finished in
             if finished { Task { await model.load() } }
@@ -67,6 +70,9 @@ private struct DetailContent: View {
             }
         }
         .scrollClipDisabled()
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, offset in
+            scrollOffset = offset
+        }
         .defaultFocus($focus, .play)
     }
 
@@ -77,7 +83,7 @@ private struct DetailContent: View {
             if let parent = parentTitle {
                 Text(parent)
                     .font(.title3)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.8))
             }
             Text(item.name)
                 .font(.system(size: 76, weight: .bold))
@@ -86,12 +92,12 @@ private struct DetailContent: View {
             if !metadata.isEmpty {
                 Text(metadata.joined(separator: "  \u{00B7}  "))
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.8))
             }
             if !item.genres.isEmpty {
                 Text(item.genres.prefix(4).joined(separator: ", "))
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.8))
             }
             if let tagline = item.tagline {
                 Text(tagline)
@@ -272,6 +278,8 @@ private struct DetailContent: View {
 
 private struct DetailBackdrop: View {
     let url: URL?
+    /// From 0 at the top of the page to 1 once the header has moved up over the bright part.
+    let dimming: Double
 
     var body: some View {
         GeometryReader { geometry in
@@ -288,6 +296,9 @@ private struct DetailBackdrop: View {
                         startPoint: .top,
                         endPoint: .bottom
                     )
+                }
+                .overlay {
+                    Color.black.opacity(0.7 * dimming)
                 }
         }
         .ignoresSafeArea()
