@@ -282,7 +282,7 @@ private typealias FakeEngine = FakePlaybackEngine
         await session.stop()
     }
 
-    @Test func stopReportsPositionBeforeStoppingEngine() async throws {
+    @Test func stopReportsTheFinalPositionAndEndsTheEngine() async throws {
         let client = try await makeClient(makeInfo())
         let (session, engines) = makeSession(client)
         try await session.start()

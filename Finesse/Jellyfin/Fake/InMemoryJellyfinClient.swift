@@ -27,6 +27,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
     /// Hold these calls open, so a test can make something happen during them.
     var playbackInfoGate: (@Sendable () async -> Void)?
     var reportStartGate: (@Sendable () async -> Void)?
+    var reportStoppedGate: (@Sendable () async -> Void)?
 
     private(set) var startReports: [PlaybackReport] = []
     private(set) var progressReports: [PlaybackReport] = []
@@ -272,6 +273,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
 
     func reportPlaybackStopped(_ report: PlaybackReport) async throws {
         try checkSession()
+        await reportStoppedGate?()
         stopReports.append(report)
     }
 

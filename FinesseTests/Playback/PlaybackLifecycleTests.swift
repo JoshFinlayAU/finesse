@@ -428,6 +428,26 @@ import Testing
         #expect(await client.stopReports.first?.playSessionID == "second")
     }
 
+    /// The server ends the job when told to stop. An engine still running then asks for its next
+    /// segment, which starts a new job that nothing ends.
+    @Test func theEngineStopsBeforeTheServerIsTold() async throws {
+        let client = try await makeClient(transcodeInfo(session: "first"))
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        engines()[0].position = Ticks(seconds: 77)
+        let gate = TestGate()
+        await client.configure { $0.reportStoppedGate = { await gate.pass() } }
+
+        let stopping = Task { await session.stop() }
+        await gate.waitForArrival()
+
+        #expect(engines()[0].stopped, "The stream must be gone by the time the server hears")
+        await gate.open()
+        await stopping.value
+        #expect(await client.stopReports.first?.position == Ticks(seconds: 77), "The final position still goes")
+        #expect(session.engine == nil)
+    }
+
     @Test func aDirectPlayTrackChangeEndsNoTranscode() async throws {
         let client = try await makeClient(makeInfo())
         let (session, engines) = makeSession(client)

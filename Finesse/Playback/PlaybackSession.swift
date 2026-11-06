@@ -178,12 +178,14 @@ final class PlaybackSession {
         return true
     }
 
-    /// Reports the final position while the engine still knows it, then ends the engine.
+    /// Ends the engine first, because the server ends a transcode when told to stop, and a stream
+    /// still running would ask for its next segment and start a new job. An engine keeps its final
+    /// position after stopping, so the report still has it.
     func stop() async {
         isStopped = true
+        engine?.stop()
         await reporter?.stop()
         reporter = nil
-        engine?.stop()
         engine = nil
     }
 
