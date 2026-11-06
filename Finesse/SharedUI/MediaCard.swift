@@ -93,7 +93,7 @@ struct ProgressBar: View {
             ZStack(alignment: .leading) {
                 Rectangle().fill(.black.opacity(0.5))
                 Rectangle()
-                    .fill(.tint)
+                    .fill(.white)
                     .frame(width: geometry.size.width * min(max(fraction, 0), 1))
             }
         }

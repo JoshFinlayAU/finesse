@@ -26,7 +26,7 @@ final class SignInFlowUITests: XCTestCase {
         XCTAssertTrue(address.waitForExistence(timeout: 20))
         capture("1-server-entry")
         enter(server, into: address)
-        focus(app.buttons["connect"])
+        focus(app.buttons["connect"], in: app)
         remote.press(.select)
 
         // User picker. The hidden test user isn't listed, so use Other User.
@@ -37,24 +37,24 @@ final class SignInFlowUITests: XCTestCase {
         // Back from the picker returns to the server step, with the address kept.
         remote.press(.menu)
         XCTAssertTrue(app.buttons["connect"].waitForExistence(timeout: 10))
-        focus(app.buttons["connect"])
+        focus(app.buttons["connect"], in: app)
         remote.press(.select)
         XCTAssertTrue(other.waitForExistence(timeout: 20))
 
-        focus(other)
+        focus(other, in: app)
         remote.press(.select)
         let usernameField = app.textFields["username"]
         XCTAssertTrue(usernameField.waitForExistence(timeout: 10))
         enter(username, into: usernameField)
         let passwordField = app.secureTextFields["password"]
         enter("definitely-wrong", into: passwordField)
-        focus(app.buttons["signIn"])
+        focus(app.buttons["signIn"], in: app)
         remote.press(.select)
         XCTAssertTrue(app.staticTexts["Incorrect username or password."].waitForExistence(timeout: 20))
         capture("3-wrong-password")
 
         enter(password, into: passwordField)
-        focus(app.buttons["signIn"])
+        focus(app.buttons["signIn"], in: app)
         remote.press(.select)
 
         // Home.
@@ -93,7 +93,7 @@ final class SignInFlowUITests: XCTestCase {
         XCTAssertTrue(signOut.waitForExistence(timeout: 10))
         sleep(1)
         capture("8-settings")
-        focus(signOut)
+        focus(signOut, in: app)
         remote.press(.select)
         XCTAssertTrue(app.buttons["otherUser"].waitForExistence(timeout: 20))
         capture("9-after-sign-out")
@@ -106,11 +106,11 @@ final class SignInFlowUITests: XCTestCase {
         let address = app.textFields["serverAddress"]
         XCTAssertTrue(address.waitForExistence(timeout: 20))
         enter(server, into: address)
-        focus(app.buttons["connect"])
+        focus(app.buttons["connect"], in: app)
         remote.press(.select)
         let quickConnect = app.buttons["quickConnect"]
         XCTAssertTrue(quickConnect.waitForExistence(timeout: 20))
-        focus(quickConnect)
+        focus(quickConnect, in: app)
         remote.press(.select)
         XCTAssertTrue(app.staticTexts["quickConnectCode"].waitForExistence(timeout: 20))
         capture("quick-connect")
@@ -118,19 +118,8 @@ final class SignInFlowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["otherUser"].waitForExistence(timeout: 10))
     }
 
-    /// Moves focus to an element by trying each direction, as a person would with the remote.
-    private func focus(_ element: XCUIElement) {
-        XCTAssertTrue(element.waitForExistence(timeout: 10))
-        for direction in [XCUIRemote.Button.down, .down, .down, .up, .up, .up, .up, .up, .up, .down, .down] {
-            if element.hasFocus { return }
-            remote.press(direction)
-            usleep(400_000)
-        }
-        XCTAssertTrue(element.hasFocus, "Could not focus \(element)")
-    }
-
     private func enter(_ text: String, into field: XCUIElement) {
-        focus(field)
+        focus(field, in: app)
         remote.press(.select)
         sleep(1)
         clearKeyboardField()
@@ -147,12 +136,5 @@ final class SignInFlowUITests: XCTestCase {
         if let current, !current.isEmpty, current != app.textFields.firstMatch.placeholderValue {
             app.typeText(String(repeating: delete, count: current.count))
         }
-    }
-
-    private func capture(_ name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
     }
 }

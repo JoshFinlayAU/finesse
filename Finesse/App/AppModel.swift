@@ -34,6 +34,11 @@ final class AppModel {
     }
 
     static func live() -> AppModel {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-FinesseFakeServer") {
+            return fakeServer()
+        }
+        #endif
         let storage = KeychainStorage(service: "Finesse")
         return AppModel(
             store: SessionStore(storage: storage),
