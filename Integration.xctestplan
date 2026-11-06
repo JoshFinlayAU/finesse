@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "A1B2C3D4-0000-4000-8000-000000000002",
+      "name" : "Default",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Finesse.xcodeproj",
+        "identifier" : "82316B7A76B09633B219AF68",
+        "name" : "FinesseIntegrationTests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -1,0 +1,73 @@
+name: Finesse
+
+options:
+  bundleIdPrefix: invalid.placeholder
+  createIntermediateGroups: true
+  deploymentTarget:
+    tvOS: "26.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    "CODE_SIGNING_ALLOWED[sdk=appletvsimulator*]": "NO"
+
+targets:
+  Finesse:
+    type: application
+    platform: tvOS
+    sources:
+      - path: Finesse
+    settings:
+      base:
+        PRODUCT_NAME: Finesse
+        PRODUCT_MODULE_NAME: FinEsse
+        PRODUCT_BUNDLE_IDENTIFIER: invalid.placeholder.finesse
+        INFOPLIST_FILE: Finesse/Resources/Info.plist
+        ENABLE_PREVIEWS: "YES"
+
+  FinesseTests:
+    type: bundle.unit-test
+    platform: tvOS
+    sources:
+      - path: FinesseTests
+    dependencies:
+      - target: Finesse
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: invalid.placeholder.finesse.tests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Finesse.app/Finesse"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+  FinesseIntegrationTests:
+    type: bundle.unit-test
+    platform: tvOS
+    sources:
+      - path: FinesseIntegrationTests
+    dependencies:
+      - target: Finesse
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: invalid.placeholder.finesse.integrationtests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Finesse.app/Finesse"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  Finesse:
+    build:
+      targets:
+        Finesse: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - FinesseTests
+        - FinesseIntegrationTests
+      testPlans:
+        - path: Finesse.xctestplan
+          defaultPlan: true
+        - path: Integration.xctestplan
+    archive:
+      config: Release
