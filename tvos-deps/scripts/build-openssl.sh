@@ -5,10 +5,13 @@ source "$(dirname "$0")/common.sh" "$1"
 fresh_tree openssl
 # tvOS prohibits fork, and the async code needs APIs that tvOS doesn't allow.
 nice -n 15 ./Configure darwin64-arm64 no-shared no-tests no-apps no-docs no-async no-dso no-engine no-legacy no-module \
-  no-comp no-ssl3 no-ui-console --prefix="$PREFIX" --libdir=lib \
+  no-comp no-ssl3 no-ui-console --prefix=/ --openssldir=/var/empty/ssl --libdir=lib \
   CC="$CC_BIN" CFLAGS="$BASE_FLAGS -DHAVE_FORK=0"
+# OpenSSL compiles in its install folders and its whole compiler command, so those are a fixed folder that
+# doesn't exist on tvOS and the compiler's name. DESTDIR puts the real install under the build prefix.
+perl util/mkbuildinf.pl clang darwin64-arm64 > crypto/buildinf.h
 nice -n 15 make -j "$JOBS" build_libs
-make install_dev >/dev/null
+make install_dev DESTDIR="$PREFIX" >/dev/null
 
 nice -n 15 "$CC_BIN" -dynamiclib -target "$TRIPLE" -isysroot "$SDK" \
   -Wl,-headerpad_max_install_names -install_name @rpath/libOpenSSL.dylib \

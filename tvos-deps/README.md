@@ -66,6 +66,7 @@ All in `patches/mpv`, against the mpv commit in `versions.sh`. They were written
 - every Apple symbol imported is listed in the public SDK's `.tbd` stubs
 - each binary is the right platform, with minimum OS 26.0 and an `@rpath` install name
 - no `--enable-gpl` or `--enable-nonfree` in the binaries, and each FFmpeg library reports LGPL 3 or later
+- no local paths in any file of a framework: home folders, Homebrew, Xcode or the work folder
 
 It can't see Objective-C selectors called dynamically, so it doesn't replace App Store validation, which hasn't been run. The file timestamp reason in the manifests (`C617.1`) comes from static analysis of what's imported, not from tracing what the code does at runtime.
 
@@ -84,8 +85,10 @@ FFmpeg uses OpenSSL 3.5.9, the owner's decision. Tested on the simulator on 2026
 
 There are two ways to fill it:
 
-1. **Build them.** Follow "Building" above on the machine. From an empty work folder this took about 10 minutes at 4 jobs on a busy Mac on 2026-11-07, and the scan passed. It needs only Xcode, Homebrew's Python and pkg-config, and network access to the sources, so this works today. Rebuilds aren't byte-identical: in a different work folder, 9 of the 14 device binaries differed, though the four compared had the same size and exports. So a shipped build should be identified by its archive's hash, not by rebuilding and comparing.
-2. **Fetch an archive.** The proposal below, which needs the manager's go-ahead before anything is pushed. Builds would run `scripts/fetch-dist.sh`, which doesn't exist yet, before `xcodegen generate`.
+1. **Build them.** Follow "Building" above on the machine. From an empty work folder this took about 10 minutes at 4 jobs on a busy Mac on 2026-11-07, and the scan passed. It needs only Xcode, Homebrew's Python and pkg-config, and network access to the sources, so this works today.
+2. **Fetch an archive.** The proposal below, and pushing one anywhere needs the owner's go-ahead. Builds would run `scripts/fetch-dist.sh <file or URL> <sha256>` before `xcodegen generate`. It refuses a wrong hash or an archive without all 14 frameworks, and replaces `dist` only after those checks pass. It has been tried with a local file and a loopback URL.
+
+Rebuilds aren't fully byte-identical. Build paths and dates are kept out of the binaries, but in a different work folder on 2026-11-07, 5 of the 14 frameworks still differed in each slice. On the device slice they have the same size and code size and differ by 45 to 48 bytes, which fits the linker's UUID and the signature hash that depends on it, though not every byte was traced. On the simulator slice, 4 of the 5 have section addresses that moved, which wasn't explained. So a shipped build should be identified by its archive's hash, not by rebuilding and comparing.
 
 A build with neither can't succeed, because the app has no fallback.
 
@@ -93,8 +96,8 @@ A build with neither can't succeed, because the app has no fallback.
 
 A proposal, not yet in place. Nothing has been published.
 
-- Build on the Mac and make one archive per version, such as `finesse-deps-<versions>-<build>.tar.zst`, holding the xcframeworks.
+- Build on the Mac and make one archive per version, such as `finesse-deps-<versions>-<build>.tar.xz`, holding the xcframeworks at its top level. It's xz rather than zstd because the Mac's `tar` needs a separate `zstd` tool, which isn't installed.
 - Keep the archive in a private store: the generic package registry on `gitlab.athenanetworks.com.au` fits, since the repo is private and that server is ours.
-- Commit only its URL and SHA-256 to this folder. A small `fetch-dist.sh` downloads it, checks the hash, and unpacks it into `../FinesseDeps/dist`, which is outside the repo.
+- Commit only its URL and SHA-256 to this folder. `scripts/fetch-dist.sh` downloads it, checks the hash, and unpacks it into `../FinesseDeps/dist`, which is outside the repo.
 - Build on the Mac without fetching when testing a new version.
 - Keep the matching source archive and patches alongside each release, because LGPL distribution needs them. See `LICENSES.md`.

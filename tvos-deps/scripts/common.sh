@@ -25,7 +25,9 @@ PREFIX=$BUILD/prefix
 mkdir -p "$BUILD" "$PREFIX/lib/pkgconfig" "$PREFIX/include"
 export PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
 unset PKG_CONFIG_PATH || true
-BASE_FLAGS="-target $TRIPLE -isysroot $SDK -O2 -fPIC"
+# What the binaries record about where and when they were built, so it doesn't vary or ship to users.
+export SOURCE_DATE_EPOCH=1767225600 ZERO_AR_DATE=1
+BASE_FLAGS="-target $TRIPLE -isysroot $SDK -O2 -fPIC -ffile-prefix-map=$WORK=. -ffile-prefix-map=$SDK=/sdk"
 LINK_FLAGS="-target $TRIPLE -isysroot $SDK -Wl,-headerpad_max_install_names -Wl,-dead_strip"
 
 quoted_list() { printf "'%s'," "$@" | sed 's/,$//'; }
@@ -81,6 +83,7 @@ meson_build() {
   write_cross_file
   nice -n 15 meson setup _b --cross-file "$BUILD/cross.ini" --prefix "$PREFIX" --libdir lib \
     --buildtype release --default-library "$library" -Dstrip=false --wrap-mode nodownload "$@"
+  if declare -F after_meson_setup >/dev/null; then after_meson_setup; fi
   nice -n 15 ninja -C _b -j "$JOBS"
   ninja -C _b install
 }

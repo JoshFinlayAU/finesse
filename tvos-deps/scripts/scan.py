@@ -10,6 +10,7 @@ Checks, per binary:
  - every Apple symbol it imports exists in the public SDK, as listed in the SDK's .tbd stubs
  - built for tvOS at the right deployment target, with @rpath install names
  - no GPL or nonfree build flags, and FFmpeg libraries report LGPL 3, the owner's decision for TLS 1.3
+ - no local build paths in any file of the framework
 """
 import glob
 import os
@@ -26,6 +27,7 @@ BOOT_TIME = {"_mach_absolute_time"}
 OPENSSL_SYMBOL = re.compile(r"^_(SSL_|SSL3_|TLS_|OPENSSL_|EVP_|BIO_|X509_)")
 BANNED_CRYPTO = re.compile(r"^_(gnutls_|nettle_|__gmp|gmp_|mbedtls_)")
 LICENCE_STRINGS = [b"--enable-gpl", b"--enable-nonfree", b"--enable-libx264", b"--enable-libx265"]
+LOCAL_PATH = re.compile(rb"(?:/Users/|/Volumes/|/opt/homebrew|/Applications/Xcode|FinesseDeps|" + re.escape(os.path.realpath(dist)).encode() + rb")[^\0\s\"']{0,60}")
 failures = []
 
 
@@ -150,10 +152,12 @@ for variant, sdk_name, platform in (("tvos-arm64", "appletvos", "3"), ("tvos-arm
                 fail(name, f"contains {flag.decode()}")
         if name.startswith(("Libav", "Libsw")) and b"LGPL version 3 or later" not in data:
             fail(name, "does not report LGPL version 3 or later")
-        if name.startswith(("Libav", "Libsw")):
-            match = re.search(rb"--prefix=[^\0]*", data)
-            if match:
-                print(f"  configure flags embedded, none of the forbidden ones: {len(match.group(0))} bytes")
+        for root, _, files in os.walk(framework):
+            for file in files:
+                path = os.path.join(root, file)
+                found = sorted({m.group(0).decode(errors="replace") for m in LOCAL_PATH.finditer(open(path, "rb").read())})
+                if found:
+                    fail(name, f"local paths in {os.path.relpath(path, framework)}: {found[:4]}")
         for word in (b"dlopen", b"dlsym"):
             if f"_{word.decode()}".encode() in {s.encode() for s in plain}:
                 print(f"  note: imports {word.decode()}")
