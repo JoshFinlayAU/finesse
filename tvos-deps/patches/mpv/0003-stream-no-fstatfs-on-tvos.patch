@@ -1,0 +1,13 @@
+diff --git a/meson.build b/meson.build
+index e0b6834..2926f70 100644
+--- a/meson.build
++++ b/meson.build
+@@ -597,7 +597,7 @@ if not features['mac-thread-name'] and not features['glibc-thread-name']
+                                                               prefix: '#include <pthread.h>\n#include <pthread_np.h>')}
+ endif
+ 
+-features += {'bsd-fstatfs': cc.has_function('fstatfs', prefix: '#include <sys/mount.h>\n#include <sys/param.h>')}
++features += {'bsd-fstatfs': host_machine.subsystem() != 'tvos' and cc.has_function('fstatfs', prefix: '#include <sys/mount.h>\n#include <sys/param.h>')}
+ 
+ features += {'linux-fstatfs': cc.has_function('fstatfs', prefix: '#include <sys/vfs.h>')}
+ 

@@ -1,0 +1,44 @@
+# A throwaway app that proves the frameworks play media on the simulator, before the swap into Finesse.
+# Generated and built under ~/Developer/FinesseDeps/spike with spike.sh. Not part of the Finesse project.
+name: DepsSpike
+options:
+  bundleIdPrefix: invalid.placeholder
+  deploymentTarget:
+    tvOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ARCHS: arm64
+    "CODE_SIGN_IDENTITY[sdk=appletvsimulator*]": "-"
+    "CODE_SIGN_STYLE[sdk=appletvsimulator*]": Manual
+targets:
+  DepsSpike:
+    type: application
+    platform: tvOS
+    sources:
+      - path: Sources
+    dependencies:
+      - framework: ../dist/Libmpv.xcframework
+      - framework: ../dist/Libavcodec.xcframework
+      - framework: ../dist/Libavfilter.xcframework
+      - framework: ../dist/Libavformat.xcframework
+      - framework: ../dist/Libavutil.xcframework
+      - framework: ../dist/Libswresample.xcframework
+      - framework: ../dist/Libswscale.xcframework
+      - framework: ../dist/Libass.xcframework
+      - framework: ../dist/Libfribidi.xcframework
+      - framework: ../dist/Libdav1d.xcframework
+      - framework: ../dist/Libplacebo.xcframework
+      - framework: ../dist/MoltenVK.xcframework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: invalid.placeholder.depsspike
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_NSAppTransportSecurity: ""
+    info:
+      path: Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true

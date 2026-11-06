@@ -1,0 +1,158 @@
+diff --git a/meson.build b/meson.build
+index b15f310..e56d9a9 100644
+--- a/meson.build
++++ b/meson.build
+@@ -1375,6 +1375,11 @@ if features['vulkan'] and features['x11']
+      sources += files('video/out/vulkan/context_xlib.c')
+ endif
+ 
++features += {'moltenvk': features['vulkan'] and darwin and not features['cocoa']}
++if features['moltenvk']
++    sources += files('video/out/vulkan/context_moltenvk.m')
++endif
++
+ features += {'vk-khr-display': vulkan.type_name() == 'internal' or
+                                cc.has_function('vkCreateDisplayPlaneSurfaceKHR', prefix: '#include <vulkan/vulkan_core.h>',
+                                                dependencies: [vulkan])}
+diff --git a/video/out/gpu/context.c b/video/out/gpu/context.c
+index 60c0641..c705a98 100644
+--- a/video/out/gpu/context.c
++++ b/video/out/gpu/context.c
+@@ -50,6 +50,7 @@ extern const struct ra_ctx_fns ra_ctx_vulkan_xlib;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_android;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_display;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_mac;
++extern const struct ra_ctx_fns ra_ctx_vulkan_moltenvk;
+ 
+ /* Direct3D 11 */
+ extern const struct ra_ctx_fns ra_ctx_d3d11;
+@@ -96,6 +97,9 @@ static const struct ra_ctx_fns *const contexts[] = {
+ #if HAVE_COCOA && HAVE_SWIFT
+     &ra_ctx_vulkan_mac,
+ #endif
++#if HAVE_MOLTENVK
++    &ra_ctx_vulkan_moltenvk,
++#endif
+ #endif
+ 
+ // OpenGL contexts:
+diff --git a/video/out/vulkan/common.h b/video/out/vulkan/common.h
+index e75cb22..276dfd2 100644
+--- a/video/out/vulkan/common.h
++++ b/video/out/vulkan/common.h
+@@ -22,7 +22,7 @@
+ #if HAVE_WIN32_DESKTOP
+ #define VK_USE_PLATFORM_WIN32_KHR
+ #endif
+-#if HAVE_COCOA
++#if HAVE_COCOA || HAVE_MOLTENVK
+ #define VK_USE_PLATFORM_METAL_EXT
+ #endif
+ 
+diff --git a/video/out/vulkan/context_moltenvk.m b/video/out/vulkan/context_moltenvk.m
+new file mode 100644
+index 0000000..de4c322
+--- /dev/null
++++ b/video/out/vulkan/context_moltenvk.m
+@@ -0,0 +1,101 @@
++/*
++ * This file is part of mpv.
++ *
++ * mpv is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * mpv is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with mpv.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++// A Vulkan context for an embedding app that owns its CAMetalLayer and passes
++// the layer's address as --wid. Used where there is no Cocoa, such as tvOS.
++
++#import <QuartzCore/QuartzCore.h>
++
++#include "video/out/gpu/context.h"
++
++#include "common.h"
++#include "context.h"
++#include "utils.h"
++
++struct priv {
++    struct mpvk_ctx vk;
++};
++
++static CAMetalLayer *metal_layer(struct ra_ctx *ctx)
++{
++    return (__bridge CAMetalLayer *)(void *)(intptr_t)ctx->vo->opts->WinID;
++}
++
++static void moltenvk_uninit(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv;
++
++    ra_vk_ctx_uninit(ctx);
++    mpvk_uninit(&p->vk);
++}
++
++static bool moltenvk_init(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv = talloc_zero(ctx, struct priv);
++    struct mpvk_ctx *vk = &p->vk;
++    int msgl = ctx->opts.probing ? MSGL_V : MSGL_ERR;
++
++    if (ctx->vo->opts->WinID == -1) {
++        MP_MSG(ctx, msgl, "No --wid set, which has to be a CAMetalLayer\n");
++        goto error;
++    }
++
++    if (!mpvk_init(vk, ctx, VK_EXT_METAL_SURFACE_EXTENSION_NAME))
++        goto error;
++
++    VkMetalSurfaceCreateInfoEXT info = {
++        .sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT,
++        .pLayer = metal_layer(ctx),
++    };
++
++    VkInstance inst = vk->vkinst->instance;
++    VkResult res = vkCreateMetalSurfaceEXT(inst, &info, NULL, &vk->surface);
++    if (res != VK_SUCCESS) {
++        MP_MSG(ctx, msgl, "Failed creating metal surface\n");
++        goto error;
++    }
++
++    struct ra_ctx_params params = {0};
++    if (!ra_vk_ctx_init(ctx, vk, params, VK_PRESENT_MODE_FIFO_KHR))
++        goto error;
++
++    return true;
++error:
++    moltenvk_uninit(ctx);
++    return false;
++}
++
++static bool moltenvk_reconfig(struct ra_ctx *ctx)
++{
++    CGSize size = metal_layer(ctx).drawableSize;
++    return ra_vk_ctx_resize(ctx, (int)size.width, (int)size.height);
++}
++
++static int moltenvk_control(struct ra_ctx *ctx, int *events, int request, void *arg)
++{
++    return VO_NOTIMPL;
++}
++
++const struct ra_ctx_fns ra_ctx_vulkan_moltenvk = {
++    .type        = "vulkan",
++    .name        = "moltenvk",
++    .description = "Vulkan through MoltenVK, on a CAMetalLayer given as --wid",
++    .reconfig    = moltenvk_reconfig,
++    .control     = moltenvk_control,
++    .init        = moltenvk_init,
++    .uninit      = moltenvk_uninit,
++};
