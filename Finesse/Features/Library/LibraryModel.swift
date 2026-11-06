@@ -44,7 +44,9 @@ final class LibraryModel {
     private var isLoadingChoices = false
     private var studios: [FilterValue] = []
     private var nameFilters = LibraryModel.allNameFilters
-    private var loadedNameFilters = false
+    /// One shuffle of this list's IDs. The server has no stable random order: it reshuffles for every
+    /// request, so asking it page by page repeats some titles and never reaches others.
+    private var randomOrder: [String] = []
     private let preferences: LibraryPreferencesStore?
 
     init(
@@ -161,6 +163,12 @@ final class LibraryModel {
         await reload()
     }
 
+    /// A new random order, the only thing besides changing the list that gives one.
+    func reshuffle() async {
+        guard sort == .random else { return }
+        await reload()
+    }
+
     func clearFilters() async {
         await setFilter(ItemFilter())
     }
@@ -197,13 +205,16 @@ final class LibraryModel {
             choicesPhase = .loading
         }
         do {
-            if options == FilterOptions() {
+            do {
                 options = try await client.filterOptions(libraryID: nil, kinds: [kind])
+            } catch where !error.isSessionExpired && options != FilterOptions() {
+                // What's already here is still useful. The counts below will say if the server is gone.
             }
             // Before the rows appear, so that page is never empty when it opens. Not worth failing
             // the whole panel over: without them, only the Studios row is missing.
-            if studios.isEmpty {
-                studios = (try? await client.studios(libraryID: nil, kinds: [kind])) ?? []
+            do {
+                studios = try await client.studios(libraryID: nil, kinds: [kind])
+            } catch where !error.isSessionExpired {
             }
             let total = try await count(ItemFilter())
             let choices = FilterChoice.all(for: kind)
@@ -222,16 +233,20 @@ final class LibraryModel {
 
     /// Every letter shows until they're counted, so the page always has something to focus.
     func loadNameFilters() async {
-        guard !loadedNameFilters, !isLoadingNameFilters else { return }
+        guard !isLoadingNameFilters else { return }
         isLoadingNameFilters = true
         defer { isLoadingNameFilters = false }
-        guard let counted = try? await counts(of: Self.allNameFilters, filter: { name in
-            var filter = ItemFilter()
-            filter.name = name
-            return filter
-        }) else { return }
-        nameFilters = Self.allNameFilters.filter { (counted[$0] ?? 0) > 0 || filter.name == $0 }
-        loadedNameFilters = true
+        do {
+            let counted = try await counts(of: Self.allNameFilters) { name in
+                var filter = ItemFilter()
+                filter.name = name
+                return filter
+            }
+            nameFilters = Self.allNameFilters.filter { (counted[$0] ?? 0) > 0 || filter.name == $0 }
+        } catch {
+            guard !(error is CancellationError) else { return }
+            handle(error) {}
+        }
     }
 
     private static let allNameFilters = [NameFilter.beforeA] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map { .letter(String($0)) }
@@ -272,13 +287,18 @@ final class LibraryModel {
         let current = generation
         phase = .loading
         items = []
-        totalCount = 0
+        // Not the count: the filter panel stays up during this, and shouldn't say 0 titles.
         nextIndex = 0
         reachedEnd = false
         isLoadingMore = false
         loadMoreFailed = false
         do {
-            let page = try await client.items(query(startIndex: 0, limit: pageSize))
+            if sort == .random {
+                let matching = try await client.itemIDs(query(startIndex: 0, limit: 0))
+                guard current == generation else { return }
+                randomOrder = matching.shuffled()
+            }
+            let page = try await fetchPage(startIndex: 0)
             guard current == generation else { return }
             apply(page)
             phase = .loaded
@@ -312,7 +332,7 @@ final class LibraryModel {
             }
         }
         do {
-            let page = try await client.items(query(startIndex: nextIndex, limit: pageSize))
+            let page = try await fetchPage(startIndex: nextIndex)
             guard current == generation else { return }
             apply(page)
         } catch {
@@ -325,20 +345,76 @@ final class LibraryModel {
         guard !items.isEmpty, !isLoadingMore else { return }
         let current = generation
         let pagesWhenAsked = pagesApplied
-        guard let page = try? await client.items(query(startIndex: 0, limit: nextIndex)),
-              current == generation, !isLoadingMore, pagesWhenAsked == pagesApplied
-        else { return }
-        items = Self.unique(page.items)
-        totalCount = page.totalCount
-        nextIndex = page.startIndex + page.items.count
+        do {
+            let fresh: [MediaItem], total: Int, next: Int
+            if sort == .random {
+                fresh = try await randomItems(Array(randomOrder.prefix(nextIndex)))
+                (total, next) = (randomOrder.count, nextIndex)
+            } else {
+                let page = try await client.items(query(startIndex: 0, limit: nextIndex))
+                (fresh, total, next) = (page.items, page.totalCount, page.startIndex + page.items.count)
+            }
+            guard current == generation, !isLoadingMore, pagesWhenAsked == pagesApplied else { return }
+            items = Self.unique(fresh)
+            totalCount = total
+            nextIndex = next
+        } catch {
+            // Otherwise a refresh has nothing to say: the grid that's up is still good.
+            guard current == generation, !(error is CancellationError) else { return }
+            handle(error) {}
+        }
     }
 
-    private func apply(_ page: Page<MediaItem>) {
+    private struct LoadedPage {
+        var items: [MediaItem]
+        var totalCount: Int
+        var nextIndex: Int
+        var reachedEnd: Bool
+    }
+
+    private func fetchPage(startIndex: Int) async throws -> LoadedPage {
+        guard sort == .random else {
+            let page = try await client.items(query(startIndex: startIndex, limit: pageSize))
+            return LoadedPage(
+                items: page.items,
+                totalCount: page.totalCount,
+                nextIndex: page.startIndex + page.items.count,
+                reachedEnd: page.items.isEmpty
+            )
+        }
+        // A page of titles deleted since the shuffle would add no cards, and so never ask for the
+        // next one, so this carries on until it has something.
+        var next = startIndex
+        var found: [MediaItem] = []
+        while found.isEmpty, next < randomOrder.count {
+            let slice = Array(randomOrder[next..<min(next + pageSize, randomOrder.count)])
+            found = try await randomItems(slice)
+            next += slice.count
+        }
+        return LoadedPage(items: found, totalCount: randomOrder.count, nextIndex: next, reachedEnd: next >= randomOrder.count)
+    }
+
+    /// These titles in this order, a batch at a time, because a request line can only hold so many IDs.
+    private func randomItems(_ ids: [String]) async throws -> [MediaItem] {
+        var byID: [String: MediaItem] = [:]
+        for start in stride(from: 0, to: ids.count, by: Self.idsPerRequest) {
+            let batch = Array(ids[start..<min(start + Self.idsPerRequest, ids.count)])
+            let page = try await client.items(ItemQuery(kinds: [kind], ids: batch, limit: batch.count))
+            for item in page.items {
+                byID[item.id] = item
+            }
+        }
+        return ids.compactMap { byID[$0] }
+    }
+
+    private static let idsPerRequest = 150
+
+    private func apply(_ page: LoadedPage) {
         pagesApplied += 1
         items = Self.unique(items + page.items)
         totalCount = page.totalCount
-        nextIndex = page.startIndex + page.items.count
-        reachedEnd = page.items.isEmpty
+        nextIndex = page.nextIndex
+        reachedEnd = page.reachedEnd
     }
 
     private func handle(_ error: Error, otherwise: () -> Void) {

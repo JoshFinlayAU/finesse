@@ -51,6 +51,7 @@ actor LiveJellyfinClient: JellyfinClient {
                 deviceID: device.deviceID,
                 version: device.clientVersion
             ),
+            delegate: QueryEscaper(),
             sessionConfiguration: sessionConfiguration
         )
     }
@@ -205,7 +206,7 @@ actor LiveJellyfinClient: JellyfinClient {
         return try await send(Paths.getUserViews(parameters: parameters)).items?.map(Library.init) ?? []
     }
 
-    func items(_ query: ItemQuery) async throws -> Page<MediaItem> {
+    private func parameters(for query: ItemQuery) throws -> Paths.GetItemsParameters {
         var parameters = Paths.GetItemsParameters()
         parameters.userID = try userID()
         parameters.parentID = query.libraryID
@@ -215,6 +216,7 @@ actor LiveJellyfinClient: JellyfinClient {
         parameters.enableUserData = true
         parameters.enableTotalRecordCount = true
         parameters.searchTerm = query.searchTerm
+        parameters.ids = query.ids.isEmpty ? nil : query.ids
         parameters.includeItemTypes = query.kinds.isEmpty ? nil : query.kinds.compactMap(\.sdkKind)
         parameters.sortBy = [ItemSortBy(rawValue: query.sort.rawValue), .sortName].compactMap { $0 }
         parameters.sortOrder = [query.direction == .ascending ? .ascending : .descending]
@@ -224,7 +226,11 @@ actor LiveJellyfinClient: JellyfinClient {
         parameters.years = query.filter.years.isEmpty ? nil : query.filter.years
         parameters.officialRatings = query.filter.officialRatings.isEmpty ? nil : query.filter.officialRatings
         query.filter.apply(to: &parameters)
+        return parameters
+    }
 
+    func items(_ query: ItemQuery) async throws -> Page<MediaItem> {
+        let parameters = try parameters(for: query)
         let result = try await send(Paths.getItems(parameters: parameters))
         let items = result.mediaItems
         return Page(
@@ -232,6 +238,49 @@ actor LiveJellyfinClient: JellyfinClient {
             startIndex: result.startIndex ?? query.startIndex,
             totalCount: result.totalRecordCount ?? query.startIndex + items.count
         )
+    }
+
+    /// Everything the query matches, with as little as possible about each.
+    func itemIDs(_ query: ItemQuery) async throws -> [String] {
+        var parameters = try parameters(for: query)
+        parameters.sortBy = [.sortName]
+        parameters.sortOrder = [.ascending]
+        parameters.enableUserData = false
+        parameters.enableImages = false
+        parameters.limit = 1000
+        return try await allPages { startIndex in
+            parameters.startIndex = startIndex
+            return Paths.getItems(parameters: parameters)
+        } map: { $0.id }
+    }
+
+    /// Follows the rows received rather than those kept, and stops at a page with nothing new, so a
+    /// server that repeats itself or sends rows with no ID can't keep this going for ever.
+    private func allPages<Row: Sendable>(
+        request: (Int) -> Request<BaseItemDtoQueryResult>,
+        map: (BaseItemDto) -> Row?,
+        id: (Row) -> String
+    ) async throws -> [Row] {
+        var rows: [Row] = []
+        var seen = Set<String>()
+        var received = 0
+        while true {
+            let result = try await send(request(received))
+            let page = result.items ?? []
+            received += page.count
+            let new = page.compactMap(map).filter { seen.insert(id($0)).inserted }
+            rows += new
+            guard !new.isEmpty, received < result.totalRecordCount ?? 0 else {
+                return rows
+            }
+        }
+    }
+
+    private func allPages(
+        request: (Int) -> Request<BaseItemDtoQueryResult>,
+        map: (BaseItemDto) -> String?
+    ) async throws -> [String] {
+        try await allPages(request: request, map: map, id: { $0 })
     }
 
     func filterOptions(libraryID: String?, kinds: [ItemKind]) async throws -> FilterOptions {
@@ -280,17 +329,13 @@ actor LiveJellyfinClient: JellyfinClient {
         parameters.enableUserData = false
         parameters.enableTotalRecordCount = true
         parameters.limit = 500
-        var studios: [FilterValue] = []
-        while true {
-            parameters.startIndex = studios.count
-            let result = try await send(Paths.getStudios(parameters: parameters))
-            let page = result.items ?? []
-            studios += page.compactMap { dto in
-                guard let id = dto.id, let name = dto.name else { return nil }
-                return FilterValue(id: id, name: name)
-            }
-            guard !page.isEmpty, studios.count < result.totalRecordCount ?? 0 else { return studios }
-        }
+        return try await allPages { startIndex in
+            parameters.startIndex = startIndex
+            return Paths.getStudios(parameters: parameters)
+        } map: { dto in
+            guard let id = dto.id, let name = dto.name else { return nil }
+            return FilterValue(id: id, name: name)
+        } id: { $0.id }
     }
 
     private static func merge(_ first: [FilterValue], _ second: [FilterValue]) -> [FilterValue] {
@@ -374,7 +419,7 @@ actor LiveJellyfinClient: JellyfinClient {
         if let maxWidth {
             queryItems.append(URLQueryItem(name: "maxWidth", value: String(maxWidth)))
         }
-        return serverURL.appending(path: path).appending(queryItems: queryItems)
+        return serverURL.appending(path: path).appending(queryItems: queryItems).escapingPlusInQuery
     }
 
     // MARK: Playback
@@ -560,6 +605,25 @@ private extension QuickConnectRequest {
             throw JellyfinError.decoding("Quick Connect response had no code or secret")
         }
         self.init(code: code, secret: secret, isAuthenticated: dto.isAuthenticated ?? false)
+    }
+}
+
+/// `URLComponents` leaves a plus alone in a query, and the server reads it as a space, so a rating
+/// like AU-MA 15+ would match nothing. A real space is already %20 by now, so every plus left means a plus.
+private struct QueryEscaper: APIClientDelegate {
+    func client(_ client: APIClient, willSendRequest request: inout URLRequest) async throws {
+        request.url = request.url?.escapingPlusInQuery
+    }
+}
+
+private extension URL {
+    var escapingPlusInQuery: URL {
+        guard var components = URLComponents(url: self, resolvingAgainstBaseURL: false),
+              let query = components.percentEncodedQuery, query.contains("+") else {
+            return self
+        }
+        components.percentEncodedQuery = query.replacingOccurrences(of: "+", with: "%2B")
+        return components.url ?? self
     }
 }
 

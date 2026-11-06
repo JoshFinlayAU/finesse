@@ -185,8 +185,14 @@ private struct LibraryControls: View {
                     }
                 }
             }
-            // A random order has no direction.
-            if model.sort != .random {
+            // A random order has no direction, and keeps to itself until asked for a new one.
+            if model.sort == .random {
+                Section {
+                    Button("Shuffle Again", systemImage: "shuffle") {
+                        Task { await model.reshuffle() }
+                    }
+                }
+            } else {
                 Section("Order") {
                     Button {
                         Task { await model.setDirection(.ascending) }

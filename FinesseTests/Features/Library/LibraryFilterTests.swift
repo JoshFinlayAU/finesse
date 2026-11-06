@@ -169,6 +169,267 @@ import Testing
         await model.loadFilterChoices()
         #expect(model.values(for: .genres).map(\.id) == ["Drama", "Gone"])
         #expect(model.selectionSummary(.genres) == "Gone")
+
+        let gone = try #require(model.values(for: .genres).last)
+        await model.toggle(gone, in: .genres)
+        #expect(model.filter.genres.isEmpty)
+        #expect(!model.hasActiveFilter)
+        #expect(model.values(for: .genres).map(\.id) == ["Drama"])
+    }
+
+    /// Two rows with one identity leave what SwiftUI draws undefined, and they'd read the same anyway.
+    @Test func theSameLanguageForAudioAndSubtitlesReadsDifferently() {
+        var filter = ItemFilter()
+        let english = FilterValue(id: "eng", name: "English")
+        FilterList.audioLanguages.toggle(english, in: &filter)
+        FilterList.subtitleLanguages.toggle(english, in: &filter)
+        let titles = filter.activeTitles(kind: .movie)
+        #expect(titles.count == 2)
+        #expect(Set(titles).count == 2)
+    }
+
+    // MARK: Reloading
+
+    private func gated(_ count: Int = 5) async throws -> (GatedJellyfinClient, InMemoryJellyfinClient) {
+        let base = try await movies(count)
+        return (GatedJellyfinClient(base: base), base)
+    }
+
+    private func waitUntilHeld(_ client: GatedJellyfinClient, _ name: String) async {
+        while await !client.isWaiting(name) {
+            await Task.yield()
+        }
+    }
+
+    /// The panel stays up during a reload, so it mustn't say "0 titles" while it waits.
+    @Test func theCountStaysDuringAReloadAndAfterAFailedOne() async throws {
+        let (client, _) = try await gated()
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 2)
+        await model.appeared()
+        #expect(model.totalCount == 5)
+
+        await client.hold("items@0")
+        let toggling = Task { await model.toggle(.subtitles) }
+        await waitUntilHeld(client, "items@0")
+        #expect(model.phase == .loading)
+        #expect(model.totalCount == 5, "Nothing has answered yet")
+        await client.fail(["items@0"])
+        await client.release("items@0")
+        await toggling.value
+
+        guard case .failed = model.phase else {
+            Issue.record("Expected a failure, got \(model.phase)")
+            return
+        }
+        #expect(model.totalCount == 5)
+    }
+
+    /// An answer to an older filter must not replace the newer one's, in a first page or a later one.
+    @Test func anOlderFirstPageIsDropped() async throws {
+        let (client, base) = try await gated()
+        await base.configure { $0.extraFilterMatch = { item, filter in filter.is4K ? item.id == "000" : true } }
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 2)
+        await model.appeared()
+
+        await client.hold("items@0")
+        let older = Task { await model.toggle(.subtitles) }
+        await waitUntilHeld(client, "items@0")
+        await model.toggle(.fourK)
+        #expect(model.items.map(\.id) == ["000"])
+        await client.release("items@0")
+        await older.value
+        #expect(model.items.map(\.id) == ["000"])
+        #expect(model.totalCount == 1)
+    }
+
+    @Test func anOlderLaterPageIsDropped() async throws {
+        let (client, base) = try await gated()
+        await base.configure { $0.extraFilterMatch = { item, filter in filter.is4K ? item.id == "000" : true } }
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 2, prefetchDistance: 2)
+        await model.appeared()
+
+        await client.hold("items@2")
+        let older = Task { await model.loadMore(after: model.items[1]) }
+        await waitUntilHeld(client, "items@2")
+        await model.toggle(.fourK)
+        await client.release("items@2")
+        await older.value
+        #expect(model.items.map(\.id) == ["000"])
+        #expect(!model.isLoadingMore)
+    }
+
+    /// A refresh runs each time the grid comes back, and is otherwise allowed to fail quietly.
+    @Test func aRefreshNoticesAnExpiredSession() async throws {
+        let client = try await movies()
+        let model = LibraryModel(kind: .movie, client: client)
+        await model.appeared()
+        await client.configure { $0.failure = .notSignedIn }
+        await model.appeared()
+        #expect(model.sessionExpired)
+    }
+
+    @Test func aRefreshKeepsTheGridThroughAnyOtherFailure() async throws {
+        let client = try await movies()
+        let model = LibraryModel(kind: .movie, client: client)
+        await model.appeared()
+        await client.configure { $0.failure = .network("Offline") }
+        await model.appeared()
+        #expect(!model.sessionExpired)
+        #expect(model.items.count == 5)
+        #expect(model.phase == .loaded)
+    }
+
+    // MARK: What the server offers changes
+
+    @Test func listsCatchUpEachTimeThePanelOpens() async throws {
+        let client = try await movies()
+        await client.configure {
+            $0.filterOptionsValue = FilterOptions(genres: ["Drama"])
+            $0.studiosValue = [FilterValue(id: "1", name: "First")]
+        }
+        let model = LibraryModel(kind: .movie, client: client)
+        await model.loadFilterChoices()
+        await client.configure {
+            $0.filterOptionsValue = FilterOptions(genres: ["Drama", "Western"])
+            $0.studiosValue = [FilterValue(id: "1", name: "First"), FilterValue(id: "2", name: "Second")]
+        }
+        await model.loadFilterChoices()
+        #expect(model.values(for: .genres).map(\.id) == ["Drama", "Western"])
+        #expect(model.values(for: .studios).map(\.id) == ["1", "2"])
+    }
+
+    @Test func listsAreKeptIfTheyCantBeRefreshed() async throws {
+        let client = try await movies()
+        await client.configure { $0.filterOptionsValue = FilterOptions(genres: ["Drama"]) }
+        let model = LibraryModel(kind: .movie, client: client)
+        await model.loadFilterChoices()
+        await client.configure { $0.failure = .network("Offline") }
+        await model.loadFilterChoices()
+        #expect(model.values(for: .genres).map(\.id) == ["Drama"])
+    }
+
+    // MARK: Sorting
+
+    @Test func theChosenSortOrdersTheGrid() async throws {
+        let client = try await movies(3)
+        await client.configure {
+            for (index, seconds) in [100.0, 300, 200].enumerated() {
+                $0.allItems[index].runTime = Ticks(seconds: seconds)
+            }
+        }
+        let model = LibraryModel(kind: .movie, client: client)
+        await model.appeared()
+        await model.setSort(.runTime)
+        #expect(model.items.map(\.id) == ["001", "002", "000"])
+        await model.setDirection(.ascending)
+        #expect(model.items.map(\.id) == ["000", "002", "001"])
+    }
+
+    @Test func inProgressOnlyMatchesWhatWasStarted() async throws {
+        let client = try await movies(3)
+        await client.configure { $0.allItems[1].userState.playbackPosition = Ticks(seconds: 30) }
+        let model = LibraryModel(kind: .movie, client: client)
+        await model.appeared()
+        await model.toggle(.inProgress)
+        #expect(model.items.map(\.id) == ["001"])
+    }
+
+    // MARK: Random
+
+    private func walk(_ model: LibraryModel) async {
+        var loaded = -1
+        while model.hasMore, model.items.count != loaded, let last = model.items.last {
+            loaded = model.items.count
+            await model.loadMore(after: last)
+        }
+    }
+
+    /// The server shuffles again for every request, so asking it page by page repeats and misses titles.
+    @Test func randomReachesEveryTitleOnceAndKeepsItsOrder() async throws {
+        let client = try await movies(50)
+        let (saved, _) = store()
+        var preferences = LibraryPreferences()
+        preferences.sort = .random
+        saved.save(preferences)
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 7, prefetchDistance: 1, preferences: saved)
+        await model.appeared()
+        await walk(model)
+
+        #expect(model.items.count == 50)
+        #expect(Set(model.items.map(\.id)).count == 50)
+        #expect(!model.hasMore)
+        #expect(model.items.map(\.id) != model.items.map(\.id).sorted(), "It should be a shuffle")
+
+        // Coming back from Detail refreshes in place.
+        let order = model.items.map(\.id)
+        await model.appeared()
+        #expect(model.items.map(\.id) == order)
+    }
+
+    @Test func onlyAskingGivesANewRandomOrder() async throws {
+        let client = try await movies(50)
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 50)
+        await model.appeared()
+        await model.setSort(.random)
+        let first = model.items.map(\.id)
+        await model.appeared()
+        #expect(model.items.map(\.id) == first)
+
+        await model.reshuffle()
+        #expect(model.items.map(\.id) != first)
+        #expect(Set(model.items.map(\.id)) == Set(first))
+    }
+
+    @Test func randomKeepsToTheFilter() async throws {
+        let client = try await movies(50)
+        await client.configure { $0.extraFilterMatch = { item, filter in filter.is4K ? item.id < "010" : true } }
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 7, prefetchDistance: 1)
+        await model.appeared()
+        await model.setSort(.random)
+        await model.toggle(.fourK)
+        await walk(model)
+        #expect(model.totalCount == 10)
+        #expect(Set(model.items.map(\.id)) == Set((0..<10).map { String(format: "%03d", $0) }))
+    }
+
+    /// Titles deleted since the shuffle mustn't stall the grid, even a whole page of them.
+    @Test func randomGetsPastTitlesDeletedSinceTheShuffle() async throws {
+        let client = try await movies(20)
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 5, prefetchDistance: 1)
+        await model.appeared()
+        await model.setSort(.random)
+        let kept = Set(model.items.map(\.id))
+        await client.configure { fake in
+            let survivors = Set((0..<20).map { String(format: "%03d", $0) }).subtracting(kept).sorted().suffix(2)
+            fake.allItems = fake.allItems.filter { kept.contains($0.id) || survivors.contains($0.id) }
+        }
+        await walk(model)
+        #expect(model.items.count == 7)
+        #expect(!model.hasMore)
+    }
+
+    @Test func randomAsksForFewEnoughIDsToFitInARequest() async throws {
+        let client = try await movies(400)
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 200, prefetchDistance: 1)
+        await model.appeared()
+        await model.setSort(.random)
+        await walk(model)
+        await model.appeared()
+        #expect(model.items.count == 400)
+        let largest = await client.itemQueries.map(\.ids.count).max() ?? 0
+        #expect(largest > 0 && largest <= 150)
+    }
+
+    @Test func aPageOfRandomHoldsNoRepeatsAcrossTheFirstFewPages() async throws {
+        let client = try await movies(50)
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 10, prefetchDistance: 1)
+        await model.appeared()
+        await model.setSort(.random)
+        let first = model.items.map(\.id)
+        let last = try #require(model.items.last)
+        await model.loadMore(after: last)
+        #expect(Array(model.items.map(\.id).prefix(10)) == first)
+        #expect(model.items.count == 20, "A second page should add ten new titles")
     }
 
     @Test func activeFiltersAreCountedAndCleared() async throws {

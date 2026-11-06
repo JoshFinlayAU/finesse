@@ -31,6 +31,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
     /// Hold these calls open, so a test can make something happen during them.
     var playbackInfoGate: (@Sendable () async -> Void)?
     var reportStartGate: (@Sendable () async -> Void)?
+    var reportProgressGate: (@Sendable () async -> Void)?
     var reportStoppedGate: (@Sendable () async -> Void)?
 
     private(set) var startReports: [PlaybackReport] = []
@@ -167,17 +168,24 @@ actor InMemoryJellyfinClient: JellyfinClient {
             matches = matches.filter { !Set($0.genres).isDisjoint(with: query.filter.genres) }
         }
         if query.filter.isResumable == true {
-            matches = matches.filter { $0.userState.playbackPosition != nil }
+            matches = matches.filter { $0.userState.playbackPosition > .zero }
+        }
+        if !query.ids.isEmpty {
+            matches = matches.filter { query.ids.contains($0.id) }
         }
         if let extraFilterMatch {
             matches = matches.filter { extraFilterMatch($0, query.filter) }
         }
-        matches.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        if query.direction == .descending {
-            matches.reverse()
-        }
+        matches = Self.sorted(matches, by: query.sort, query.direction)
         let page = matches.dropFirst(query.startIndex).prefix(query.limit)
         return Page(items: Array(page), startIndex: query.startIndex, totalCount: matches.count)
+    }
+
+    func itemIDs(_ query: ItemQuery) async throws -> [String] {
+        var all = query
+        all.startIndex = 0
+        all.limit = .max
+        return try await items(all).items.map(\.id)
     }
 
     func filterOptions(libraryID: String?, kinds: [ItemKind]) async throws -> FilterOptions {
@@ -283,6 +291,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
 
     func reportPlaybackProgress(_ report: PlaybackReport) async throws {
         try checkSession()
+        await reportProgressGate?()
         progressReports.append(report)
     }
 
@@ -306,5 +315,37 @@ actor InMemoryJellyfinClient: JellyfinClient {
     private func checkSession() throws {
         try check()
         if session == nil { throw JellyfinError.notSignedIn }
+    }
+}
+
+private extension InMemoryJellyfinClient {
+    /// Follows the server: Random is a new order for every request, and with no direction. Sorts on
+    /// something a seeded item doesn't hold, like Date Added or Bitrate, fall through to its name.
+    static func sorted(_ items: [MediaItem], by sort: ItemSort, _ direction: SortDirection) -> [MediaItem] {
+        if sort == .random {
+            return items.shuffled()
+        }
+        func ordered<Value: Comparable>(_ key: (MediaItem) -> Value?) -> [MediaItem] {
+            items.sorted { first, second in
+                switch (key(first), key(second)) {
+                case let (lhs?, rhs?) where lhs != rhs: lhs < rhs
+                case (nil, _?): true
+                case (_?, nil): false
+                default: first.name.localizedCaseInsensitiveCompare(second.name) == .orderedAscending
+                }
+            }
+        }
+        let ascending: [MediaItem] = switch sort {
+        case .releaseDate: ordered(\.premiereDate)
+        case .releaseYear: ordered(\.productionYear)
+        case .communityRating: ordered(\.communityRating)
+        case .criticRating: ordered(\.criticRating)
+        case .parentalRating: ordered(\.officialRating)
+        case .runTime: ordered { $0.runTime?.rawValue }
+        case .favourites: ordered { $0.userState.isFavorite ? 1 : 0 }
+        case .watched: ordered { $0.userState.isPlayed ? 1 : 0 }
+        default: ordered { _ in Int?.none }
+        }
+        return direction == .descending ? ascending.reversed() : ascending
     }
 }

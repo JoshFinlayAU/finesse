@@ -50,6 +50,16 @@ struct FilterPanelDriver {
         XCTAssertTrue(hasFocus(title), "\(title) should be reachable, focus is on \(last)", file: file, line: line)
     }
 
+    /// An open Menu's rows report focus only from inside, with no label to tell if focus has stopped moving.
+    func chooseInMenu(_ title: String, moving direction: XCUIRemote.Button, file: StaticString = #filePath, line: UInt = #line) {
+        for _ in 0..<20 where !hasFocus(title) {
+            press(direction)
+        }
+        XCTAssertTrue(hasFocus(title), "\(title) should be in the menu", file: file, line: line)
+        remote.press(.select)
+        sleep(2)
+    }
+
     func choose(_ title: String, file: StaticString = #filePath, line: UInt = #line) {
         focusRow(title, file: file, line: line)
         remote.press(.select)
@@ -151,11 +161,22 @@ final class LibraryFilterUITests: XCTestCase {
         sleep(4)
     }
 
+    /// The top row doesn't exist at all once it has scrolled far enough off the screen.
+    private var filterHasFocus: Bool {
+        filter.exists && filter.hasFocus
+    }
+
     /// Up from the grid lands on Sort. Filter is one to the right, and Clear is right of that.
     private func focusFilterButton() {
-        press(.up)
-        press(.right)
-        XCTAssertTrue(filter.hasFocus, "Filter should be right of Sort")
+        // Where focus starts depends on how soon the grid arrived, and a remembered Random takes longer.
+        press(.down)
+        for _ in 0..<6 where !filterHasFocus {
+            press(.up)
+            if !filterHasFocus {
+                press(.right)
+            }
+        }
+        XCTAssertTrue(filterHasFocus, "Filter should be in the top row")
     }
 
     /// Remembered filters from an earlier failed run would change everything after this.
@@ -165,12 +186,12 @@ final class LibraryFilterUITests: XCTestCase {
             press(.right)
             remote.press(.select)
             sleep(3)
-            if !filter.hasFocus {
+            if !filterHasFocus {
                 press(.left)
             }
         }
         XCTAssertEqual(filter.value as? String, "All")
-        XCTAssertTrue(filter.hasFocus)
+        XCTAssertTrue(filterHasFocus)
     }
 
     private func total(_ text: XCUIElement) -> Int {
@@ -309,6 +330,56 @@ final class LibraryFilterUITests: XCTestCase {
             panel.close()
         }
         XCTAssertEqual(filter.value as? String, "All", "Only typing, nothing should be chosen")
+    }
+
+    /// Random keeps one order through Detail and Back, and reaches past the first page.
+    func testRandomKeepsItsOrderThroughDetailAndBack() throws {
+        try launchSignedIn()
+        openTab("Movies")
+        clearAnyRememberedFilter()
+        let sort = app.buttons["librarySort"]
+        // A Menu doesn't report focus to XCUITest, so opening it is what proves it had focus.
+        press(.left)
+        remote.press(.select)
+        sleep(2)
+        panel.chooseInMenu("Random", moving: .down)
+        sleep(3)
+        XCTAssertEqual(sort.value as? String, "Random")
+        capture("filter-40-random")
+
+        // Well past the first page of 60, six to a row.
+        press(.down, times: 14)
+        sleep(3)
+        let card = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch.label
+        XCTAssertFalse(card.isEmpty)
+        remote.press(.select)
+        XCTAssertTrue(app.buttons["detailWatched"].waitForExistence(timeout: 20))
+        sleep(2)
+        remote.press(.menu)
+        sleep(3)
+        let back = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch.label
+        XCTAssertEqual(back, card, "Back should land on the same card in the same order")
+        capture("filter-41-random-back")
+
+        // Up to the top row, then ask for a new order and put Name back.
+        // The card is in the rightmost column, so going up leads to Filter, which does report focus.
+        // Filter doesn't exist at all until it has scrolled back near the screen.
+        for _ in 0..<30 where !filterHasFocus {
+            press(.up)
+        }
+        XCTAssertTrue(filterHasFocus, "Up from the grid should reach the top row")
+        press(.left)
+        remote.press(.select)
+        sleep(2)
+        capture("filter-42-random-menu")
+        panel.chooseInMenu("Shuffle Again", moving: .down)
+        sleep(3)
+        XCTAssertEqual(sort.value as? String, "Random")
+        remote.press(.select)
+        sleep(2)
+        panel.chooseInMenu("Name", moving: .up)
+        sleep(3)
+        XCTAssertEqual(sort.value as? String, "Name")
     }
 
     /// TV Shows has its own sorts and filters.

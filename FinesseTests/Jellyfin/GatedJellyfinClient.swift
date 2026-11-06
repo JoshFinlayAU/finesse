@@ -64,6 +64,9 @@ actor GatedJellyfinClient: JellyfinClient {
         try await gate("items@\(query.startIndex)")
         return page
     }
+    func itemIDs(_ query: ItemQuery) async throws -> [String] {
+        try await base.itemIDs(query)
+    }
     func filterOptions(libraryID: String?, kinds: [ItemKind]) async throws -> FilterOptions {
         try await base.filterOptions(libraryID: libraryID, kinds: kinds)
     }

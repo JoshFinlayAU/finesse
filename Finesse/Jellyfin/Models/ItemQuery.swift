@@ -83,6 +83,8 @@ struct ItemQuery: Hashable, Sendable {
     var kinds: [ItemKind] = []
     var recursive = true
     var searchTerm: String?
+    /// Only these items, in whatever order the server likes.
+    var ids: [String] = []
     var sort: ItemSort = .name
     var direction: SortDirection = .ascending
     var filter = ItemFilter()

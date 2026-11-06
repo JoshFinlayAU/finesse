@@ -48,12 +48,15 @@ struct LibraryFilterTests {
     func eachSortReordersAndReverses(kind: ItemKind) async throws {
         let client = try await LiveServer.signedInClient()
         let byName = try await ids(kind, .name, .ascending, client)
+        let byNameBackward = try await ids(kind, .name, .descending, client)
         try #require(byName.count == 40, "The test server should have at least 40 of \(kind)")
         let stateDependent: Set<ItemSort> = [.playCount, .datePlayed, .favourites, .watched]
         for sort in ItemSort.options(for: kind) where !stateDependent.contains(sort) && sort != .name {
             let forward = try await ids(kind, sort, .ascending, client)
             let backward = try await ids(kind, sort, .descending, client)
-            #expect(forward != byName || backward != byName, "\(sort) on \(kind) should change the order")
+            // A sort the server ignored would be name order, in whichever direction was asked for.
+            #expect(forward != byName, "\(sort) on \(kind) ascending is just name order")
+            #expect(backward != byNameBackward, "\(sort) on \(kind) descending is just name order")
             #expect(forward != backward, "\(sort) on \(kind) should respond to its direction")
         }
         try await client.signOut()
@@ -246,13 +249,79 @@ struct LibraryFilterTests {
                 if counted.count == 2 { break }
             }
             try #require(counted.count == 2, "\(list) on \(kind) should have two values that narrow, from \(values.count)")
-            let either = try await count(kind, client) {
-                list.toggle(counted[0].0, in: &$0)
-                list.toggle(counted[1].0, in: &$0)
+
+            // By item rather than totals: a server honouring only the first value could have the larger count.
+            func matching(_ values: [FilterValue]) async throws -> Set<String> {
+                var filter = ItemFilter()
+                for value in values { list.toggle(value, in: &filter) }
+                return Set(try await client.items(ItemQuery(kinds: [kind], filter: filter, limit: total)).items.map(\.id))
             }
-            #expect(either >= max(counted[0].1, counted[1].1), "\(list) on \(kind) should match any of them")
-            #expect(either <= counted[0].1 + counted[1].1)
+            let first = try await matching([counted[0].0])
+            let second = try await matching([counted[1].0])
+            let either = try await matching([counted[0].0, counted[1].0])
+            #expect(either == first.union(second), "\(list) on \(kind) should match any of them")
+            #expect(first != second)
         }
+        try await client.signOut()
+    }
+
+    /// A bare plus reaches the server as a space, so these matched nothing, and they cover 577 titles.
+    @Test func parentalRatingsWithAPlusMatchTheirTitles() async throws {
+        let client = try await LiveServer.signedInClient()
+        var found: Set<String> = []
+        for kind in [ItemKind.movie, .series] {
+            let options = try await client.filterOptions(libraryID: nil, kinds: [kind])
+            for rating in options.officialRatings where rating.contains("+") {
+                found.insert(rating)
+                let items = try await client.items(ItemQuery(kinds: [kind], filter: ItemFilter(officialRatings: [rating]), limit: 40)).items
+                #expect(!items.isEmpty, "\(rating) on \(kind) is offered, so it should match")
+                #expect(items.allSatisfy { $0.officialRating == rating }, "\(rating) on \(kind)")
+            }
+        }
+        for rating in ["AU-MA 15+", "AU-MA15+", "AU-R 18+", "AU-R18+"] {
+            #expect(found.contains(rating), "\(rating) should be on the test server")
+        }
+        try await client.signOut()
+    }
+
+    /// Every parental rating and genre the server offers, because a two-value sample missed the ones that broke.
+    @Test(arguments: [ItemKind.movie, .series])
+    func everyOfferedRatingAndGenreMatches(kind: ItemKind) async throws {
+        let client = try await LiveServer.signedInClient()
+        let options = try await client.filterOptions(libraryID: nil, kinds: [kind])
+        try #require(!options.officialRatings.isEmpty && !options.genres.isEmpty)
+        for rating in options.officialRatings {
+            #expect(try await count(kind, client) { $0.officialRatings = [rating] } > 0, "\(rating) on \(kind)")
+        }
+        for genre in options.genres {
+            #expect(try await count(kind, client) { $0.genres = [genre] } > 0, "\(genre) on \(kind)")
+        }
+        try await client.signOut()
+    }
+
+    /// The real server reshuffles for every request, so this walks the whole library.
+    @Test(arguments: [ItemKind.movie, .series])
+    func randomReachesTheWholeLibraryOnceAndKeepsItsOrder(kind: ItemKind) async throws {
+        let client = try await LiveServer.signedInClient()
+        let total = try await count(kind, client)
+        let model = await LibraryModel(kind: kind, client: client, pageSize: 60, prefetchDistance: 1)
+        await model.appeared()
+        let started = Date.now
+        await model.setSort(.random)
+        let firstPage = Date.now.timeIntervalSince(started)
+        var loaded = -1
+        while await model.hasMore, await model.items.count != loaded, let last = await model.items.last {
+            loaded = await model.items.count
+            await model.loadMore(after: last)
+        }
+        let order = await model.items.map(\.id)
+        print("RANDOM \(kind): \(total) titles, first page \(firstPage) s, whole walk \(Date.now.timeIntervalSince(started)) s")
+        #expect(order.count == total)
+        #expect(Set(order).count == total)
+
+        // Coming back from Detail refreshes in place.
+        await model.appeared()
+        #expect(await model.items.map(\.id) == order)
         try await client.signOut()
     }
 

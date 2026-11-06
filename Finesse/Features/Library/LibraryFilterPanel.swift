@@ -114,14 +114,26 @@ private struct LibraryFilterSummary: View {
                 .font(.title3)
                 .fontWeight(.semibold)
                 .contentTransition(.numericText())
+                // Dimmed because it's the last answer, until the new one arrives.
+                .opacity(model.phase == .loaded ? 1 : 0.5)
                 .accessibilityIdentifier("panelSummary")
+            if case .failed(let message) = model.phase {
+                Text(message)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Button("Try Again") {
+                    Task { await model.reload() }
+                }
+                .accessibilityIdentifier("panelTryAgain")
+            }
             if model.hasActiveFilter {
                 VStack(alignment: .leading, spacing: 8) {
                     let titles = model.activeFilterTitles
                     Text("\(titles.count) \(titles.count == 1 ? "filter" : "filters") on")
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                    ForEach(titles.prefix(Self.maximumShown), id: \.self) { title in
+                    // By place, since a tag and a genre can share a name.
+                    ForEach(Array(titles.prefix(Self.maximumShown).enumerated()), id: \.offset) { _, title in
                         Text(title)
                             .lineLimit(1)
                     }

@@ -41,6 +41,11 @@ import Testing
         StubURLProtocol.reset { _ in .response(status: status, body: data) }
     }
 
+    /// The query exactly as it goes out. `lastQuery` decodes it, which would hide a wrong encoding.
+    private func wireQuery() throws -> String {
+        try #require(StubURLProtocol.recorded.last?.request.url?.query(percentEncoded: true))
+    }
+
     private func lastQuery() throws -> [String: String] {
         let request = try #require(StubURLProtocol.recorded.last?.request)
         let components = try #require(URLComponents(url: request.url!, resolvingAgainstBaseURL: false))
@@ -313,7 +318,7 @@ import Testing
         #expect(sent["sortBy"] == "DateLastContentAdded,SortName")
         #expect(sent["filters"] == "IsResumable")
         #expect(sent["tags"] == "one,two")
-        #expect(sent["officialRatings"] == "AU-MA 15+")
+        #expect(try wireQuery().contains("officialRatings=AU-MA%2015%2B"))
         #expect(sent["studioIds"] == "s1,s2")
         #expect(sent["audioLanguages"] == "eng")
         #expect(sent["subtitleLanguages"] == "fre")
@@ -346,6 +351,106 @@ import Testing
         let sent = try lastQuery()
         #expect(sent["nameLessThan"] == "A")
         #expect(sent["nameStartsWith"] == nil)
+    }
+
+    /// A server reads a bare plus as a space, so ratings like AU-MA 15+ would match nothing.
+    @Test func aPlusIsEscapedInEveryValueOfEveryQuery() async throws {
+        try serve("items-movies")
+        var filter = ItemFilter()
+        filter.genres = ["Drama+Comedy"]
+        filter.tags = ["C++"]
+        filter.officialRatings = ["R18+"]
+        filter.name = .letter("+")
+        filter.studios = [FilterValue(id: "a+b", name: "Studio")]
+        filter.audioLanguages = [FilterValue(id: "x+y", name: "Language")]
+        let client = await signedInClient()
+        _ = try await client.items(ItemQuery(libraryID: "lib+1", searchTerm: "1+1", filter: filter))
+        let wire = try wireQuery()
+        #expect(!wire.contains("+"), "Sent \(wire)")
+        for expected in ["genres=Drama%2BComedy", "tags=C%2B%2B", "officialRatings=R18%2B", "nameStartsWith=%2B", "studioIds=a%2Bb", "audioLanguages=x%2By", "searchTerm=1%2B1", "parentId=lib%2B1"] {
+            #expect(wire.contains(expected), "\(expected) in \(wire)")
+        }
+
+        try serve("filters")
+        _ = try? await client.search(term: "a+b", kinds: [.movie], limit: 3)
+        #expect(!(try wireQuery().contains("+")))
+    }
+
+    @Test func imageURLsEscapeAPlusToo() async throws {
+        let client = await signedInClient()
+        let url = client.imageURL(itemID: "item", kind: .primary, tag: "a+b", index: nil, maxWidth: nil)
+        #expect(url?.query(percentEncoded: true)?.contains("tag=a%2Bb") == true)
+    }
+
+    @Test func itemIDsComeFromEveryPageAndAskForLittle() async throws {
+        func page(_ ids: [Int], total: Int) -> Data {
+            let items = ids.map { #"{"Id":"\#($0)"}"# }.joined(separator: ",")
+            return Data(#"{"Items":[\#(items)],"TotalRecordCount":\#(total),"StartIndex":0}"#.utf8)
+        }
+        let first = page(Array(0..<1000), total: 1002)
+        let second = page([1000, 1001], total: 1002)
+        StubURLProtocol.reset { request in
+            .response(status: 200, body: request.url?.query?.contains("startIndex=1000") == true ? second : first)
+        }
+        var filter = ItemFilter()
+        filter.genres = ["Drama"]
+        let ids = try await signedInClient().itemIDs(ItemQuery(kinds: [.movie], filter: filter))
+        #expect(ids.count == 1002)
+        let sent = try lastQuery()
+        #expect(sent["genres"] == "Drama")
+        #expect(sent["enableImages"] == "false")
+        #expect(sent["enableUserData"] == "false")
+    }
+
+    @Test func aQueryCanAskForParticularItems() async throws {
+        try serve("items-movies")
+        _ = try await signedInClient().items(ItemQuery(ids: ["a", "b"], limit: 2))
+        #expect(try lastQuery()["ids"] == "a,b")
+    }
+
+    @Test func anOrdinarySpaceStaysASpace() async throws {
+        try serve("items-movies")
+        var filter = ItemFilter()
+        filter.officialRatings = ["AU-MA 15"]
+        _ = try await signedInClient().items(ItemQuery(filter: filter))
+        #expect(try wireQuery().contains("officialRatings=AU-MA%2015"))
+    }
+
+    private func studioPage(_ ids: [String?], total: Int) -> Data {
+        let items = ids.map { id in id.map { #"{"Id":"\#($0)","Name":"Studio \#($0)"}"# } ?? #"{"Name":"No ID"}"# }
+        return Data(#"{"Items":[\#(items.joined(separator: ","))],"TotalRecordCount":\#(total),"StartIndex":0}"#.utf8)
+    }
+
+    /// A row with no ID is dropped, but the next page still starts after it.
+    @Test func studioPagingCountsTheRowsReceived() async throws {
+        let first = studioPage([nil] + (1..<500).map(String.init), total: 502)
+        let second = studioPage(["500", "501"], total: 502)
+        StubURLProtocol.reset { request in
+            .response(status: 200, body: request.url?.query?.contains("startIndex=500") == true ? second : first)
+        }
+        let studios = try await signedInClient().studios(libraryID: "library", kinds: [.movie])
+        #expect(studios.count == 501)
+        #expect(Set(studios.map(\.id)).count == 501)
+    }
+
+    /// Fails its request rather than hanging if paging never ends.
+    @Test func studioPagingCantLoopForever() async throws {
+        let body = studioPage(Array(repeating: nil, count: 500), total: 100_000)
+        StubURLProtocol.reset { _ in
+            StubURLProtocol.recorded.count > 400 ? .response(status: 500, body: Data()) : .response(status: 200, body: body)
+        }
+        _ = try await signedInClient().studios(libraryID: "library", kinds: [.movie])
+        #expect(StubURLProtocol.recorded.count <= 2, "A page with nothing usable should end it")
+    }
+
+    @Test func aServerThatRepeatsItsFirstPageStillEnds() async throws {
+        let body = studioPage((0..<500).map(String.init), total: 100_000)
+        StubURLProtocol.reset { _ in
+            StubURLProtocol.recorded.count > 400 ? .response(status: 500, body: Data()) : .response(status: 200, body: body)
+        }
+        let studios = try await signedInClient().studios(libraryID: "library", kinds: [.movie])
+        #expect(studios.count == 500)
+        #expect(StubURLProtocol.recorded.count <= 2, "A page with nothing new should end it")
     }
 
     @Test func fetchesEveryPageOfStudios() async throws {

@@ -221,7 +221,14 @@ extension ItemFilter {
         case nil: break
         }
         for list in FilterList.allCases {
-            titles += list.selected(in: self).map(\.name)
+            titles += list.selected(in: self).map { value in
+                // English audio and English subtitles would otherwise read the same.
+                switch list {
+                case .audioLanguages: "\(value.name) Audio"
+                case .subtitleLanguages: "\(value.name) Subtitles"
+                default: value.name
+                }
+            }
         }
         return titles
     }
