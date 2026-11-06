@@ -203,6 +203,67 @@ final class GalleryCaptureUITests: XCTestCase {
         capture("g11-tv-grid")
     }
 
+    /// The filter panel's pages on the real library, leaving no filter behind.
+    func testFilterPages() async throws {
+        _ = try await prepare()
+        launchSignedIn()
+        let panel = FilterPanelDriver(app: app)
+        openTab("Movies")
+        XCTAssertTrue(app.buttons["librarySort"].waitForExistence(timeout: 20))
+        sleep(2)
+        press(.up)
+        press(.right)
+        panel.open()
+
+        panel.choose("Genres")
+        capture("g45-filter-genres")
+        press(.down)
+        remote.press(.select)
+        sleep(2)
+        panel.back()
+        XCTAssertTrue(panel.summary.waitForExistence(timeout: 5))
+        sleep(1)
+        capture("g46-filter-with-selection")
+
+        panel.choose("Tags")
+        capture("g47-filter-tags-letters")
+        press(.down)
+        press(.right)
+        press(.left)
+        panel.choose("A")
+        capture("g48-filter-tags-one-letter")
+        panel.back()
+        press(.up, times: 3)
+        app.typeText("war")
+        sleep(3)
+        capture("g50-filter-tags-search")
+        // How far Back goes from the keyboard varies, so go by what's on screen.
+        for _ in 0..<3 where panel.summary.exists && !panel.exists("Starts With") {
+            panel.back()
+        }
+        if !panel.summary.exists {
+            panel.open()
+        }
+
+        panel.choose("Starts With")
+        capture("g49-filter-starts-with")
+        panel.back()
+        XCTAssertTrue(panel.summary.waitForExistence(timeout: 5))
+        panel.clearFilters()
+        panel.close()
+        sleep(2)
+        XCTAssertEqual(app.buttons["libraryFilter"].value as? String, "All")
+
+        openTab("TV Shows")
+        XCTAssertTrue(app.buttons["librarySort"].waitForExistence(timeout: 20))
+        sleep(2)
+        press(.up)
+        press(.right)
+        panel.open()
+        capture("g51-filter-tv-panel")
+        panel.close()
+    }
+
     // MARK: Detail
 
     func testDetail() async throws {
@@ -314,7 +375,10 @@ final class GalleryCaptureUITests: XCTestCase {
         let item = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let name = try XCTUnwrap(item?["Name"] as? String)
         let ticks = try XCTUnwrap((item?["RunTimeTicks"] as? NSNumber)?.int64Value)
-        clearAfterwards(api, [.init(id: "5591e677a09876112cf8ae42bf6c4e6f", name: name, runTimeTicks: ticks)])
+        let movie = TestServerAPI.Movie(id: "5591e677a09876112cf8ae42bf6c4e6f", name: name, runTimeTicks: ticks)
+        clearAfterwards(api, [movie])
+        // Past the film's dark opening, so the glass is seen over a picture.
+        try await api.setResume(movie)
 
         launchSignedIn()
         openTab("Search")
@@ -347,7 +411,7 @@ final class GalleryCaptureUITests: XCTestCase {
         sleep(1)
         remote.press(.up)
         sleep(1)
-        capture("g29b-player-bar")
+        capture("g37-player-bar")
         player.openPanel("audio")
         sleep(1)
         capture("g30-player-audio-panel")
@@ -356,6 +420,64 @@ final class GalleryCaptureUITests: XCTestCase {
         player.openPanel("subtitles")
         sleep(1)
         capture("g31-player-subtitle-panel")
+        player.closePanelToNothing()
+        remote.press(.menu)
+        XCTAssertTrue(bar.waitForNonExistence(timeout: 15))
+    }
+
+    /// A real episode with chapters, started part way through so the panels sit over a picture.
+    func testPlayerPanels() async throws {
+        let api = try await prepare()
+        let episode = TestServerAPI.Movie(id: "854afab8960dcdcd0d728a8d48cd4500", name: "Comeback", runTimeTicks: 30_354_240_000)
+        clearAfterwards(api, [episode])
+        try await api.setResume(episode)
+
+        launchSignedIn()
+        XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 20))
+        sleep(2)
+        press(.down)
+        remote.press(.select)
+        let play = app.buttons["detailPlay"]
+        XCTAssertTrue(play.waitForExistence(timeout: 20))
+        sleep(1)
+        remote.press(.select)
+        let bar = app.buttons["transportBar"]
+        XCTAssertTrue(bar.waitForExistence(timeout: 30))
+        sleep(6)
+        let player = PlayerDriver(app: app)
+
+        // A click pauses and starts a scrub, before left or right have moved it.
+        remote.press(.select)
+        sleep(1)
+        capture("g44-player-scrub-mode")
+        remote.press(.menu)
+        sleep(2)
+
+        for (panel, name) in [
+            ("playback", "g38-player-speed-picture"),
+            ("chapters", "g39-player-chapters"),
+            ("episodes", "g40-player-episodes"),
+            ("quality", "g41-player-quality"),
+            ("info", "g42-player-info"),
+        ] {
+            player.openPanel(panel)
+            sleep(1)
+            capture(name)
+            if panel == "playback" {
+                press(.down, times: 8)
+                sleep(1)
+                capture("g52-player-picture")
+            }
+            remote.press(.menu)
+            sleep(1)
+        }
+
+        // Offset, Size and Position sit under the subtitle tracks.
+        player.openPanel("subtitles")
+        // This episode has dozens of subtitle tracks, and pressing past the end does nothing.
+        press(.down, times: 60)
+        sleep(1)
+        capture("g43-player-subtitle-style")
         player.closePanelToNothing()
         remote.press(.menu)
         XCTAssertTrue(bar.waitForNonExistence(timeout: 15))
