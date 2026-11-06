@@ -5,11 +5,11 @@ Usage: scan.py <dist folder>, run on the Mac. Device and simulator slices are bo
 
 Checks, per binary:
  - no fstatfs or other disk space APIs, which have no approved reason that describes this code
- - no embedded OpenSSL, GnuTLS, nettle or GMP symbols
+ - OpenSSL only in its own framework and used only by Libavformat, and no GnuTLS, nettle or GMP anywhere
  - every required-reason symbol it imports is declared in its privacy manifest
  - every Apple symbol it imports exists in the public SDK, as listed in the SDK's .tbd stubs
  - built for tvOS at the right deployment target, with @rpath install names
- - no GPL, version3 or nonfree build flags, and FFmpeg libraries report LGPL 2.1
+ - no GPL or nonfree build flags, and FFmpeg libraries report LGPL 3, the owner's decision for TLS 1.3
 """
 import glob
 import os
@@ -23,8 +23,9 @@ TARGET = "26.0"
 DISK_SPACE = {"_statfs", "_fstatfs", "_statvfs", "_fstatvfs", "_getattrlistbulk", "_getmntinfo"}
 TIMESTAMP = {"_stat", "_fstat", "_lstat", "_fstatat", "_getattrlist", "_fgetattrlist"}
 BOOT_TIME = {"_mach_absolute_time"}
-EMBEDDED_TLS = re.compile(r"^_(SSL_|SSL3_|TLS_|OPENSSL_|EVP_|gnutls_|nettle_|__gmp|gmp_|mbedtls_)")
-LICENCE_STRINGS = [b"--enable-gpl", b"--enable-version3", b"--enable-nonfree", b"--enable-libx264", b"--enable-libx265"]
+OPENSSL_SYMBOL = re.compile(r"^_(SSL_|SSL3_|TLS_|OPENSSL_|EVP_|BIO_|X509_)")
+BANNED_CRYPTO = re.compile(r"^_(gnutls_|nettle_|__gmp|gmp_|mbedtls_)")
+LICENCE_STRINGS = [b"--enable-gpl", b"--enable-nonfree", b"--enable-libx264", b"--enable-libx265"]
 failures = []
 
 
@@ -65,7 +66,7 @@ for path in sorted(glob.glob(f"{dist}/*.xcframework")):
     own_frameworks[os.path.basename(path).split(".")[0]] = path
 
 EXPECTED = {"Libmpv", "Libavcodec", "Libavfilter", "Libavformat", "Libavutil", "Libswresample", "Libswscale",
-            "Libass", "Libfribidi", "Libdav1d", "Libplacebo", "MoltenVK"}
+            "Libass", "Libfribidi", "Libdav1d", "Libplacebo", "MoltenVK", "OpenSSL", "Libuchardet"}
 if set(own_frameworks) != EXPECTED:
     print(f"FAILED: expected {sorted(EXPECTED)}, found {sorted(own_frameworks)}")
     sys.exit(1)
@@ -95,9 +96,15 @@ for variant, sdk_name, platform in (("tvos-arm64", "appletvos", "3"), ("tvos-arm
         if banned:
             fail(name, f"disk space APIs imported: {sorted(banned)}")
 
-        tls = sorted(s for s in defined | undefined if EMBEDDED_TLS.match(s))
-        if tls:
-            fail(name, f"embedded TLS or bignum symbols: {tls[:6]}")
+        banned_crypto = sorted(s for s in defined | undefined if BANNED_CRYPTO.match(s))
+        if banned_crypto:
+            fail(name, f"GnuTLS, nettle, GMP or mbedTLS symbols: {banned_crypto[:6]}")
+        if name != "OpenSSL":
+            embedded = sorted(s for s in defined if OPENSSL_SYMBOL.match(s))
+            if embedded:
+                fail(name, f"OpenSSL code outside its framework: {embedded[:6]}")
+            if name != "Libavformat" and any(OPENSSL_SYMBOL.match(s) for s in undefined):
+                fail(name, "uses OpenSSL, and only Libavformat should")
 
         manifest_path = f"{framework}/PrivacyInfo.xcprivacy"
         if not os.path.exists(manifest_path):
@@ -128,13 +135,15 @@ for variant, sdk_name, platform in (("tvos-arm64", "appletvos", "3"), ("tvos-arm
             fail(name, "install name is not @rpath")
         for line in run("otool", "-L", binary).decode().splitlines()[1:]:
             dep = line.strip().split(" (")[0]
-            if not dep.startswith(("/usr/lib/", "/System/Library/", "@rpath/Lib", "@rpath/MoltenVK")):
+            if not dep.startswith(("/usr/lib/", "/System/Library/", "@rpath/Lib", "@rpath/MoltenVK", "@rpath/OpenSSL")):
                 fail(name, f"unexpected dependency {dep}")
 
         data = open(binary, "rb").read()
         for flag in LICENCE_STRINGS:
             if flag in data:
                 fail(name, f"contains {flag.decode()}")
+        if name.startswith(("Libav", "Libsw")) and b"LGPL version 3 or later" not in data:
+            fail(name, "does not report LGPL version 3 or later")
         if name.startswith(("Libav", "Libsw")):
             match = re.search(rb"--prefix=[^\0]*", data)
             if match:

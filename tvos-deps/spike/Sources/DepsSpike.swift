@@ -37,7 +37,12 @@ final class Player: @unchecked Sendable {
         ] {
             mpv_set_option_string(handle, name, value)
         }
-        mpv_request_log_messages(handle, "info")
+        // SPIKE_OPTS is name=value pairs separated by commas, for trying one option without a rebuild.
+        for pair in (ProcessInfo.processInfo.environment["SPIKE_OPTS"] ?? "").split(separator: ",") {
+            let parts = pair.split(separator: "=", maxSplits: 1).map(String.init)
+            if parts.count == 2 { mpv_set_option_string(handle, parts[0], parts[1]) }
+        }
+        mpv_request_log_messages(handle, ProcessInfo.processInfo.environment["SPIKE_LOG"] ?? "info")
         guard mpv_initialize(handle) >= 0 else { return nil }
     }
 
@@ -109,8 +114,23 @@ enum Spike {
         Self.player = player
         Thread.detachNewThread { player.drainEvents() }
         player.load(arguments[1], start: arguments.count > 2 ? arguments[2] : "0", sid: arguments.count > 3 ? arguments[3] : nil)
+        // SPIKE_SWITCH_SID selects a subtitle track at runtime, the way MPVEngine does, rather than before loading.
+        if let sid = ProcessInfo.processInfo.environment["SPIKE_SWITCH_SID"] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+                print("SPIKE switching to sid \(sid)")
+                mpv_set_property_string(player.handle, "sid", sid)
+            }
+        }
+        // Counts distinct subtitle start times, because a screenshot can land between subtitles.
+        var seenStarts = Set<String>()
+        Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
+            let start = player.string("sub-start")
+            if start != "unavailable", seenStarts.insert(start).inserted {
+                print("SPIKE sub event \(seenStarts.count) at \(start)")
+            }
+        }
         Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
-            print("SPIKE state pos=\(player.string("time-pos")) vo=\(player.string("current-vo")) ao=\(player.string("current-ao")) hwdec=\(player.string("hwdec-current")) vcodec=\(player.string("video-codec")) acodec=\(player.string("audio-codec-name")) sid=\(player.string("sid")) subtext=\(player.string("sub-text").prefix(60))")
+            print("SPIKE state pos=\(player.string("time-pos")) vo=\(player.string("current-vo")) ao=\(player.string("current-ao")) hwdec=\(player.string("hwdec-current")) vcodec=\(player.string("video-codec")) acodec=\(player.string("audio-codec-name")) sid=\(player.string("sid")) substart=\(player.string("sub-start")) subend=\(player.string("sub-end")) subtext=\(player.string("sub-text").prefix(60))")
         }
     }
 }

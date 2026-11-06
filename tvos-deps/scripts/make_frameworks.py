@@ -29,6 +29,8 @@ FRAMEWORKS = [
     (r"libdav1d\.\d+\.dylib", "Libdav1d", versions["DAV1D_VERSION"]),
     (r"libplacebo\.\d+\.dylib", "Libplacebo", versions["LIBPLACEBO_TAG"].lstrip("v")),
     (r"libMoltenVK\.dylib", "MoltenVK", versions["MOLTENVK_TAG"].lstrip("v")),
+    (r"libOpenSSL\.dylib", "OpenSSL", versions["OPENSSL_VERSION"]),
+    (r"libuchardet(\.\d+)+\.dylib", "Libuchardet", versions["UCHARDET_VERSION"]),
 ]
 
 # Symbol to (Apple category, approved reason). Only reasons that describe this code are listed.
@@ -94,7 +96,7 @@ for slice_name, platform in (("tvos", "AppleTVOS"), ("tvossim", "AppleTVSimulato
             base = os.path.basename(old)
             if base in by_soname:
                 run("install_name_tool", "-change", old, f"@rpath/{by_soname[base]}.framework/{by_soname[base]}", binary)
-            elif not old.startswith(("/usr/lib/", "/System/", "@rpath/Lib", "@rpath/MoltenVK")):
+            elif not old.startswith(("/usr/lib/", "/System/", "@rpath/Lib", "@rpath/MoltenVK", "@rpath/OpenSSL")):
                 # A versioned symlink name still points at one of ours. Anything else is a build problem.
                 match = next((n for n, (f, _) in files.items() if f.split(".")[0] == base.split(".")[0]), None)
                 assert match, f"{name} depends on {old}"
@@ -106,8 +108,7 @@ for slice_name, platform in (("tvos", "AppleTVOS"), ("tvossim", "AppleTVSimulato
             plistlib.dump({
                 "CFBundleDevelopmentRegion": "en",
                 "CFBundleExecutable": name,
-                # Placeholder until the owner picks a bundle ID, as for the app itself.
-                "CFBundleIdentifier": f"invalid.placeholder.finesse.deps.{name.lower()}",
+                "CFBundleIdentifier": f"au.com.athenanetworks.finesse.deps.{name.lower()}",
                 "CFBundleInfoDictionaryVersion": "6.0",
                 "CFBundleName": name,
                 "CFBundlePackageType": "FMWK",

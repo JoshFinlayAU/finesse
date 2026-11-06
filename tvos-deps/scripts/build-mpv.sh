@@ -8,11 +8,16 @@ done
 meson_build shared -Dgpl=false -Dlibmpv=true -Dcplayer=false -Dtests=false -Dfuzzers=false \
   --auto-features=disabled \
   -Dpthread-debug=disabled -Diconv=enabled -Dlibavdevice=disabled \
+  -Dzlib=enabled -Duchardet=enabled -Dvector=enabled \
   -Dvulkan=enabled -Dgl=disabled -Dvideotoolbox-pl=enabled -Dvideotoolbox-gl=disabled \
   -Daudiounit=enabled -Davfoundation=enabled -Dcoreaudio=disabled -Dcocoa=disabled -Dswift-build=disabled \
   -Dlua=disabled -Djavascript=disabled -Dmanpage-build=disabled -Dhtml-build=disabled -Dpdf-build=disabled
-# Meson's report of what was enabled, for the record and for the licence check below.
-grep -E '^#define HAVE_(GPL|VULKAN|MOLTENVK|VIDEOTOOLBOX_PL|AVFOUNDATION|AUDIOUNIT|BSD_FSTATFS|COCOA) ' _b/config.h
+# zlib matters: mkvmerge usually compresses PGS tracks with it, and without it mpv's Matroska demuxer silently
+# shows no PGS subtitles. Meson's report of what was enabled, for the record and for the licence check below.
+grep -E '^#define HAVE_(GPL|VULKAN|MOLTENVK|VIDEOTOOLBOX_PL|AVFOUNDATION|AUDIOUNIT|BSD_FSTATFS|COCOA|ZLIB|UCHARDET) ' _b/config.h
+for needed in ZLIB UCHARDET; do
+  grep -qE "^#define HAVE_$needed 1" _b/config.h || { echo "Refusing: $needed is off" >&2; exit 1; }
+done
 if grep -qE '^#define HAVE_GPL 1' _b/config.h; then
   echo "Refusing: mpv was configured with GPL" >&2
   exit 1

@@ -13,6 +13,12 @@ DAV1D_URL=https://downloads.videolan.org/pub/videolan/dav1d/$DAV1D_VERSION/dav1d
 FFMPEG_VERSION=8.1.3
 FFMPEG_URL=https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz
 
+# The LTS line. FFmpeg links it for TLS 1.3, which is why FFmpeg is built with --enable-version3.
+OPENSSL_VERSION=3.5.9
+OPENSSL_URL=https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VERSION/openssl-$OPENSSL_VERSION.tar.gz
+UCHARDET_VERSION=0.0.8
+UCHARDET_URL=https://www.freedesktop.org/software/uchardet/releases/uchardet-$UCHARDET_VERSION.tar.xz
+
 MPV_REPO=https://github.com/mpv-player/mpv.git
 MPV_TAG=v0.42.0
 MPV_COMMIT=b0841e8c4d156b8403dc1876c4cbd9011eb583f3

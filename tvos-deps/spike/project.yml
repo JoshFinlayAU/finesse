@@ -30,6 +30,8 @@ targets:
       - framework: ../dist/Libdav1d.xcframework
       - framework: ../dist/Libplacebo.xcframework
       - framework: ../dist/MoltenVK.xcframework
+      - framework: ../dist/OpenSSL.xcframework
+      - framework: ../dist/Libuchardet.xcframework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: invalid.placeholder.depsspike
