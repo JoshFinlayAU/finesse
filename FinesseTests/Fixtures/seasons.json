@@ -1,0 +1,112 @@
+{
+ "Items": [
+  {
+   "Name": "Season 1",
+   "ServerId": "fixture-server",
+   "Id": "570ced56775216887585eb4c1995da50",
+   "PremiereDate": "2022-04-10T00:00:00.0000000Z",
+   "ChannelId": null,
+   "ProductionYear": 2022,
+   "IndexNumber": 1,
+   "IsFolder": true,
+   "Type": "Season",
+   "ParentLogoItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentBackdropItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentBackdropImageTags": [
+    "c917c7621f47a90386b91764f8266609"
+   ],
+   "UserData": {
+    "PlayedPercentage": 0,
+    "UnplayedItemCount": 8,
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "372178001",
+    "ItemId": "570ced56775216887585eb4c1995da50"
+   },
+   "SeriesName": "61st Street",
+   "SeriesId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "SeriesPrimaryImageTag": "172f08485ec65f8c5df4dc518af07972",
+   "ImageTags": {
+    "Primary": "4c839fc6f6d854c1c6c625b5528d5f05"
+   },
+   "BackdropImageTags": [],
+   "ParentLogoImageTag": "daaa78b4a0d256e5005dfad475e7f099",
+   "ImageBlurHashes": {
+    "Primary": {
+     "4c839fc6f6d854c1c6c625b5528d5f05": "daKmkM_3%$jF?w-=?bxa5Tx]slt7=E%2IBWVD*RjkWxu",
+     "172f08485ec65f8c5df4dc518af07972": "dREV~h?w-=kDjD%M-=kB-;t7xut7n%ofWAf7IVn$WBof"
+    },
+    "Logo": {
+     "daaa78b4a0d256e5005dfad475e7f099": "PRI#x_~q%MxuRj-;-;xu9F?bt7IUj[WBayj[D%t7WBRjRjt7WBM{"
+    },
+    "Thumb": {
+     "6d4d3497ebfdd677af5a0ce8907e2d9e": "WdIhy~?wRjNI%MbI?a%MM|RjxuR*s:RjWBj@ofayxuozj[WVj[j]"
+    },
+    "Backdrop": {
+     "c917c7621f47a90386b91764f8266609": "WbIOqq?wRjNb%MbI?a%MM|RjxuRjxtaeWBayofayxvt8oLWVj[j]"
+    }
+   },
+   "ParentThumbItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentThumbImageTag": "6d4d3497ebfdd677af5a0ce8907e2d9e",
+   "LocationType": "FileSystem",
+   "MediaType": "Unknown"
+  },
+  {
+   "Name": "Season 2",
+   "ServerId": "fixture-server",
+   "Id": "f20136868c938b20e444244d6f62d8d8",
+   "PremiereDate": "2024-07-22T00:00:00.0000000Z",
+   "ChannelId": null,
+   "ProductionYear": 2024,
+   "IndexNumber": 2,
+   "IsFolder": true,
+   "Type": "Season",
+   "ParentLogoItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentBackdropItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentBackdropImageTags": [
+    "c917c7621f47a90386b91764f8266609"
+   ],
+   "UserData": {
+    "PlayedPercentage": 0,
+    "UnplayedItemCount": 8,
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "372178002",
+    "ItemId": "f20136868c938b20e444244d6f62d8d8"
+   },
+   "SeriesName": "61st Street",
+   "SeriesId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "SeriesPrimaryImageTag": "172f08485ec65f8c5df4dc518af07972",
+   "ImageTags": {
+    "Primary": "6913a3cba411caed4ffb95545344a46c"
+   },
+   "BackdropImageTags": [],
+   "ParentLogoImageTag": "daaa78b4a0d256e5005dfad475e7f099",
+   "ImageBlurHashes": {
+    "Primary": {
+     "6913a3cba411caed4ffb95545344a46c": "dREV~h?w-=kDjD%M-=kB-;t7xut7n%ofWAf7IVn$WBof",
+     "172f08485ec65f8c5df4dc518af07972": "dREV~h?w-=kDjD%M-=kB-;t7xut7n%ofWAf7IVn$WBof"
+    },
+    "Logo": {
+     "daaa78b4a0d256e5005dfad475e7f099": "PRI#x_~q%MxuRj-;-;xu9F?bt7IUj[WBayj[D%t7WBRjRjt7WBM{"
+    },
+    "Thumb": {
+     "6d4d3497ebfdd677af5a0ce8907e2d9e": "WdIhy~?wRjNI%MbI?a%MM|RjxuR*s:RjWBj@ofayxuozj[WVj[j]"
+    },
+    "Backdrop": {
+     "c917c7621f47a90386b91764f8266609": "WbIOqq?wRjNb%MbI?a%MM|RjxuRjxtaeWBayofayxvt8oLWVj[j]"
+    }
+   },
+   "ParentThumbItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentThumbImageTag": "6d4d3497ebfdd677af5a0ce8907e2d9e",
+   "LocationType": "FileSystem",
+   "MediaType": "Unknown"
+  }
+ ],
+ "TotalRecordCount": 2,
+ "StartIndex": 0
+}

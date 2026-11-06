@@ -1,0 +1,8 @@
+{
+ "LocalAddress": "http://jellyfin.invalid:8096",
+ "ServerName": "Fixture Server",
+ "Version": "12.4.0",
+ "ProductName": "Jellyfin Server",
+ "Id": "fixture-server",
+ "StartupWizardCompleted": true
+}

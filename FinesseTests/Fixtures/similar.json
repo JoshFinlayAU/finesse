@@ -1,0 +1,105 @@
+{
+ "Items": [
+  {
+   "Name": "My Old Ass",
+   "ServerId": "fixture-server",
+   "Id": "46ce9c6905caa31927aa95ee07b2de30",
+   "HasSubtitles": true,
+   "Container": "mkv",
+   "PremiereDate": "2024-09-13T00:00:00.0000000Z",
+   "CriticRating": 90,
+   "OfficialRating": "AU-MA 15+",
+   "ChannelId": null,
+   "CommunityRating": 6.788,
+   "RunTimeTicks": 53306030000,
+   "ProductionYear": 2024,
+   "IsFolder": false,
+   "Type": "Movie",
+   "UserData": {
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "947891",
+    "ItemId": "46ce9c6905caa31927aa95ee07b2de30"
+   },
+   "VideoType": "VideoFile",
+   "ImageTags": {
+    "Thumb": "527191ca396fc2dd1caef2e9ca8f9532",
+    "Primary": "3ddac348f5ddf4004ad46c09149d584b",
+    "Logo": "4326d8518a2a0c310f64c5732abeb43f"
+   },
+   "BackdropImageTags": [
+    "e8741bb5dd3a4bdb3dd2a0fc1380943f"
+   ],
+   "ImageBlurHashes": {
+    "Backdrop": {
+     "e8741bb5dd3a4bdb3dd2a0fc1380943f": "WMHKnQ-;^c?FkCwa^*t7W.owt5%2-NbFESxbWBoz~9xVRoW@IqRj"
+    },
+    "Thumb": {
+     "527191ca396fc2dd1caef2e9ca8f9532": "WXH-f8-:w#-p?7%G~AkDNMxakBxtskR*ovt7E9Rl?G%0xVt6M|Rn"
+    },
+    "Primary": {
+     "3ddac348f5ddf4004ad46c09149d584b": "dSH1rKWG4}bN~9-VN3f9$KIn?8-NIXsk$_fha*WakDWF"
+    },
+    "Logo": {
+     "4326d8518a2a0c310f64c5732abeb43f": "PIS=q5t7aHshVnr,kYtT--acawj^kDj^j^f5f5kEadkEj^f6kEfl"
+    }
+   },
+   "LocationType": "FileSystem",
+   "MediaType": "Video",
+   "OriginalLanguage": "en"
+  },
+  {
+   "Name": "GOAT",
+   "ServerId": "fixture-server",
+   "Id": "bee7373713c77a4d390900cfb2b65fe8",
+   "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+   "PremiereDate": "2026-02-11T00:00:00.0000000Z",
+   "CriticRating": 83,
+   "OfficialRating": "AU-PG",
+   "ChannelId": null,
+   "CommunityRating": 8.026,
+   "RunTimeTicks": 60984000000,
+   "ProductionYear": 2026,
+   "IsFolder": false,
+   "Type": "Movie",
+   "UserData": {
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "bee73737-13c7-7a4d-3909-00cfb2b65fe8",
+    "ItemId": "bee7373713c77a4d390900cfb2b65fe8"
+   },
+   "VideoType": "VideoFile",
+   "ImageTags": {
+    "Primary": "8f4258f283994178f4ae34acbd53b728",
+    "Thumb": "9930edf00ae6202dd699d7be0854e43e",
+    "Logo": "b3d3a1f87438eb0c6018017be3f2d840"
+   },
+   "BackdropImageTags": [
+    "b03bf831b5bec143b1010abe010e57c0"
+   ],
+   "ImageBlurHashes": {
+    "Backdrop": {
+     "b03bf831b5bec143b1010abe010e57c0": "WOBpnMxuMwM{R,t7*0o#MxRjjZt7T1W?jFs,n%ofWEa}xZsmayR*"
+    },
+    "Primary": {
+     "8f4258f283994178f4ae34acbd53b728": "dJE2kM?FZyxa.kxaI[S%.TspaIxZKPI=S1ShRObaT0R+"
+    },
+    "Thumb": {
+     "9930edf00ae6202dd699d7be0854e43e": "WLB3yq-nD$s=w^o}?^tQROogR*X8t,XTRiadbda_x]bcRjn$xts."
+    },
+    "Logo": {
+     "b3d3a1f87438eb0c6018017be3f2d840": "OWB;^UoPRlf.WCkEbborWUohfkjwj^fmR1j?t8W9oej=ac"
+    }
+   },
+   "LocationType": "FileSystem",
+   "MediaType": "Video",
+   "OriginalLanguage": "en"
+  }
+ ],
+ "TotalRecordCount": 3,
+ "StartIndex": 0
+}

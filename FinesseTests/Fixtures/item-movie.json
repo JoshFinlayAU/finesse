@@ -1,0 +1,418 @@
+{
+ "Name": "3 Idiots",
+ "OriginalTitle": "3 Idiots",
+ "ServerId": "fixture-server",
+ "Id": "412654816f4b4e12f08f6be80482353b",
+ "Etag": "cf4c4ff664e0a23f5f61556e353351be",
+ "DateCreated": "2026-04-18T13:16:24.1977937Z",
+ "CanDelete": false,
+ "CanDownload": true,
+ "HasSubtitles": true,
+ "Container": "mkv",
+ "SortName": "0000000003 idiots",
+ "PremiereDate": "2009-12-23T00:00:00.0000000Z",
+ "ExternalUrls": [
+  {
+   "Name": "IMDb",
+   "Url": "https://www.imdb.com/title/tt1187043"
+  }
+ ],
+ "MediaSources": [
+  {
+   "Protocol": "File",
+   "Id": "412654816f4b4e12f08f6be80482353b",
+   "Type": "Default",
+   "Container": "mkv",
+   "Size": 1507610750,
+   "Name": "3.Idiots.2009.iNTERNAL.BDRip.x264-MARS",
+   "IsRemote": false,
+   "ETag": "c9977b65804a810b0cd1faf570cfbbd7",
+   "RunTimeTicks": 102732459999,
+   "ReadAtNativeFramerate": false,
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "GenPtsInput": false,
+   "SupportsTranscoding": true,
+   "SupportsDirectStream": true,
+   "SupportsDirectPlay": true,
+   "IsInfiniteStream": false,
+   "UseMostCompatibleTranscodingProfile": false,
+   "RequiresOpening": false,
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "SupportsProbing": true,
+   "VideoType": "VideoFile",
+   "MediaStreams": [
+    {
+     "Codec": "h264",
+     "ColorSpace": "bt709",
+     "TimeBase": "1/1000",
+     "VideoRange": "SDR",
+     "VideoRangeType": "SDR",
+     "AudioSpatialFormat": "None",
+     "DisplayTitle": "404p H264 SDR",
+     "NalLengthSize": "4",
+     "IsInterlaced": false,
+     "IsAVC": true,
+     "BitRate": 1050147,
+     "BitDepth": 8,
+     "RefFrames": 1,
+     "IsDefault": true,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsOriginal": false,
+     "Height": 306,
+     "Width": 720,
+     "AverageFrameRate": 24,
+     "RealFrameRate": 24,
+     "ReferenceFrameRate": 24,
+     "Profile": "High",
+     "Type": "Video",
+     "AspectRatio": "2.35:1",
+     "Index": 0,
+     "IsExternal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "PixelFormat": "yuv420p",
+     "Level": 31,
+     "IsAnamorphic": false
+    },
+    {
+     "Codec": "aac",
+     "Language": "hin",
+     "TimeBase": "1/1000",
+     "VideoRange": "Unknown",
+     "VideoRangeType": "Unknown",
+     "AudioSpatialFormat": "None",
+     "LocalizedDefault": "Default",
+     "LocalizedExternal": "External",
+     "LocalizedLanguage": "Hindi",
+     "LocalizedOriginal": "Original",
+     "DisplayTitle": "Hindi - AAC - Stereo - Default",
+     "IsInterlaced": false,
+     "ChannelLayout": "stereo",
+     "BitRate": 121394,
+     "Channels": 2,
+     "SampleRate": 48000,
+     "IsDefault": true,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsOriginal": false,
+     "Profile": "LC",
+     "Type": "Audio",
+     "Index": 1,
+     "IsExternal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false
+    },
+    {
+     "Codec": "subrip",
+     "Language": "eng",
+     "TimeBase": "1/1000",
+     "VideoRange": "Unknown",
+     "VideoRangeType": "Unknown",
+     "AudioSpatialFormat": "None",
+     "LocalizedUndefined": "Undefined",
+     "LocalizedDefault": "Default",
+     "LocalizedForced": "Forced",
+     "LocalizedExternal": "External",
+     "LocalizedHearingImpaired": "Hearing Impaired",
+     "LocalizedLanguage": "English",
+     "DisplayTitle": "English - Default - SUBRIP",
+     "IsInterlaced": false,
+     "IsDefault": true,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsOriginal": false,
+     "Type": "Subtitle",
+     "Index": 2,
+     "Score": 112221,
+     "IsExternal": false,
+     "IsTextSubtitleStream": true,
+     "SupportsExternalStream": true
+    },
+    {
+     "Codec": "subrip",
+     "Language": "fra",
+     "TimeBase": "1/1000",
+     "VideoRange": "Unknown",
+     "VideoRangeType": "Unknown",
+     "AudioSpatialFormat": "None",
+     "LocalizedUndefined": "Undefined",
+     "LocalizedDefault": "Default",
+     "LocalizedForced": "Forced",
+     "LocalizedExternal": "External",
+     "LocalizedHearingImpaired": "Hearing Impaired",
+     "LocalizedLanguage": "French",
+     "DisplayTitle": "French - SUBRIP",
+     "IsInterlaced": false,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsOriginal": false,
+     "Type": "Subtitle",
+     "Index": 3,
+     "IsExternal": false,
+     "IsTextSubtitleStream": true,
+     "SupportsExternalStream": true
+    }
+   ],
+   "MediaAttachments": [],
+   "Formats": [],
+   "Bitrate": 1174009,
+   "RequiredHttpHeaders": {},
+   "TranscodingSubProtocol": "http",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": 2,
+   "HasSegments": false
+  }
+ ],
+ "CriticRating": 94,
+ "ProductionLocations": [
+  "India"
+ ],
+ "EnableMediaSourceDisplay": true,
+ "OfficialRating": "AU-M",
+ "ChannelId": null,
+ "Overview": "Rascal. Joker. Dreamer. Genius... You've never met a college student quite like \"Rancho.\" From the moment he arrives at India's most prestigious university, Rancho's outlandish schemes turn the campus upside down—along with the lives of his two newfound best friends. Together, they make life miserable for \"Virus,\" the school’s uptight and heartless dean. But when Rancho catches the eye of the dean's daughter, Virus sets his sights on flunking out the \"3 idiots\" once and for all.",
+ "Taglines": [
+  "Aal Izz Well!"
+ ],
+ "Genres": [
+  "Drama",
+  "Comedy"
+ ],
+ "CommunityRating": 8.013,
+ "RunTimeTicks": 102732459999,
+ "PlayAccess": "Full",
+ "ProductionYear": 2009,
+ "RemoteTrailers": [
+  {
+   "Url": "https://www.youtube.com/watch?v=zIKu9k50SDo",
+   "Name": "Trailer"
+  }
+ ],
+ "IsFolder": false,
+ "ParentId": "5b0c6fdf743d8385d9b11e21b9c5c6ba",
+ "Type": "Movie",
+ "People": [
+  {
+   "Name": "Aamir Khan",
+   "Id": "7b0936c445efb79cf517f7640e1c65c9",
+   "Role": "Ranchoddas \"Rancho\" Chanchad",
+   "Type": "Actor",
+   "PrimaryImageTag": "7e2ba40177d57b97c2f3223563c0deae",
+   "ImageBlurHashes": {
+    "Primary": {
+     "7e2ba40177d57b97c2f3223563c0deae": "dLDlm9={TLTL?btRg4t70fI=$fw[XUV@%0t7xvt7a{of"
+    }
+   }
+  },
+  {
+   "Name": "R. Madhavan",
+   "Id": "a190c73a85ca1832a91fa3b8610a62d9",
+   "Role": "Farhan Qureshi",
+   "Type": "Actor",
+   "PrimaryImageTag": "869cbd3e2b418550dcd535f7b22211f7",
+   "ImageBlurHashes": {
+    "Primary": {
+     "869cbd3e2b418550dcd535f7b22211f7": "dpF~K$-p.8xv~qxu-;tRo#RjxuoKNHWBs:j?t7t7t6t7"
+    }
+   }
+  },
+  {
+   "Name": "Sharman Joshi",
+   "Id": "1831f9b0db2441d20c7abec5afe98cd0",
+   "Role": "Raju Rastogi",
+   "Type": "Actor",
+   "PrimaryImageTag": "aada7ce81c8c338ab20fbf411d9caafc",
+   "ImageBlurHashes": {
+    "Primary": {
+     "aada7ce81c8c338ab20fbf411d9caafc": "d+O|CF%L_NtRNHWBxta|x^WXRPt6xvofkCoL%gayRjoL"
+    }
+   }
+  }
+ ],
+ "Studios": [
+  {
+   "Name": "Vidhu Vinod Chopra Productions",
+   "Id": "0670409c1ead71011f295c09e722c47e"
+  },
+  {
+   "Name": "Vinod Chopra Films",
+   "Id": "d2881f570e27daa216506dd5064f004f"
+  }
+ ],
+ "GenreItems": [
+  {
+   "Name": "Drama",
+   "Id": "090eac6e9de4fe1fbc194e5b96691277"
+  },
+  {
+   "Name": "Comedy",
+   "Id": "08d31605d366d63a7a924f944b4417f1"
+  }
+ ],
+ "LocalTrailerCount": 0,
+ "UserData": {
+  "PlaybackPositionTicks": 0,
+  "PlayCount": 0,
+  "IsFavorite": false,
+  "Played": false,
+  "Key": "20453",
+  "ItemId": "412654816f4b4e12f08f6be80482353b"
+ },
+ "SpecialFeatureCount": 0,
+ "DisplayPreferencesId": "dbf7709c41faaa746463d67978eb863d",
+ "Tags": [
+  "challenge",
+  "middle class",
+  "slapstick comedy"
+ ],
+ "PrimaryImageAspectRatio": 0.6666666666666666,
+ "MediaStreams": [
+  {
+   "Codec": "h264",
+   "ColorSpace": "bt709",
+   "TimeBase": "1/1000",
+   "VideoRange": "SDR",
+   "VideoRangeType": "SDR",
+   "AudioSpatialFormat": "None",
+   "DisplayTitle": "404p H264 SDR",
+   "NalLengthSize": "4",
+   "IsInterlaced": false,
+   "IsAVC": true,
+   "BitRate": 1050147,
+   "BitDepth": 8,
+   "RefFrames": 1,
+   "IsDefault": true,
+   "IsForced": false,
+   "IsHearingImpaired": false,
+   "IsOriginal": false,
+   "Height": 306,
+   "Width": 720,
+   "AverageFrameRate": 24,
+   "RealFrameRate": 24,
+   "ReferenceFrameRate": 24,
+   "Profile": "High",
+   "Type": "Video",
+   "AspectRatio": "2.35:1",
+   "Index": 0,
+   "IsExternal": false,
+   "IsTextSubtitleStream": false,
+   "SupportsExternalStream": false,
+   "PixelFormat": "yuv420p",
+   "Level": 31,
+   "IsAnamorphic": false
+  },
+  {
+   "Codec": "aac",
+   "Language": "hin",
+   "TimeBase": "1/1000",
+   "VideoRange": "Unknown",
+   "VideoRangeType": "Unknown",
+   "AudioSpatialFormat": "None",
+   "LocalizedDefault": "Default",
+   "LocalizedExternal": "External",
+   "LocalizedLanguage": "Hindi",
+   "LocalizedOriginal": "Original",
+   "DisplayTitle": "Hindi - AAC - Stereo - Default",
+   "IsInterlaced": false,
+   "ChannelLayout": "stereo",
+   "BitRate": 121394,
+   "Channels": 2,
+   "SampleRate": 48000,
+   "IsDefault": true,
+   "IsForced": false,
+   "IsHearingImpaired": false,
+   "IsOriginal": false,
+   "Profile": "LC",
+   "Type": "Audio",
+   "Index": 1,
+   "IsExternal": false,
+   "IsTextSubtitleStream": false,
+   "SupportsExternalStream": false
+  },
+  {
+   "Codec": "subrip",
+   "Language": "eng",
+   "TimeBase": "1/1000",
+   "VideoRange": "Unknown",
+   "VideoRangeType": "Unknown",
+   "AudioSpatialFormat": "None",
+   "LocalizedUndefined": "Undefined",
+   "LocalizedDefault": "Default",
+   "LocalizedForced": "Forced",
+   "LocalizedExternal": "External",
+   "LocalizedHearingImpaired": "Hearing Impaired",
+   "LocalizedLanguage": "English",
+   "DisplayTitle": "English - Default - SUBRIP",
+   "IsInterlaced": false,
+   "IsDefault": true,
+   "IsForced": false,
+   "IsHearingImpaired": false,
+   "IsOriginal": false,
+   "Type": "Subtitle",
+   "Index": 2,
+   "Score": 112221,
+   "IsExternal": false,
+   "IsTextSubtitleStream": true,
+   "SupportsExternalStream": true
+  },
+  {
+   "Codec": "subrip",
+   "Language": "fra",
+   "TimeBase": "1/1000",
+   "VideoRange": "Unknown",
+   "VideoRangeType": "Unknown",
+   "AudioSpatialFormat": "None",
+   "LocalizedUndefined": "Undefined",
+   "LocalizedDefault": "Default",
+   "LocalizedForced": "Forced",
+   "LocalizedExternal": "External",
+   "LocalizedHearingImpaired": "Hearing Impaired",
+   "LocalizedLanguage": "French",
+   "DisplayTitle": "French - SUBRIP",
+   "IsInterlaced": false,
+   "IsDefault": false,
+   "IsForced": false,
+   "IsHearingImpaired": false,
+   "IsOriginal": false,
+   "Type": "Subtitle",
+   "Index": 3,
+   "IsExternal": false,
+   "IsTextSubtitleStream": true,
+   "SupportsExternalStream": true
+  }
+ ],
+ "VideoType": "VideoFile",
+ "ImageTags": {
+  "Primary": "fbeb926f86916c5db37d23bb5b750df8",
+  "Thumb": "d8c7320e83ac0edfcb9e0ae73923c0b5",
+  "Logo": "54b9c2222c6088546e2e066b095508f8"
+ },
+ "BackdropImageTags": [
+  "334a8bf529ecce34f99943bd960e8801"
+ ],
+ "ImageBlurHashes": {
+  "Backdrop": {
+   "334a8bf529ecce34f99943bd960e8801": "WICY?dsB0h%L$yay9wxZ?EWERn%1NFS1WXjIkVt6?ER+E4t3NGIp"
+  },
+  "Primary": {
+   "fbeb926f86916c5db37d23bb5b750df8": "dWN,FF~TMK^b-jobV@Rls*tPS6NI4_VwV[oIxZoJM}Rl"
+  },
+  "Thumb": {
+   "d8c7320e83ac0edfcb9e0ae73923c0b5": "WyN05^xZIAxVbct6~SoxWAs.WEnjM|oes:flRnRk%0j?aff6j[oJ"
+  },
+  "Logo": {
+   "54b9c2222c6088546e2e066b095508f8": "PBHLl1RjRj%M~q~qt7WB00%Mxu-;M{Rj4nt74n?b%Mj[%Mxuxu?b"
+  }
+ },
+ "LocationType": "FileSystem",
+ "MediaType": "Video",
+ "LockedFields": [],
+ "LockData": false,
+ "Width": 720,
+ "Height": 306,
+ "OriginalLanguage": "hi"
+}

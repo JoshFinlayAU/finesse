@@ -1,0 +1,70 @@
+{
+ "Items": [
+  {
+   "Name": "The Time of the Doctor",
+   "ServerId": "fixture-server",
+   "Id": "4f9a0fe36de59931032b8ca776c790f2",
+   "HasSubtitles": true,
+   "Container": "mkv",
+   "PremiereDate": "2013-12-25T00:00:00.0000000Z",
+   "ChannelId": null,
+   "CommunityRating": 8.2,
+   "RunTimeTicks": 35942180000,
+   "ProductionYear": 2013,
+   "IndexNumber": 84,
+   "ParentIndexNumber": 0,
+   "IsFolder": false,
+   "Type": "Episode",
+   "ParentLogoItemId": "a294b841e12a26b91c6bcb108a7782c1",
+   "ParentBackdropItemId": "a294b841e12a26b91c6bcb108a7782c1",
+   "ParentBackdropImageTags": [
+    "c1168c5f4a9eb65adf89adce665b5d14"
+   ],
+   "UserData": {
+    "PlayedPercentage": 30,
+    "PlaybackPositionTicks": 10782654000,
+    "PlayCount": 1,
+    "IsFavorite": false,
+    "LastPlayedDate": "2026-11-06T05:21:34.012114Z",
+    "Played": false,
+    "Key": "4f9a0fe3-6de5-9931-032b-8ca776c790f2",
+    "ItemId": "4f9a0fe36de59931032b8ca776c790f2"
+   },
+   "SeriesName": "Doctor Who",
+   "SeriesId": "a294b841e12a26b91c6bcb108a7782c1",
+   "SeasonId": "15c23eae987af053fbf96bf047a69918",
+   "SeriesPrimaryImageTag": "a963258725c8d9612775a0ce7193b4f7",
+   "SeasonName": "Specials",
+   "VideoType": "VideoFile",
+   "ImageTags": {
+    "Primary": "38ee7ec76577682d2e0d86f904f4a9e5"
+   },
+   "BackdropImageTags": [],
+   "ParentLogoImageTag": "055d093660e4fb25ec7027bc07af73d9",
+   "ImageBlurHashes": {
+    "Primary": {
+     "38ee7ec76577682d2e0d86f904f4a9e5": "WQC$_[xt9ZR+SijG_4t7IAxu%2Rj-=xuM{s;%1NGx]$*WXNdo0NH",
+     "a963258725c8d9612775a0ce7193b4f7": "d%J6fuxYWUxZ}-s:oeoI$xoKs.j[xsj@jbofoIbHR-f5",
+     "afdfc1049db97e40e8bfe67fd656b4e7": "doFFd8t7M{j[~qofM{ayxuj[M{RkM{WBM|WBM{RkWWoL"
+    },
+    "Logo": {
+     "055d093660e4fb25ec7027bc07af73d9": "OpLxPXxZ1brtJ,JPJ6oej@ayf7a|fja|5RR*Xls.#-S~s:"
+    },
+    "Thumb": {
+     "f63266cee531a5ce92052b22a206c6f8": "WtIWr{xZNewJr=$j}=r=S5sWw^spjEnijcn,xEWBtRofV[nisoof"
+    },
+    "Backdrop": {
+     "c1168c5f4a9eb65adf89adce665b5d14": "WvI3:esmOF$jr=$j}?s8R-r]w^spoJsTafags-WVozf6a~xGsooK"
+    }
+   },
+   "ParentThumbItemId": "a294b841e12a26b91c6bcb108a7782c1",
+   "ParentThumbImageTag": "f63266cee531a5ce92052b22a206c6f8",
+   "ParentPrimaryImageItemId": "15c23eae987af053fbf96bf047a69918",
+   "ParentPrimaryImageTag": "afdfc1049db97e40e8bfe67fd656b4e7",
+   "LocationType": "FileSystem",
+   "MediaType": "Video"
+  }
+ ],
+ "TotalRecordCount": 1,
+ "StartIndex": 0
+}

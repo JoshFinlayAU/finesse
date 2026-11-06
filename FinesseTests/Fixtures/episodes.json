@@ -1,0 +1,134 @@
+{
+ "Items": [
+  {
+   "Name": "Pilot",
+   "ServerId": "fixture-server",
+   "Id": "bbcf6857cb8be3576863b7bb5cec605a",
+   "HasSubtitles": true,
+   "Container": "mkv",
+   "PremiereDate": "2022-04-10T00:00:00.0000000Z",
+   "ChannelId": null,
+   "Overview": "Track star Moses Johnson is swept up into a world of chaos, violence, and corrupt policing during a presumed drug sting gone wrong. Public defender Franklin Roberts considers retirement and his impact on the community.",
+   "CommunityRating": 2.8,
+   "RunTimeTicks": 26442990000,
+   "ProductionYear": 2022,
+   "IndexNumber": 1,
+   "ParentIndexNumber": 1,
+   "IsFolder": false,
+   "Type": "Episode",
+   "ParentLogoItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentBackdropItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentBackdropImageTags": [
+    "c917c7621f47a90386b91764f8266609"
+   ],
+   "UserData": {
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "372178001001",
+    "ItemId": "bbcf6857cb8be3576863b7bb5cec605a"
+   },
+   "SeriesName": "61st Street",
+   "SeriesId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "SeasonId": "570ced56775216887585eb4c1995da50",
+   "SeriesPrimaryImageTag": "172f08485ec65f8c5df4dc518af07972",
+   "SeasonName": "Season 1",
+   "VideoType": "VideoFile",
+   "ImageTags": {
+    "Primary": "0b89497e217ffcc0f492c62c2996d1b9"
+   },
+   "BackdropImageTags": [],
+   "ParentLogoImageTag": "daaa78b4a0d256e5005dfad475e7f099",
+   "ImageBlurHashes": {
+    "Primary": {
+     "0b89497e217ffcc0f492c62c2996d1b9": "WKD+F@}?r=SgOqE*-6wdnhIpSLS4J8OYS2V@w]$%TJJUNbV[$i-T",
+     "172f08485ec65f8c5df4dc518af07972": "dREV~h?w-=kDjD%M-=kB-;t7xut7n%ofWAf7IVn$WBof",
+     "4c839fc6f6d854c1c6c625b5528d5f05": "daKmkM_3%$jF?w-=?bxa5Tx]slt7=E%2IBWVD*RjkWxu"
+    },
+    "Logo": {
+     "daaa78b4a0d256e5005dfad475e7f099": "PRI#x_~q%MxuRj-;-;xu9F?bt7IUj[WBayj[D%t7WBRjRjt7WBM{"
+    },
+    "Thumb": {
+     "6d4d3497ebfdd677af5a0ce8907e2d9e": "WdIhy~?wRjNI%MbI?a%MM|RjxuR*s:RjWBj@ofayxuozj[WVj[j]"
+    },
+    "Backdrop": {
+     "c917c7621f47a90386b91764f8266609": "WbIOqq?wRjNb%MbI?a%MM|RjxuRjxtaeWBayofayxvt8oLWVj[j]"
+    }
+   },
+   "ParentThumbItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentThumbImageTag": "6d4d3497ebfdd677af5a0ce8907e2d9e",
+   "ParentPrimaryImageItemId": "570ced56775216887585eb4c1995da50",
+   "ParentPrimaryImageTag": "4c839fc6f6d854c1c6c625b5528d5f05",
+   "LocationType": "FileSystem",
+   "MediaType": "Video",
+   "OriginalLanguage": "en"
+  },
+  {
+   "Name": "The Hunter and the Hunted",
+   "ServerId": "fixture-server",
+   "Id": "d23e6271246d2cb965bf65e05da8087f",
+   "HasSubtitles": true,
+   "Container": "mkv",
+   "PremiereDate": "2022-04-17T00:00:00.0000000Z",
+   "ChannelId": null,
+   "Overview": "While on a collision course with the Chicago Police Department, Moses makes contact with the one person who could save him. Martha chases political aspirations.",
+   "CommunityRating": 3,
+   "RunTimeTicks": 27812270000,
+   "ProductionYear": 2022,
+   "IndexNumber": 2,
+   "ParentIndexNumber": 1,
+   "IsFolder": false,
+   "Type": "Episode",
+   "ParentLogoItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentBackdropItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentBackdropImageTags": [
+    "c917c7621f47a90386b91764f8266609"
+   ],
+   "UserData": {
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "372178001002",
+    "ItemId": "d23e6271246d2cb965bf65e05da8087f"
+   },
+   "SeriesName": "61st Street",
+   "SeriesId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "SeasonId": "570ced56775216887585eb4c1995da50",
+   "SeriesPrimaryImageTag": "172f08485ec65f8c5df4dc518af07972",
+   "SeasonName": "Season 1",
+   "VideoType": "VideoFile",
+   "ImageTags": {
+    "Primary": "d2c3566702ebe89a9123ede60ec81fb7"
+   },
+   "BackdropImageTags": [],
+   "ParentLogoImageTag": "daaa78b4a0d256e5005dfad475e7f099",
+   "ImageBlurHashes": {
+    "Primary": {
+     "d2c3566702ebe89a9123ede60ec81fb7": "WGB3sR^*R-M|oHt7~p%MRkRQM{WB%2x]bHRjIUIU%2-pofM{M{Ri",
+     "172f08485ec65f8c5df4dc518af07972": "dREV~h?w-=kDjD%M-=kB-;t7xut7n%ofWAf7IVn$WBof",
+     "4c839fc6f6d854c1c6c625b5528d5f05": "daKmkM_3%$jF?w-=?bxa5Tx]slt7=E%2IBWVD*RjkWxu"
+    },
+    "Logo": {
+     "daaa78b4a0d256e5005dfad475e7f099": "PRI#x_~q%MxuRj-;-;xu9F?bt7IUj[WBayj[D%t7WBRjRjt7WBM{"
+    },
+    "Thumb": {
+     "6d4d3497ebfdd677af5a0ce8907e2d9e": "WdIhy~?wRjNI%MbI?a%MM|RjxuR*s:RjWBj@ofayxuozj[WVj[j]"
+    },
+    "Backdrop": {
+     "c917c7621f47a90386b91764f8266609": "WbIOqq?wRjNb%MbI?a%MM|RjxuRjxtaeWBayofayxvt8oLWVj[j]"
+    }
+   },
+   "ParentThumbItemId": "e296b0dd6ec3436263940a8c10a2ad97",
+   "ParentThumbImageTag": "6d4d3497ebfdd677af5a0ce8907e2d9e",
+   "ParentPrimaryImageItemId": "570ced56775216887585eb4c1995da50",
+   "ParentPrimaryImageTag": "4c839fc6f6d854c1c6c625b5528d5f05",
+   "LocationType": "FileSystem",
+   "MediaType": "Video",
+   "OriginalLanguage": "en"
+  }
+ ],
+ "TotalRecordCount": 8,
+ "StartIndex": 0
+}

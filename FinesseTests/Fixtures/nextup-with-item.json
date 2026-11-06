@@ -1,0 +1,64 @@
+{
+ "Items": [
+  {
+   "Name": "The Time of the Doctor",
+   "ServerId": "fixture-server",
+   "Id": "0be12fad9926f8eaaea9dc51b2480eba",
+   "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+   "PremiereDate": "2018-07-16T05:25:41.0000000Z",
+   "ChannelId": null,
+   "RunTimeTicks": 36592640000,
+   "ProductionYear": 2018,
+   "IsFolder": false,
+   "Type": "Episode",
+   "ParentLogoItemId": "a294b841e12a26b91c6bcb108a7782c1",
+   "ParentBackdropItemId": "a294b841e12a26b91c6bcb108a7782c1",
+   "ParentBackdropImageTags": [
+    "c1168c5f4a9eb65adf89adce665b5d14"
+   ],
+   "UserData": {
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "0be12fad-9926-f8ea-aea9-dc51b2480eba",
+    "ItemId": "0be12fad9926f8eaaea9dc51b2480eba"
+   },
+   "SeriesName": "Doctor Who",
+   "SeriesId": "a294b841e12a26b91c6bcb108a7782c1",
+   "SeasonId": "15c23eae987af053fbf96bf047a69918",
+   "SeriesPrimaryImageTag": "a963258725c8d9612775a0ce7193b4f7",
+   "SeasonName": "Specials",
+   "VideoType": "VideoFile",
+   "ImageTags": {
+    "Primary": "bd72e188e20c81388d83baa8b2bfddd9"
+   },
+   "BackdropImageTags": [],
+   "ParentLogoImageTag": "055d093660e4fb25ec7027bc07af73d9",
+   "ImageBlurHashes": {
+    "Primary": {
+     "bd72e188e20c81388d83baa8b2bfddd9": "WGAvwa9Z~oRP?a%0~VV?-:V@-:fhNG%1WAoeoJNGaKozV@ofWCR*",
+     "a963258725c8d9612775a0ce7193b4f7": "d%J6fuxYWUxZ}-s:oeoI$xoKs.j[xsj@jbofoIbHR-f5",
+     "afdfc1049db97e40e8bfe67fd656b4e7": "doFFd8t7M{j[~qofM{ayxuj[M{RkM{WBM|WBM{RkWWoL"
+    },
+    "Logo": {
+     "055d093660e4fb25ec7027bc07af73d9": "OpLxPXxZ1brtJ,JPJ6oej@ayf7a|fja|5RR*Xls.#-S~s:"
+    },
+    "Thumb": {
+     "f63266cee531a5ce92052b22a206c6f8": "WtIWr{xZNewJr=$j}=r=S5sWw^spjEnijcn,xEWBtRofV[nisoof"
+    },
+    "Backdrop": {
+     "c1168c5f4a9eb65adf89adce665b5d14": "WvI3:esmOF$jr=$j}?s8R-r]w^spoJsTafags-WVozf6a~xGsooK"
+    }
+   },
+   "ParentThumbItemId": "a294b841e12a26b91c6bcb108a7782c1",
+   "ParentThumbImageTag": "f63266cee531a5ce92052b22a206c6f8",
+   "ParentPrimaryImageItemId": "15c23eae987af053fbf96bf047a69918",
+   "ParentPrimaryImageTag": "afdfc1049db97e40e8bfe67fd656b4e7",
+   "LocationType": "FileSystem",
+   "MediaType": "Video"
+  }
+ ],
+ "TotalRecordCount": 1,
+ "StartIndex": 0
+}

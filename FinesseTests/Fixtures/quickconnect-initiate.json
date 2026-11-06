@@ -1,0 +1,10 @@
+{
+ "Authenticated": false,
+ "Secret": "FIXTURE_SECRET",
+ "Code": "123456",
+ "DeviceId": "fixture-device",
+ "DeviceName": "Fixture Device",
+ "AppName": "Finesse",
+ "AppVersion": "0.0.1",
+ "DateAdded": "2026-11-06T05:20:32.1274175Z"
+}

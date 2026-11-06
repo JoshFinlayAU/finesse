@@ -1,0 +1,151 @@
+{
+ "Name": "61st Street",
+ "OriginalTitle": "61st Street",
+ "ServerId": "fixture-server",
+ "Id": "e296b0dd6ec3436263940a8c10a2ad97",
+ "Etag": "e3de2af607794973be8e53b8d7f2cfe6",
+ "DateCreated": "2026-11-03T06:52:00.5616571Z",
+ "DateLastMediaAdded": "2023-09-04T07:31:16.5080739Z",
+ "CanDelete": false,
+ "CanDownload": false,
+ "SortName": "0000000061st street",
+ "PremiereDate": "2022-04-10T00:00:00.0000000Z",
+ "ExternalUrls": [
+  {
+   "Name": "IMDb",
+   "Url": "https://www.imdb.com/title/tt9810248"
+  }
+ ],
+ "EnableMediaSourceDisplay": true,
+ "OfficialRating": "TV-MA",
+ "ChannelId": null,
+ "Overview": "Moses Johnson is a promising high-school athlete with a bright future who’s accused of murdering a police officer during a drug bust gone wrong. Swept up into the infamously corrupt Chicago criminal justice system, Moses’ case is taken up by ageing public defender Franklin Roberts, who sees this as his chance to finally challenge the institutional racism at the heart of the judicial system.",
+ "Taglines": [],
+ "Genres": [
+  "Drama",
+  "Crime"
+ ],
+ "CommunityRating": 6.2,
+ "CumulativeRunTimeTicks": 0,
+ "RunTimeTicks": 0,
+ "PlayAccess": "Full",
+ "ProductionYear": 2022,
+ "RemoteTrailers": [
+  {
+   "Url": "https://www.youtube.com/watch?v=OZDHtZvn9hs",
+   "Name": "Official UK Trailer"
+  }
+ ],
+ "IsFolder": true,
+ "ParentId": "df868b1e11e4fdc1e484e1217ea564b5",
+ "Type": "Series",
+ "People": [
+  {
+   "Name": "Courtney B. Vance",
+   "Id": "1489a3ac8ebe968dad65d61b6af941e6",
+   "Role": "Franklin Roberts",
+   "Type": "Actor",
+   "PrimaryImageTag": "30281caa11655aa5a5797cbcab8441ce",
+   "ImageBlurHashes": {
+    "Primary": {
+     "30281caa11655aa5a5797cbcab8441ce": "dMDS:*x^L4tn~qt7JBf+tmRkaJoLt-kDWrbcx^aeRif6"
+    }
+   }
+  },
+  {
+   "Name": "Tosin Cole",
+   "Id": "0a0fc8a3d72a456eb9ed64aac19f1204",
+   "Role": "Moses Johnson",
+   "Type": "Actor",
+   "PrimaryImageTag": "be05681c306ee5e97a68a690bb92a460",
+   "ImageBlurHashes": {
+    "Primary": {
+     "be05681c306ee5e97a68a690bb92a460": "djJHp[%M_N-;-pof-=xutla}MxWB?bay%Mt7t8j[f6of"
+    }
+   }
+  },
+  {
+   "Name": "Bentley Green",
+   "Id": "417582ed4209ab08a0af0b94ff8476e9",
+   "Role": "Joshua Johnson",
+   "Type": "Actor",
+   "PrimaryImageTag": "74fb3b06f334aae0a088e5e3c81560bf",
+   "ImageBlurHashes": {
+    "Primary": {
+     "74fb3b06f334aae0a088e5e3c81560bf": "d77naltQ0#T0@sniJVae5mWW=asm7gX8=xt6ibjsoeay"
+    }
+   }
+  }
+ ],
+ "Studios": [
+  {
+   "Name": "The CW",
+   "Id": "c6a7b9b98037a5ce989ad1d90a2ebb46"
+  },
+  {
+   "Name": "AMC",
+   "Id": "072771d94e42aaf0e27a71f474a6482f"
+  }
+ ],
+ "GenreItems": [
+  {
+   "Name": "Drama",
+   "Id": "090eac6e9de4fe1fbc194e5b96691277"
+  },
+  {
+   "Name": "Crime",
+   "Id": "83a9dab21914792744c8fb23b9925dc6"
+  }
+ ],
+ "LocalTrailerCount": 0,
+ "UserData": {
+  "PlayedPercentage": 0,
+  "UnplayedItemCount": 16,
+  "PlaybackPositionTicks": 0,
+  "PlayCount": 0,
+  "IsFavorite": false,
+  "Played": false,
+  "Key": "372178",
+  "ItemId": "e296b0dd6ec3436263940a8c10a2ad97"
+ },
+ "RecursiveItemCount": 16,
+ "ChildCount": 2,
+ "SpecialFeatureCount": 0,
+ "DisplayPreferencesId": "f63033ff6886ecc7083a696cbeced1b0",
+ "Status": "Ended",
+ "AirDays": [],
+ "Tags": [
+  "chicago, illinois",
+  "hilarious",
+  "cliché"
+ ],
+ "PrimaryImageAspectRatio": 0.6666666666666666,
+ "ImageTags": {
+  "Logo": "daaa78b4a0d256e5005dfad475e7f099",
+  "Thumb": "6d4d3497ebfdd677af5a0ce8907e2d9e",
+  "Primary": "172f08485ec65f8c5df4dc518af07972"
+ },
+ "BackdropImageTags": [
+  "c917c7621f47a90386b91764f8266609"
+ ],
+ "ImageBlurHashes": {
+  "Backdrop": {
+   "c917c7621f47a90386b91764f8266609": "WbIOqq?wRjNb%MbI?a%MM|RjxuRjxtaeWBayofayxvt8oLWVj[j]"
+  },
+  "Logo": {
+   "daaa78b4a0d256e5005dfad475e7f099": "PRI#x_~q%MxuRj-;-;xu9F?bt7IUj[WBayj[D%t7WBRjRjt7WBM{"
+  },
+  "Thumb": {
+   "6d4d3497ebfdd677af5a0ce8907e2d9e": "WdIhy~?wRjNI%MbI?a%MM|RjxuR*s:RjWBj@ofayxuozj[WVj[j]"
+  },
+  "Primary": {
+   "172f08485ec65f8c5df4dc518af07972": "dREV~h?w-=kDjD%M-=kB-;t7xut7n%ofWAf7IVn$WBof"
+  }
+ },
+ "LocationType": "FileSystem",
+ "MediaType": "Unknown",
+ "EndDate": "2024-09-09T00:00:00.0000000Z",
+ "LockedFields": [],
+ "LockData": false,
+ "OriginalLanguage": "en"
+}

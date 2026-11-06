@@ -1,0 +1,108 @@
+{
+ "Items": [
+  {
+   "Name": "61st Street",
+   "ServerId": "fixture-server",
+   "Id": "e296b0dd6ec3436263940a8c10a2ad97",
+   "PremiereDate": "2022-04-10T00:00:00.0000000Z",
+   "OfficialRating": "TV-MA",
+   "ChannelId": null,
+   "CommunityRating": 6.2,
+   "RunTimeTicks": 0,
+   "ProductionYear": 2022,
+   "IsFolder": true,
+   "Type": "Series",
+   "UserData": {
+    "PlayedPercentage": 0,
+    "UnplayedItemCount": 16,
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "e296b0dd-6ec3-4362-6394-0a8c10a2ad97",
+    "ItemId": "e296b0dd6ec3436263940a8c10a2ad97"
+   },
+   "Status": "Ended",
+   "AirDays": [],
+   "ImageTags": {
+    "Logo": "daaa78b4a0d256e5005dfad475e7f099",
+    "Thumb": "6d4d3497ebfdd677af5a0ce8907e2d9e",
+    "Primary": "172f08485ec65f8c5df4dc518af07972"
+   },
+   "BackdropImageTags": [
+    "c917c7621f47a90386b91764f8266609"
+   ],
+   "ImageBlurHashes": {
+    "Backdrop": {
+     "c917c7621f47a90386b91764f8266609": "WbIOqq?wRjNb%MbI?a%MM|RjxuRjxtaeWBayofayxvt8oLWVj[j]"
+    },
+    "Logo": {
+     "daaa78b4a0d256e5005dfad475e7f099": "PRI#x_~q%MxuRj-;-;xu9F?bt7IUj[WBayj[D%t7WBRjRjt7WBM{"
+    },
+    "Thumb": {
+     "6d4d3497ebfdd677af5a0ce8907e2d9e": "WdIhy~?wRjNI%MbI?a%MM|RjxuR*s:RjWBj@ofayxuozj[WVj[j]"
+    },
+    "Primary": {
+     "172f08485ec65f8c5df4dc518af07972": "dREV~h?w-=kDjD%M-=kB-;t7xut7n%ofWAf7IVn$WBof"
+    }
+   },
+   "LocationType": "FileSystem",
+   "MediaType": "Unknown",
+   "EndDate": "2024-09-09T00:00:00.0000000Z",
+   "OriginalLanguage": "en"
+  },
+  {
+   "Name": "9-1-1",
+   "ServerId": "fixture-server",
+   "Id": "b429b1b2e4fbf1f7b926167d9201ca99",
+   "PremiereDate": "2018-01-03T00:00:00.0000000Z",
+   "OfficialRating": "AU-MA 15+",
+   "ChannelId": null,
+   "CommunityRating": 8.2,
+   "RunTimeTicks": 0,
+   "ProductionYear": 2018,
+   "IsFolder": true,
+   "Type": "Series",
+   "UserData": {
+    "PlayedPercentage": 0,
+    "UnplayedItemCount": 85,
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "b429b1b2-e4fb-f1f7-b926-167d9201ca99",
+    "ItemId": "b429b1b2e4fbf1f7b926167d9201ca99"
+   },
+   "Status": "Continuing",
+   "AirDays": [],
+   "ImageTags": {
+    "Logo": "2c7799a4406d1e8336998ab40007c09b",
+    "Primary": "444e0d85fe04529946b93d3dcd746777",
+    "Thumb": "f89e432c4740b00a89f33ce8ee563731"
+   },
+   "BackdropImageTags": [
+    "f914eb35751d64c2bc172fbe1ef8e489"
+   ],
+   "ImageBlurHashes": {
+    "Backdrop": {
+     "f914eb35751d64c2bc172fbe1ef8e489": "WNKAWp=c~V=|Vs?a?vR*T0kWe-x]Rk^*RjNGoeM|%M={$*aet6WE"
+    },
+    "Logo": {
+     "2c7799a4406d1e8336998ab40007c09b": "OANYdS;4+^soK3F^BmXRwKjtK3SgjtsA{hK3jtsAn%bGW;"
+    },
+    "Primary": {
+     "444e0d85fe04529946b93d3dcd746777": "dKH-S+RQ.S^j.m-oo#%159?aNHX9yDt8oybHTxX7r?ni"
+    },
+    "Thumb": {
+     "f89e432c4740b00a89f33ce8ee563731": "WaLfaV}s$*D*tR%1x^W?R+V@bcW=KitlI;W=s:ae%fozS2R+azsn"
+    }
+   },
+   "LocationType": "FileSystem",
+   "MediaType": "Unknown",
+   "EndDate": "2026-10-29T00:00:00.0000000Z",
+   "OriginalLanguage": "en"
+  }
+ ],
+ "TotalRecordCount": 411,
+ "StartIndex": 0
+}

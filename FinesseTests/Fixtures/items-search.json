@@ -1,0 +1,130 @@
+{
+ "Items": [
+  {
+   "Name": "The Case of the Burnt Photograph",
+   "ServerId": "fixture-server",
+   "Id": "00195442529f191c5d145d3804d804ab",
+   "HasSubtitles": true,
+   "Container": "mkv",
+   "PremiereDate": "2026-03-04T00:00:00.0000000Z",
+   "ChannelId": null,
+   "CommunityRating": 7.9,
+   "RunTimeTicks": 26817600000,
+   "ProductionYear": 2026,
+   "IndexNumber": 2,
+   "ParentIndexNumber": 1,
+   "IsFolder": false,
+   "Type": "Episode",
+   "ParentLogoItemId": "fd957312ced9d28ff47faa73a8ee451d",
+   "ParentBackdropItemId": "fd957312ced9d28ff47faa73a8ee451d",
+   "ParentBackdropImageTags": [
+    "bb92e646a381eaf8f2b3389f1999dd0d"
+   ],
+   "UserData": {
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "450633001002",
+    "ItemId": "00195442529f191c5d145d3804d804ab"
+   },
+   "SeriesName": "Young Sherlock",
+   "SeriesId": "fd957312ced9d28ff47faa73a8ee451d",
+   "SeasonId": "ca13179eb2c0e385bc7e5bd8b76017be",
+   "SeriesPrimaryImageTag": "2d072951a741a48dbef586cff997f011",
+   "SeasonName": "Season 1",
+   "VideoType": "VideoFile",
+   "ImageTags": {
+    "Primary": "3da935d41a18e9b440a942a5511d955a"
+   },
+   "BackdropImageTags": [],
+   "ParentLogoImageTag": "544f91e6a75421ff99eed1986dc4221f",
+   "ImageBlurHashes": {
+    "Primary": {
+     "3da935d41a18e9b440a942a5511d955a": "W48gBB~Utk=ySLWo?as:Shxtr@EME2IpjZR+XR$*9aRPs.Ipt7-o",
+     "2d072951a741a48dbef586cff997f011": "dFD+bw4.GH-p~W4;x[?G4.%2rqWY9E-pMeIo4;WEskn#",
+     "12797735aa4a12ba31ad3ffe2be63e21": "dRDvM[xt4.WX%iWFM_oy?Yt6M|R*9aj[t7Rj0LWC%MWA"
+    },
+    "Logo": {
+     "544f91e6a75421ff99eed1986dc4221f": "PPKAYj%I4@Rl$~s.$~xY0QWC9dR+xYazodaz4@R+E5azxroKWWs."
+    },
+    "Thumb": {
+     "0762ea38ec26b1187ca3bfdb87e0dc86": "WLCsgP4nIV-=4nx]~q4oM{?bIUtRI]RRRi-.oaRjX3-nNHRnR,M|"
+    },
+    "Backdrop": {
+     "bb92e646a381eaf8f2b3389f1999dd0d": "WI8}0xog01W.?boz_2jZ9FWB%ft7NGoJs.RkbIt69Gof?HRkM{oe"
+    }
+   },
+   "ParentThumbItemId": "fd957312ced9d28ff47faa73a8ee451d",
+   "ParentThumbImageTag": "0762ea38ec26b1187ca3bfdb87e0dc86",
+   "ParentPrimaryImageItemId": "ca13179eb2c0e385bc7e5bd8b76017be",
+   "ParentPrimaryImageTag": "12797735aa4a12ba31ad3ffe2be63e21",
+   "LocationType": "FileSystem",
+   "MediaType": "Video"
+  },
+  {
+   "Name": "The Scar",
+   "ServerId": "fixture-server",
+   "Id": "0080488df49af98b48fcb4bf32619a49",
+   "HasSubtitles": true,
+   "Container": "mkv",
+   "PremiereDate": "2026-07-23T00:00:00.0000000Z",
+   "ChannelId": null,
+   "CommunityRating": 6.813,
+   "RunTimeTicks": 27324800000,
+   "ProductionYear": 2026,
+   "IndexNumber": 9,
+   "ParentIndexNumber": 1,
+   "IsFolder": false,
+   "Type": "Episode",
+   "ParentLogoItemId": "676abb19df4bc92f5a200ac1f948b268",
+   "ParentBackdropItemId": "676abb19df4bc92f5a200ac1f948b268",
+   "ParentBackdropImageTags": [
+    "5ac26c8cfb1752bc83bb219d5480333d"
+   ],
+   "UserData": {
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "456813001009",
+    "ItemId": "0080488df49af98b48fcb4bf32619a49"
+   },
+   "SeriesName": "Cape Fear",
+   "SeriesId": "676abb19df4bc92f5a200ac1f948b268",
+   "SeasonId": "9413c67264e6297851186c29414bf03e",
+   "SeriesPrimaryImageTag": "4ee0566836cca5f870d3d412b6c2229f",
+   "SeasonName": "Season 1",
+   "VideoType": "VideoFile",
+   "ImageTags": {
+    "Primary": "59d7e81b93a1aaa5543a3e72f22090a1"
+   },
+   "BackdropImageTags": [],
+   "ParentLogoImageTag": "41bf555384fed0e0c404277ac1513294",
+   "ImageBlurHashes": {
+    "Primary": {
+     "59d7e81b93a1aaa5543a3e72f22090a1": "W371u}.k9u$%?H%zRPM|?a?ttPM|_0RkIWn,xCRj?tIWM{%KjcX9",
+     "4ee0566836cca5f870d3d412b6c2229f": "deH]a;$*5Qr?@trstRso+vnixGs:~CxaM{aKZNV@xus:",
+     "53a2a3b09629386ad0a33642c3f039a3": "ddH+^M$*5Qr?@arrtRso+vnixGs:~CxaM{aKZNV@x[s:"
+    },
+    "Logo": {
+     "41bf555384fed0e0c404277ac1513294": "HIQ,L1Rj?bofM{t7%MxuRj~qWBIUM{xuof-;t7D%"
+    },
+    "Thumb": {
+     "2d15a474fba150c858d39ee3018d42ad": "WaH~*Mjt,Yo1$5,Y,Yo1o1o1WpSMsUa|SMfQSMjt|co1Jlo1SMa|"
+    },
+    "Backdrop": {
+     "5ac26c8cfb1752bc83bb219d5480333d": "WHA%S*Wp6hN]$5$5$5wxFIN]$5jtwxfQJljtwxWp|dSMFIfQsUo1"
+    }
+   },
+   "ParentThumbItemId": "676abb19df4bc92f5a200ac1f948b268",
+   "ParentThumbImageTag": "2d15a474fba150c858d39ee3018d42ad",
+   "ParentPrimaryImageItemId": "9413c67264e6297851186c29414bf03e",
+   "ParentPrimaryImageTag": "53a2a3b09629386ad0a33642c3f039a3",
+   "LocationType": "FileSystem",
+   "MediaType": "Video"
+  }
+ ],
+ "TotalRecordCount": 12,
+ "StartIndex": 0
+}

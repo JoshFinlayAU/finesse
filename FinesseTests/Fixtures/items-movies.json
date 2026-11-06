@@ -1,0 +1,104 @@
+{
+ "Items": [
+  {
+   "Name": "3 Idiots",
+   "ServerId": "fixture-server",
+   "Id": "412654816f4b4e12f08f6be80482353b",
+   "HasSubtitles": true,
+   "Container": "mkv",
+   "PremiereDate": "2009-12-23T00:00:00.0000000Z",
+   "CriticRating": 94,
+   "OfficialRating": "AU-M",
+   "ChannelId": null,
+   "CommunityRating": 8.013,
+   "RunTimeTicks": 102732459999,
+   "ProductionYear": 2009,
+   "IsFolder": false,
+   "Type": "Movie",
+   "UserData": {
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "41265481-6f4b-4e12-f08f-6be80482353b",
+    "ItemId": "412654816f4b4e12f08f6be80482353b"
+   },
+   "VideoType": "VideoFile",
+   "ImageTags": {
+    "Primary": "fbeb926f86916c5db37d23bb5b750df8",
+    "Thumb": "d8c7320e83ac0edfcb9e0ae73923c0b5",
+    "Logo": "54b9c2222c6088546e2e066b095508f8"
+   },
+   "BackdropImageTags": [
+    "334a8bf529ecce34f99943bd960e8801"
+   ],
+   "ImageBlurHashes": {
+    "Backdrop": {
+     "334a8bf529ecce34f99943bd960e8801": "WICY?dsB0h%L$yay9wxZ?EWERn%1NFS1WXjIkVt6?ER+E4t3NGIp"
+    },
+    "Primary": {
+     "fbeb926f86916c5db37d23bb5b750df8": "dWN,FF~TMK^b-jobV@Rls*tPS6NI4_VwV[oIxZoJM}Rl"
+    },
+    "Thumb": {
+     "d8c7320e83ac0edfcb9e0ae73923c0b5": "WyN05^xZIAxVbct6~SoxWAs.WEnjM|oes:flRnRk%0j?aff6j[oJ"
+    },
+    "Logo": {
+     "54b9c2222c6088546e2e066b095508f8": "PBHLl1RjRj%M~q~qt7WB00%Mxu-;M{Rj4nt74n?b%Mj[%Mxuxu?b"
+    }
+   },
+   "LocationType": "FileSystem",
+   "MediaType": "Video",
+   "OriginalLanguage": "hi"
+  },
+  {
+   "Name": "4 First Dates",
+   "ServerId": "fixture-server",
+   "Id": "1049e4215651fc3f6bcc9e23e37c1b5a",
+   "HasSubtitles": true,
+   "Container": "mkv",
+   "PremiereDate": "2026-01-02T00:00:00.0000000Z",
+   "ChannelId": null,
+   "CommunityRating": 6,
+   "RunTimeTicks": 58688960000,
+   "ProductionYear": 2026,
+   "IsFolder": false,
+   "Type": "Movie",
+   "UserData": {
+    "PlaybackPositionTicks": 0,
+    "PlayCount": 0,
+    "IsFavorite": false,
+    "Played": false,
+    "Key": "1049e421-5651-fc3f-6bcc-9e23e37c1b5a",
+    "ItemId": "1049e4215651fc3f6bcc9e23e37c1b5a"
+   },
+   "VideoType": "VideoFile",
+   "ImageTags": {
+    "Thumb": "b240612813ae296caf768be0d849b52d",
+    "Logo": "d099a2410c0ed6c343672adb9ed8503a",
+    "Primary": "1449891d52356224d460965481cc4de5"
+   },
+   "BackdropImageTags": [
+    "23d6d3e4ea6d780d8122539933aa9ba7"
+   ],
+   "ImageBlurHashes": {
+    "Backdrop": {
+     "23d6d3e4ea6d780d8122539933aa9ba7": "WACY:aE2x]Rix[X8?at7aeE2IVxax[xtV@s.n%%1~Bj[t7xZozxa"
+    },
+    "Thumb": {
+     "b240612813ae296caf768be0d849b52d": "WaJY;J%gFeM{D*#lK4t6WXe.WBWB0LR5V@bvx]bcwvRjaes:ogkW"
+    },
+    "Logo": {
+     "d099a2410c0ed6c343672adb9ed8503a": "N5TSUA-;fQ-;fQ-;~qj[fQj[fQj[fQfQfQfQfQfQ"
+    },
+    "Primary": {
+     "1449891d52356224d460965481cc4de5": "dWI{]6=vrW=xD%oItRs.10OXNGNHo}S2RjbbMxNbtRR*"
+    }
+   },
+   "LocationType": "FileSystem",
+   "MediaType": "Video",
+   "OriginalLanguage": "en"
+  }
+ ],
+ "TotalRecordCount": 1265,
+ "StartIndex": 0
+}

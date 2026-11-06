@@ -1,0 +1,180 @@
+[
+ {
+  "Name": "How Poopy Got His Poop Back",
+  "ServerId": "fixture-server",
+  "Id": "0f1f096b970036c11342823357f3dfb3",
+  "HasSubtitles": true,
+  "Container": "mkv",
+  "PremiereDate": "2023-10-15T00:00:00.0000000Z",
+  "ChannelId": null,
+  "CommunityRating": 6.211,
+  "RunTimeTicks": 13445760000,
+  "ProductionYear": 2023,
+  "IndexNumber": 1,
+  "ParentIndexNumber": 7,
+  "IsFolder": false,
+  "Type": "Episode",
+  "ParentLogoItemId": "139223d807d47ddc2b1b536be59a6ee6",
+  "ParentBackdropItemId": "139223d807d47ddc2b1b536be59a6ee6",
+  "ParentBackdropImageTags": [
+   "68f594763e7018afb103411f24f1cbe3"
+  ],
+  "UserData": {
+   "PlaybackPositionTicks": 0,
+   "PlayCount": 0,
+   "IsFavorite": false,
+   "Played": false,
+   "Key": "275274007001",
+   "ItemId": "0f1f096b970036c11342823357f3dfb3"
+  },
+  "SeriesName": "Rick and Morty",
+  "SeriesId": "139223d807d47ddc2b1b536be59a6ee6",
+  "SeasonId": "ed368f05e57dafcce43ae63ef9687c8b",
+  "SeriesPrimaryImageTag": "15827bcead06a2bc01a08fab556b1cfb",
+  "SeasonName": "Season 7",
+  "VideoType": "VideoFile",
+  "ImageTags": {
+   "Primary": "3a7f6a9e9e74ae8712d19729c46e9b01"
+  },
+  "BackdropImageTags": [],
+  "ParentLogoImageTag": "6001b75e050da436533ce7f49b0763a7",
+  "ImageBlurHashes": {
+   "Primary": {
+    "3a7f6a9e9e74ae8712d19729c46e9b01": "WXEDejlo9vrqwH%1bEb^X9s:kBWUMcrW$iXTX9WCInrpr=NIoKs;",
+    "15827bcead06a2bc01a08fab556b1cfb": "dEAA?A-om,thABRkOmbpGZXl#:xF|^rsz@wf9cTHKNOp",
+    "92f511471e7724ec3c786298427f27d1": "dDCQ3f%38{xF1zESGXO;O?XT}[$f=cOEnBwOBTRTJBIt"
+   },
+   "Logo": {
+    "6001b75e050da436533ce7f49b0763a7": "PU7gJjkWkWpIVuafV[o|aikCa}kWkVV[kVf*HZkBkBk8kCa}oejs"
+   },
+   "Thumb": {
+    "707fb64b6493522ef07b011292b0d84c": "WJA_FO8$R9.j4r-nu1sEWFS0f9oLDjs;jEROs.V@-.IDV?%MM_xD"
+   },
+   "Backdrop": {
+    "68f594763e7018afb103411f24f1cbe3": "WgL|uiNsnTxuS1-Ts]WFxoV@a#of^~%2t7jYxaoy~VxtN1ohxrt5"
+   }
+  },
+  "ParentThumbItemId": "139223d807d47ddc2b1b536be59a6ee6",
+  "ParentThumbImageTag": "707fb64b6493522ef07b011292b0d84c",
+  "ParentPrimaryImageItemId": "ed368f05e57dafcce43ae63ef9687c8b",
+  "ParentPrimaryImageTag": "92f511471e7724ec3c786298427f27d1",
+  "LocationType": "FileSystem",
+  "MediaType": "Video",
+  "OriginalLanguage": "en"
+ },
+ {
+  "Name": "Justified: City Primeval",
+  "ServerId": "fixture-server",
+  "Id": "97071558c4075bab433ce86803873259",
+  "PremiereDate": "2023-07-18T00:00:00.0000000Z",
+  "OfficialRating": "AU-MA 15+",
+  "ChannelId": null,
+  "CommunityRating": 7,
+  "RunTimeTicks": 0,
+  "ProductionYear": 2023,
+  "IsFolder": true,
+  "Type": "Series",
+  "UserData": {
+   "PlayedPercentage": 0,
+   "UnplayedItemCount": 8,
+   "PlaybackPositionTicks": 0,
+   "PlayCount": 0,
+   "IsFavorite": false,
+   "Played": false,
+   "Key": "414677",
+   "ItemId": "97071558c4075bab433ce86803873259"
+  },
+  "ChildCount": 2,
+  "Status": "Ended",
+  "AirDays": [],
+  "ImageTags": {
+   "Primary": "496a1460f4af06a82155b6df7565b014",
+   "Logo": "775630760604b3b535a79b5dc3b5a387",
+   "Thumb": "62f2c9da24d1305cf8ebf705d3bc3e0e"
+  },
+  "BackdropImageTags": [
+   "170ad0aac358cb24d82d2df8f00ed5fb"
+  ],
+  "ImageBlurHashes": {
+   "Backdrop": {
+    "170ad0aac358cb24d82d2df8f00ed5fb": "WD3d3$UuMclorCahloZhZ~pwZgWYPAn4v}l9R5e-k=eTjEXnaKsl"
+   },
+   "Primary": {
+    "496a1460f4af06a82155b6df7565b014": "dV6ASJozL~V@yso}Q-VtyXbcMdjFt,jbVsbaxCogRjWq"
+   },
+   "Logo": {
+    "775630760604b3b535a79b5dc3b5a387": "HGR{#?ay%M%M00IUIUofM{-;M{IUIUIUIURjIUM{"
+   },
+   "Thumb": {
+    "62f2c9da24d1305cf8ebf705d3bc3e0e": "WG6cB6-nq@tSs:Y6u6VrR5yExuWFK6H?H?X5adNJXmMxMxWUWYNH"
+   }
+  },
+  "LocationType": "FileSystem",
+  "MediaType": "Unknown",
+  "EndDate": "2023-08-29T00:00:00.0000000Z",
+  "OriginalLanguage": "en"
+ },
+ {
+  "Name": "Skin of Her Teeth",
+  "ServerId": "fixture-server",
+  "Id": "f6e62824564a9ac2808be78887affc2e",
+  "HasSubtitles": true,
+  "Container": "mkv",
+  "PremiereDate": "2021-12-19T00:00:00.0000000Z",
+  "ChannelId": null,
+  "CommunityRating": 7.6,
+  "RunTimeTicks": 27567680000,
+  "ProductionYear": 2021,
+  "IndexNumber": 7,
+  "ParentIndexNumber": 1,
+  "IsFolder": false,
+  "Type": "Episode",
+  "ParentLogoItemId": "9b0ec7ce012d023680f5870fb9a01dce",
+  "ParentBackdropItemId": "9b0ec7ce012d023680f5870fb9a01dce",
+  "ParentBackdropImageTags": [
+   "e91c46e6e4a2be1d73e99e01bb686b16"
+  ],
+  "UserData": {
+   "PlaybackPositionTicks": 0,
+   "PlayCount": 0,
+   "IsFavorite": false,
+   "Played": false,
+   "Key": "412366001007",
+   "ItemId": "f6e62824564a9ac2808be78887affc2e"
+  },
+  "SeriesName": "Dexter: New Blood",
+  "SeriesId": "9b0ec7ce012d023680f5870fb9a01dce",
+  "SeasonId": "a943f9709a0286aa0cd384263058edd3",
+  "SeriesPrimaryImageTag": "9809215be2f344bd432308bf9c1dde7d",
+  "SeasonName": "Season 1",
+  "VideoType": "VideoFile",
+  "ImageTags": {
+   "Primary": "b85329b07c36a64ae133583aa27f665a"
+  },
+  "BackdropImageTags": [],
+  "ParentLogoImageTag": "f034a0980ab4e9b1190be6998f17d7ba",
+  "ImageBlurHashes": {
+   "Primary": {
+    "b85329b07c36a64ae133583aa27f665a": "WBAmh=~W%Mkq%M^+?bt8NGM|ofxaE1E1MxRPM{IVX9R*xZ%1n$Rk",
+    "9809215be2f344bd432308bf9c1dde7d": "dJCsUB~V9vKR^+-okXS%9tE1RO$$I]E2IUt6IpRjt8kX",
+    "57e6bbe6840aacebfd3c34f888037cf6": "dM98GKt78^p0M}jYs8R*IARjx]oJ%MozR,kDI9jZo#Ri"
+   },
+   "Logo": {
+    "f034a0980ab4e9b1190be6998f17d7ba": "WTFsAEM_D%t8V@ofR%%MWCayaeWC4mIUofoftRWADiofs:aeWBoK"
+   },
+   "Thumb": {
+    "ea33cdd5b7ec1b6555623fcb051a65d8": "WH7U@:jEDNyE%LQ,tmoeV?g4t7j?RPWBn~aKWCf,VrV@RiRPoMtR"
+   },
+   "Backdrop": {
+    "e91c46e6e4a2be1d73e99e01bb686b16": "WJ6[t0VrDNt-xuR4o~e-Ribct7j@Rkf+oee.ayf+jZkCWoV@ofoz"
+   }
+  },
+  "ParentThumbItemId": "9b0ec7ce012d023680f5870fb9a01dce",
+  "ParentThumbImageTag": "ea33cdd5b7ec1b6555623fcb051a65d8",
+  "ParentPrimaryImageItemId": "a943f9709a0286aa0cd384263058edd3",
+  "ParentPrimaryImageTag": "57e6bbe6840aacebfd3c34f888037cf6",
+  "LocationType": "FileSystem",
+  "MediaType": "Video",
+  "OriginalLanguage": "en"
+ }
+]
