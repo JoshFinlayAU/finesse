@@ -1,0 +1,50 @@
+{
+  "areas": [
+    {"name": "Sign-in", "screens": [
+      {"n": 1, "file": "g01-server-entry", "title": "Server entry", "src": "real"},
+      {"n": 2, "file": "g02-quick-connect", "title": "Quick Connect code", "src": "real"},
+      {"n": 3, "file": "g03-sign-in", "title": "Sign in", "src": "real"},
+      {"n": 4, "file": "g04-sign-in-wrong-password", "title": "Sign in, wrong password", "src": "real"},
+      {"n": 5, "file": "g05-user-picker-fake", "title": "User picker", "src": "fake", "note": "Fake users from the built-in fake server. The real picker is left out because it shows household names."}
+    ]},
+    {"name": "Home", "screens": [
+      {"n": 6, "file": "g06-home", "title": "Home with Continue Watching", "src": "seeded", "note": "Watch progress was set on the test user for this shot. Doctor Who, Rings of Power and Futurama in Next Up are left over from earlier test runs."},
+      {"n": 7, "file": "g07-home-focused-card", "title": "Focused card", "src": "seeded", "note": "Same seeded progress as 6."},
+      {"n": 8, "file": "g08-card-menu", "title": "Card long-press menu", "src": "seeded", "note": "Same seeded progress as 6."}
+    ]},
+    {"name": "Libraries", "screens": [
+      {"n": 9, "file": "g09-movies-grid", "title": "Movies grid", "src": "seeded", "note": "One title was marked watched for this shot."},
+      {"n": 10, "file": "g10-watched-badge", "title": "Watched badge, focused", "src": "seeded", "note": "4 First Dates was marked watched for this shot."},
+      {"n": 11, "file": "g11-tv-grid", "title": "TV Shows grid", "src": "real"},
+      {"n": 12, "file": "g12-sort-menu", "title": "Sort menu", "src": "real"},
+      {"n": 13, "file": "g13-filter-menu", "title": "Filter menu", "src": "real"}
+    ]},
+    {"name": "Detail", "screens": [
+      {"n": 14, "file": "g14-movie-detail", "title": "Movie", "src": "real"},
+      {"n": 15, "file": "g15-cast-row", "title": "Movie, cast row", "src": "real"},
+      {"n": 16, "file": "g16-more-like-this", "title": "Movie, More Like This", "src": "real"},
+      {"n": 17, "file": "g17-show-detail", "title": "Show", "src": "seeded", "note": "Episode progress was set for this shot, so Play reads Resume S1 E2."},
+      {"n": 18, "file": "g18-seasons-row", "title": "Show, seasons row", "src": "seeded", "note": "Same seeded progress as 17."},
+      {"n": 19, "file": "g19-season-detail", "title": "Season", "src": "seeded", "note": "Same seeded progress as 17."},
+      {"n": 20, "file": "g20-season-episodes", "title": "Season, episode grid", "src": "seeded", "note": "Episode 1 marked watched and episode 2 part watched for this shot."},
+      {"n": 21, "file": "g21-episode-detail", "title": "Episode", "src": "seeded", "note": "Marked watched for this shot."},
+      {"n": 22, "file": "g22-more-in-season", "title": "Episode, More in This Season", "src": "seeded", "note": "Same seeded progress as 20."}
+    ]},
+    {"name": "Search and Settings", "screens": [
+      {"n": 23, "file": "g23-search-empty", "title": "Search, empty", "src": "real"},
+      {"n": 24, "file": "g24-search-typed", "title": "Search, typing with results", "src": "real"},
+      {"n": 25, "file": "g25-search-results", "title": "Search results", "src": "real"},
+      {"n": 26, "file": "g26-settings", "title": "Settings", "src": "real"}
+    ]},
+    {"name": "Player", "intro": "The player is still being changed, so these shots may change.", "screens": [
+      {"n": 27, "file": "g27-player-controls", "title": "Controls", "src": "real"},
+      {"n": 28, "file": "g28-player-scrubbing", "title": "Scrubbing", "src": "real"},
+      {"n": 29, "file": "g29-player-paused", "title": "Paused", "src": "real"},
+      {"n": 30, "file": "g30-player-audio-menu", "title": "Audio menu", "src": "real"},
+      {"n": 31, "file": "g31-player-subtitle-menu", "title": "Subtitle menu", "src": "real"},
+      {"n": 32, "file": "g32-skip-intro", "title": "Skip Intro", "src": "fake", "note": "Fake server and made-up segments with no video, because the test server has no segments."},
+      {"n": 33, "file": "g33-skip-credits", "title": "Skip Credits", "src": "fake", "note": "Fake server and made-up segments with no video, because the test server has no segments."},
+      {"n": 34, "file": "g34-up-next", "title": "Up Next", "src": "seeded", "note": "A real episode, started near its end for this shot."}
+    ]}
+  ]
+}

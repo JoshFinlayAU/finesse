@@ -1,0 +1,114 @@
+<title>Finesse Screen Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* One dark look on purpose: these are TV screens, and a dark surround is how they are judged. */
+/* Layout: a single column of large screens under a sticky list of areas, each with a big fixed number. */
+:root {
+  color-scheme: dark;
+  --bg: #15181d; --panel: #1e2229; --line: #313742; --fg: #eef0f3; --muted: #a4abb6;
+  --num: #ffd27a; --real: #8fb7e8; --seeded: #e6b566; --fake: #ef9a8b;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Instrument Sans", "Helvetica Neue", system-ui, sans-serif;
+}
+body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1680px; margin: 0 auto; padding-block: 32px 96px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font: 700 clamp(30px, 4vw, 46px)/1.1 var(--display); margin: 0 0 12px; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 65ch; margin: 0 0 16px; }
+.key { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 24px; padding: 0; list-style: none; color: var(--muted); font-size: 14px; }
+.tag { font-weight: 600; font-size: 13px; letter-spacing: .02em; }
+.tag.real { color: var(--real); } .tag.seeded { color: var(--seeded); } .tag.fake { color: var(--fake); }
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-block: 1px solid var(--line); display: flex; gap: 4px 20px; flex-wrap: wrap; padding-block: 10px; margin-bottom: 40px; }
+nav a { color: var(--fg); text-decoration: none; font-weight: 500; font-size: 14px; white-space: nowrap; }
+nav a:hover { color: var(--num); }
+nav a span { color: var(--muted); font-variant-numeric: tabular-nums; }
+section { display: grid; gap: 56px; margin-bottom: 72px; scroll-margin-top: 64px; }
+h2 { font: 700 clamp(22px, 2.6vw, 30px)/1.2 var(--display); margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.intro { margin: -40px 0 0; color: var(--seeded); }
+.shot { display: grid; gap: 14px; scroll-margin-top: 64px; min-width: 0; }
+.shot header { display: flex; gap: 18px; align-items: center; min-width: 0; }
+.num { font: 700 clamp(56px, 7vw, 92px)/.9 var(--display); color: var(--num); font-variant-numeric: tabular-nums; flex: none; }
+.meta { min-width: 0; }
+h3 { font: 500 clamp(19px, 2vw, 24px)/1.25 var(--display); margin: 0; }
+.note { margin: 2px 0 0; color: var(--muted); font-size: 14px; max-width: 75ch; }
+.open { display: block; width: 100%; padding: 0; border: 1px solid var(--line); background: #000; cursor: zoom-in; border-radius: 4px; overflow: hidden; }
+.open:focus-visible, nav a:focus-visible, .bar button:focus-visible { outline: 3px solid var(--num); outline-offset: 2px; }
+.open img { display: block; width: 100%; height: auto; }
+.none { padding: 48px 16px; background: var(--panel); color: var(--muted); text-align: center; border-radius: 4px; }
+#viewer { position: fixed; inset: 0; z-index: 20; background: #000; display: flex; flex-direction: column; }
+.bar { display: flex; align-items: center; gap: 12px; padding: calc(8px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px)); background: var(--panel); }
+.bar b { font: 700 28px/1 var(--display); color: var(--num); font-variant-numeric: tabular-nums; }
+.bar span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar button { font: 500 14px var(--body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+.stage { flex: 1; overflow: auto; }
+.stage img { display: block; max-width: none; margin: auto; }
+.stage.fit img { width: 100%; height: 100%; object-fit: contain; cursor: zoom-in; }
+.stage:not(.fit) img { width: 3840px; height: 2160px; cursor: zoom-out; }
+</style>
+<div class="wrap">
+  <h1>Finesse Screen Review</h1>
+  <p class="lede">{{COUNT}} screens from the tvOS simulator, captured at 4K. To give feedback, quote the number, for example "number 7, the title is too small". A number stays with its screen when that screen is recaptured. Select a screen to see it at full size.</p>
+  <ul class="key">
+    <li><span class="tag real">Test server</span> real library, as the test user</li>
+    <li><span class="tag seeded">Test server, seeded</span> real library with watch state set for the shot, then cleared</li>
+    <li><span class="tag fake">Fake data</span> the app's built-in fake server</li>
+  </ul>
+  <nav aria-label="Areas">{{NAV}}</nav>
+  <main>{{BODY}}</main>
+</div>
+<div id="viewer" role="dialog" aria-modal="true" aria-label="Full size screen" hidden>
+  <div class="bar">
+    <b id="v-num"></b><span id="v-title"></span>
+    <button id="v-prev" type="button">Previous</button>
+    <button id="v-next" type="button">Next</button>
+    <button id="v-zoom" type="button">100%</button>
+    <button id="v-close" type="button">Close</button>
+  </div>
+  <div class="stage fit" id="v-stage"><img id="v-img" alt=""></div>
+</div>
+<script>
+const items = {{ITEMS}};
+const $ = id => document.getElementById(id);
+let current = 0, opener = null;
+function show(i) {
+  current = (i + items.length) % items.length;
+  const item = items[current];
+  $("v-num").textContent = item.n;
+  $("v-title").textContent = item.t;
+  $("v-img").src = item.src;
+  $("v-img").alt = "Screen " + Number(item.n) + ": " + item.t;
+  $("v-stage").scrollTo(0, 0);
+}
+function zoom() {
+  const stage = $("v-stage");
+  stage.classList.toggle("fit");
+  $("v-zoom").textContent = stage.classList.contains("fit") ? "100%" : "Fit";
+}
+function close() {
+  $("viewer").hidden = true;
+  document.body.style.overflow = "";
+  if (opener) opener.focus();
+}
+document.querySelectorAll(".open").forEach(button => button.addEventListener("click", () => {
+  opener = button;
+  $("v-stage").classList.add("fit");
+  $("v-zoom").textContent = "100%";
+  show(Number(button.dataset.i));
+  $("viewer").hidden = false;
+  document.body.style.overflow = "hidden";
+  $("v-close").focus();
+}));
+$("v-prev").onclick = () => show(current - 1);
+$("v-next").onclick = () => show(current + 1);
+$("v-zoom").onclick = zoom;
+$("v-img").onclick = zoom;
+$("v-close").onclick = close;
+document.addEventListener("keydown", event => {
+  if ($("viewer").hidden) return;
+  if (event.key === "Escape") close();
+  if (event.key === "ArrowLeft") show(current - 1);
+  if (event.key === "ArrowRight") show(current + 1);
+});
+</script>
