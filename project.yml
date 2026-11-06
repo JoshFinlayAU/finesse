@@ -27,6 +27,8 @@ settings:
     # Ad-hoc in the simulator: no team needed, and Keychain calls fail with -34018 when unsigned.
     "CODE_SIGN_IDENTITY[sdk=appletvsimulator*]": "-"
     "CODE_SIGN_STYLE[sdk=appletvsimulator*]": Manual
+    # Our playback frameworks are arm64 only, and a Release build otherwise targets every architecture.
+    "EXCLUDED_ARCHS[sdk=appletvsimulator*]": x86_64
 
 targets:
   Finesse:
@@ -63,6 +65,7 @@ targets:
         PRODUCT_MODULE_NAME: FinEsse
         PRODUCT_BUNDLE_IDENTIFIER: au.com.athenanetworks.finesse
         INFOPLIST_FILE: Finesse/Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: App Icon & Top Shelf Image
         ENABLE_PREVIEWS: "YES"
 
   FinesseTests:

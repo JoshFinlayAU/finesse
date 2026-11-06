@@ -41,6 +41,12 @@ private struct SignInPage<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 40) {
+            Image("FinesseLockup")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 420)
+                .accessibilityLabel("Finesse")
+                .accessibilityIdentifier("signInLogo")
             VStack(spacing: 16) {
                 Text(title)
                     .font(.title)

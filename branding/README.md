@@ -1,13 +1,17 @@
 # Branding
 
-Logo concepts for the owner to choose from. Nothing here is installed in the app yet.
+The owner chose concept 04 Palace on 2026-11-07. The other concepts stay here for reference and aren't used in the app.
+
+`build_tvos_assets.py` renders Palace into `Finesse/Resources/Assets.xcassets` and writes each layer's SVG to `palace/`. Change the drawing there and rerun it, rather than editing the PNGs. Its layers, front to back, are the screen, the inner, middle and outer arches, and the back. The app's lockup is an image with light and dark versions.
+
+The wordmark is an outline of Marcellus, under the SIL Open Font License. The font itself isn't shipped.
 
 - `build_concepts.py` draws every concept and writes the SVGs to `concepts/`. The folder of `.woff` fonts is its only argument.
 - `build_page.py` builds the single review page from those SVGs.
 
 Each concept folder holds the symbol, wordmark and lockup for dark and light backgrounds, and `icon-back.svg`, `icon-middle.svg` and `icon-front.svg` on an 800x480 canvas.
 
-The marks are hand-drawn. The wordmarks are outlines of open-licensed typefaces from Fontsource: Outfit, Fraunces, Bodoni Moda, Marcellus and Jost. No font is bundled. Check each typeface's licence again when the owner picks one.
+The marks are hand-drawn. The wordmarks are outlines of open-licensed typefaces from Fontsource: Outfit, Fraunces, Bodoni Moda, Marcellus and Jost. No font is bundled. All five are under the SIL Open Font License.
 
 ## What the tvOS asset set needs
 

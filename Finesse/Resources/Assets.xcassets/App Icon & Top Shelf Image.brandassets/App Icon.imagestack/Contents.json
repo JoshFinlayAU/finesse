@@ -1,0 +1,23 @@
+{
+  "layers": [
+    {
+      "filename": "screen.imagestacklayer"
+    },
+    {
+      "filename": "inner-arch.imagestacklayer"
+    },
+    {
+      "filename": "middle-arch.imagestacklayer"
+    },
+    {
+      "filename": "outer-arch.imagestacklayer"
+    },
+    {
+      "filename": "back.imagestacklayer"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

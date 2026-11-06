@@ -21,6 +21,7 @@ These are the owner's choices. Don't change them without asking.
 | Devices | Simulator plus a real Apple TV |
 | Test server | Existing Jellyfin server, test user only |
 | Distribution | TestFlight first, kept App Store-ready |
+| Branding | Concept 04 Palace, nested picture-palace arches with the FINESSE wordmark. It has no letter, so pair it with the wordmark wherever the mark alone wouldn't say Finesse. Source and the tvOS asset requirements are in `branding/` |
 | Licence | Private for now; open or closed source to be decided before release |
 | Bundle ID | `au.com.athenanetworks.finesse`. Registered in the developer portal on 2026-11-07. An App Store Connect record needs a separate go-ahead from the owner |
 | Apple team | `4S7BG5A4XV` |
@@ -189,13 +190,14 @@ TestFlight uploads and any App Store Connect change are outward-facing, so confi
 - **Display matching:** AVPlayer and mpv handle frame rate and dynamic range differently. Check match-content behaviour for each engine on the real Apple TV.
 - **Signing over SSH:** a locked login keychain can cause `errSecInternalComponent` during device or archive builds. Unlocking it or fixing signing on the Mac needs the owner, so ask rather than working around it.
 - **Stale builds:** after changing `project.yml` or dependencies, rerun `xcodegen generate`. Files created on the Mac don't sync back and may be removed by `--delete`, so copy anything worth keeping to Linux first.
+- **The name:** FINESSE TV, an Android IPTV app, is the closest clash found, and a dance-training app and a pending US filing also use the name. Those came from web searches only. No official trademark register has been searched, including IP Australia and the USPTO, so do that before release.
 - **App Store readiness:** keep to public APIs only. Maintain the privacy manifest, including for bundled binaries, and keep usage strings and required icons current so TestFlight builds stay submittable.
 
 ## Notes
 
 - Private memory: `memory/`  ·  Spoke skills: `skills/`
 - Destructive git ops (force-push, reset --hard, branch deletes) are fine without asking. Make a throwaway branch or note the SHA first so the state is recoverable.
-- Still undecided: app icon and branding, and the final licence. Ask rather than inventing them, then record the answers here.
+- Still undecided: the final licence. Ask rather than inventing it, then record the answer here.
 
 <!-- aisandbox:multi-agent:start -->
 ## Multi-agent spoke
