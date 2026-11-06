@@ -17,7 +17,7 @@ private enum LiveServer {
                 clientName: "Finesse Playback Tests",
                 clientVersion: "1.0",
                 deviceName: "Simulator",
-                deviceID: "finesse-playback-tests"
+                deviceID: "finesse-playback-tracks-tests"
             )
         )
         _ = try await client.signIn(
@@ -174,6 +174,7 @@ struct PlaybackTracksEndToEndTests {
             mark("mpv subrip off")
             try await Task.sleep(for: .seconds(6))
         }
+        #expect(try await remember(audio: 1, on: Item.mpvMultiAudio) == 1)
     }
 
     @Test func mpvSelectsPGS() async throws {
@@ -309,6 +310,8 @@ struct PlaybackTracksEndToEndTests {
     /// Causes a genuine AVPlayer failure by telling the router it can play an MKV, which it can't.
     /// That fails while loading rather than mid-playback, but it's the same path out of the engine.
     @Test func avPlayerFailingForRealMovesToMpvAtThePosition() async throws {
+        // A remembered second audio track would send this to mpv before AVPlayer ever failed.
+        #expect(try await remember(audio: 1, on: Item.mpvMultiAudio) == 1)
         let client = try await LiveServer.signedInClient()
         guard let item = try? await client.item(id: Item.mpvMultiAudio) else {
             Issue.record("Item is no longer in the library, so this test played nothing")
