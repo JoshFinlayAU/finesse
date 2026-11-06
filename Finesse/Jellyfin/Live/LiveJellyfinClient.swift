@@ -97,7 +97,11 @@ actor LiveJellyfinClient: JellyfinClient {
     }
 
     func quickConnectStatus(_ request: QuickConnectRequest) async throws -> QuickConnectRequest {
-        try QuickConnectRequest(await send(Paths.getQuickConnectState(secret: request.secret)))
+        do {
+            return try QuickConnectRequest(await send(Paths.getQuickConnectState(secret: request.secret)))
+        } catch JellyfinError.notFound {
+            throw JellyfinError.quickConnectExpired
+        }
     }
 
     func signIn(quickConnect request: QuickConnectRequest) async throws -> UserSession {
@@ -140,9 +144,17 @@ actor LiveJellyfinClient: JellyfinClient {
         session
     }
 
+    /// Best effort on the server. If it can't be reached the token stays valid there, and this client
+    /// still forgets it. Signing this user in again on this device revokes the old one, so nothing is
+    /// queued to retry, which would mean keeping a token the user asked the app to forget.
     func signOut() async throws {
-        if session != nil {
-            try await sendVoid(Paths.reportSessionEnded)
+        do {
+            if session != nil {
+                try await sendVoid(Paths.reportSessionEnded)
+            }
+        } catch {
+            await setSession(nil)
+            throw error
         }
         await setSession(nil)
     }
@@ -212,6 +224,22 @@ actor LiveJellyfinClient: JellyfinClient {
     }
 
     func filterOptions(libraryID: String?, kinds: [ItemKind]) async throws -> FilterOptions {
+        guard let libraryID else {
+            // The endpoint returns nothing at all without a parent, so ask each matching library.
+            let matching = try await libraries().filter { $0.holds(kinds) }
+            var genres = Set<String>(), years = Set<Int>(), ratings = Set<String>()
+            for library in matching {
+                let options = try await filterOptions(libraryID: library.id, kinds: kinds)
+                genres.formUnion(options.genres)
+                years.formUnion(options.years)
+                ratings.formUnion(options.officialRatings)
+            }
+            return FilterOptions(
+                genres: genres.sorted(),
+                years: years.sorted(by: >),
+                officialRatings: ratings.sorted()
+            )
+        }
         var parameters = Paths.GetQueryFiltersLegacyParameters()
         parameters.userID = try userID()
         parameters.parentID = libraryID
@@ -403,7 +431,11 @@ actor LiveJellyfinClient: JellyfinClient {
 
     private func send<T: Decodable & Sendable>(_ request: Request<T>) async throws -> T {
         do {
-            return try await sdk.send(request).value
+            let data = try await sdk.data(for: request).value
+            if let raw = data as? T {
+                return raw
+            }
+            return try LenientDecoder.decode(T.self, from: data)
         } catch {
             throw Self.mapError(error)
         }
@@ -439,6 +471,16 @@ actor LiveJellyfinClient: JellyfinClient {
             return JellyfinError.decoding(String(describing: error))
         default:
             return JellyfinError.network(String(describing: type(of: error)))
+        }
+    }
+}
+
+private extension Library {
+    func holds(_ kinds: [ItemKind]) -> Bool {
+        switch kind {
+        case .movies: kinds.isEmpty || kinds.contains(.movie)
+        case .shows: kinds.isEmpty || kinds.contains(.series) || kinds.contains(.season) || kinds.contains(.episode)
+        case .other: false
         }
     }
 }

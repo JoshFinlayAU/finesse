@@ -117,6 +117,82 @@ import Testing
         #expect(model.sessionExpired)
     }
 
+    /// A page finishing while a refresh is out must not be overwritten by the refresh's older,
+    /// shorter answer, or its cards vanish while the next page starts after them.
+    @Test func aPageThatFinishesDuringARefreshKeepsItsCards() async throws {
+        let base = try await makeClient(count: 12)
+        let client = GatedJellyfinClient(base: base)
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 4, prefetchDistance: 1)
+        await model.appeared()
+        #expect(model.items.count == 4)
+
+        await client.hold("items@0")
+        let refresh = Task { await model.appeared() }
+        await client.waitUntilWaiting("items@0")
+
+        await model.loadMore(after: model.items[3])
+        #expect(model.items.count == 8)
+
+        await client.release("items@0")
+        await refresh.value
+
+        #expect(model.items.map(\.id) == (0..<8).map { String(format: "%03d", $0) })
+        let last = try #require(model.items.last)
+        await model.loadMore(after: last)
+        #expect(model.items.map(\.id) == (0..<12).map { String(format: "%03d", $0) })
+    }
+
+    /// The refresh re-reads everything up to the next offset, so removing items before it skips nothing.
+    @Test func removingEarlierItemsSkipsNothingAfterARefresh() async throws {
+        let client = try await makeClient(count: 20)
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 4, prefetchDistance: 1)
+        await model.appeared()
+        await model.loadMore(after: model.items[3])
+        await client.configure { $0.allItems.removeFirst(2) }
+
+        await model.appeared()
+        await model.loadMore(after: model.items[7])
+
+        #expect(model.items.map(\.id) == (2..<14).map { String(format: "%03d", $0) })
+    }
+
+    /// A refresh that comes back short has to move the next offset back too, or items that
+    /// reappear later are skipped.
+    @Test func aShortRefreshMovesTheNextOffsetBack() async throws {
+        let client = try await makeClient(count: 10)
+        let all = await client.allItems
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 8, prefetchDistance: 8)
+        await model.appeared()
+        #expect(model.items.count == 8)
+
+        await client.configure { $0.allItems = Array(all.prefix(6)) }
+        await model.appeared()
+        #expect(model.items.count == 6)
+
+        await client.configure { $0.allItems = all }
+        await model.appeared()
+        await model.loadMore(after: model.items[5])
+
+        #expect(model.items.map(\.id) == (0..<10).map { String(format: "%03d", $0) })
+    }
+
+    /// Items that come back with no refresh in between are only skipped if the offset stayed high.
+    @Test func itemsReturningAfterAShortRefreshAreNotSkipped() async throws {
+        let client = try await makeClient(count: 12)
+        let all = await client.allItems
+        let model = LibraryModel(kind: .movie, client: client, pageSize: 8, prefetchDistance: 8)
+        await model.appeared()
+
+        await client.configure { $0.allItems = Array(all.prefix(6)) }
+        await model.appeared()
+        #expect(model.items.count == 6)
+
+        await client.configure { $0.allItems = all }
+        await model.retryLoadMore()
+
+        #expect(model.items.map(\.id) == (0..<12).map { String(format: "%03d", $0) })
+    }
+
     @Test func showsHaveNoRuntimeSort() async {
         let model = LibraryModel(kind: .series, client: InMemoryJellyfinClient())
         #expect(!model.sortOptions.contains(.runTime))

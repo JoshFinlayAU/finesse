@@ -63,6 +63,8 @@ extension Error {
             return "That item is no longer on the server."
         case .quickConnectDisabled:
             return "Quick Connect is turned off on this server."
+        case .quickConnectExpired:
+            return "That code has expired. Try again for a new one."
         case .insecureConnectionBlocked:
             return "This address can't be used over plain HTTP. Use HTTPS, or your server's local IP address."
         case .server(let status):

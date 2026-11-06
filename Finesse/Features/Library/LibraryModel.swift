@@ -55,6 +55,8 @@ final class LibraryModel {
     private var reachedEnd = false
     /// Bumped by each new query, so a slower response to an older one is dropped.
     private var generation = 0
+    /// Bumped by each page, so a refresh asked for before that page can't overwrite it.
+    private var pagesApplied = 0
 
     init(kind: ItemKind, client: any JellyfinClient, pageSize: Int = 60, prefetchDistance: Int = 18) {
         self.kind = kind
@@ -168,14 +170,17 @@ final class LibraryModel {
     private func refresh() async {
         guard !items.isEmpty, !isLoadingMore else { return }
         let current = generation
+        let pagesWhenAsked = pagesApplied
         guard let page = try? await client.items(query(startIndex: 0, limit: nextIndex)),
-              current == generation, !isLoadingMore
+              current == generation, !isLoadingMore, pagesWhenAsked == pagesApplied
         else { return }
         items = Self.unique(page.items)
         totalCount = page.totalCount
+        nextIndex = page.startIndex + page.items.count
     }
 
     private func apply(_ page: Page<MediaItem>) {
+        pagesApplied += 1
         items = Self.unique(items + page.items)
         totalCount = page.totalCount
         nextIndex = page.startIndex + page.items.count

@@ -51,6 +51,8 @@ enum JellyfinError: Error, Hashable, Sendable {
     case forbidden
     case notFound
     case quickConnectDisabled
+    /// The code is no longer valid, usually because it timed out before anyone approved it.
+    case quickConnectExpired
     /// App Transport Security refused a plain HTTP connection. Ask for HTTPS or a local address.
     case insecureConnectionBlocked
     case server(status: Int)

@@ -465,4 +465,167 @@ import Testing
         }
         #expect(!message.contains("FIXTURE_TOKEN"))
     }
+
+    // MARK: Values the SDK's strict enums don't know
+
+    /// A fixture with `edit` applied, as the server might send it after an upgrade.
+    private func serveEdited(_ fixture: String, edit: (inout [String: Any]) -> Void) throws {
+        var json = try #require(try JSONSerialization.jsonObject(with: Fixture.data(fixture)) as? [String: Any])
+        edit(&json)
+        let body = try JSONSerialization.data(withJSONObject: json)
+        StubURLProtocol.reset { _ in .response(status: 200, body: body) }
+    }
+
+    private func editItem(_ index: Int, in json: inout [String: Any], edit: (inout [String: Any]) -> Void) {
+        var items = json["Items"] as? [[String: Any]] ?? []
+        edit(&items[index])
+        json["Items"] = items
+    }
+
+    @Test func anUnknownItemTypeKeepsTheWholeListAndThatItem() async throws {
+        let client = await signedInClient()
+        try serveEdited("items-movies") { json in
+            editItem(0, in: &json) { $0["Type"] = "SomeKindFromTheFuture" }
+        }
+        let page = try await client.items(ItemQuery(kinds: [.movie]))
+        #expect(page.items.count >= 2)
+        #expect(page.items[0].kind == .other(""))
+        #expect(!page.items[0].name.isEmpty)
+        #expect(page.items[1].kind == .movie)
+    }
+
+    @Test func anUnknownValueOnEveryItemIsFixedInOnePass() async throws {
+        let client = await signedInClient()
+        try serveEdited("items-movies") { json in
+            let count = (json["Items"] as? [Any])?.count ?? 0
+            for index in 0..<count {
+                editItem(index, in: &json) { $0["VideoType"] = "SomethingNew" }
+            }
+        }
+        let page = try await client.items(ItemQuery(kinds: [.movie]))
+        #expect(page.items.allSatisfy { $0.kind == .movie })
+    }
+
+    @Test func anUnknownNestedValueKeepsTheItem() async throws {
+        let client = await signedInClient()
+        try serveEdited("items-movies") { json in
+            editItem(0, in: &json) {
+                $0["MediaStreams"] = [["Type": "Video", "VideoRangeType": "HDR99", "Index": 0]]
+                var state = $0["UserData"] as? [String: Any] ?? [:]
+                state["PlaybackPositionTicks"] = 50
+                $0["UserData"] = state
+            }
+        }
+        let original = try #require(try JSONSerialization.jsonObject(with: Fixture.data("items-movies")) as? [String: Any])
+        let firstName = (original["Items"] as? [[String: Any]])?.first?["Name"] as? String
+        let page = try await client.items(ItemQuery(kinds: [.movie]))
+        #expect(page.items[0].name == firstName)
+        #expect(page.items[0].kind == .movie)
+        #expect(page.items[0].userState.playbackPosition == Ticks(rawValue: 50))
+    }
+
+    @Test func aNestedObjectMissingARequiredFieldCostsOnlyThatObject() async throws {
+        let client = await signedInClient()
+        let original = try #require(try JSONSerialization.jsonObject(with: Fixture.data("items-movies")) as? [String: Any])
+        let count = (original["Items"] as? [Any])?.count
+        let firstName = (original["Items"] as? [[String: Any]])?.first?["Name"] as? String
+        try serveEdited("items-movies") { json in
+            editItem(0, in: &json) { $0["UserData"] = ["Played": true] }
+        }
+        let page = try await client.items(ItemQuery(kinds: [.movie]))
+        #expect(page.items.count == count)
+        #expect(page.items[0].name == firstName)
+    }
+
+    /// The legacy filters endpoint returns nothing at all without a parent library.
+    @Test func filterOptionsAreGatheredFromTheMatchingLibraries() async throws {
+        let client = await signedInClient()
+        let views = #"{"Items":[{"Id":"movies-id","Name":"Movies","CollectionType":"movies"},{"Id":"more-id","Name":"More","CollectionType":"movies"},{"Id":"tv-id","Name":"TV","CollectionType":"tvshows"}]}"#
+        StubURLProtocol.reset { request in
+            let url = request.url?.absoluteString ?? ""
+            let body: String
+            if url.contains("UserViews") {
+                body = views
+            } else if url.contains("movies-id") {
+                body = #"{"Genres":["Drama","Action"],"Years":[2020],"OfficialRatings":["PG"]}"#
+            } else if url.contains("more-id") {
+                body = #"{"Genres":["Comedy","Action"],"Years":[1999],"OfficialRatings":["PG"]}"#
+            } else if url.contains("tv-id") {
+                body = #"{"Genres":["Reality"],"Years":[1],"OfficialRatings":["TV-MA"]}"#
+            } else {
+                body = #"{"Genres":[],"Years":[],"OfficialRatings":[]}"#
+            }
+            return .response(status: 200, body: Data(body.utf8))
+        }
+        let options = try await client.filterOptions(libraryID: nil, kinds: [.movie])
+        #expect(options.genres == ["Action", "Comedy", "Drama"])
+        #expect(options.years == [2020, 1999])
+        #expect(options.officialRatings == ["PG"])
+    }
+
+    @Test func aWrongTypeInAnOptionalFieldKeepsTheItem() async throws {
+        let client = await signedInClient()
+        try serveEdited("items-movies") { json in
+            editItem(0, in: &json) { $0["ProductionYear"] = "not a number" }
+        }
+        let page = try await client.items(ItemQuery(kinds: [.movie]))
+        #expect(page.items[0].productionYear == nil)
+        #expect(page.items[1].productionYear != nil)
+    }
+
+    @Test func aListEntryThatIsNotAnItemIsDropped() async throws {
+        let client = await signedInClient()
+        try serveEdited("items-movies") { json in
+            var items = json["Items"] as? [Any] ?? []
+            let count = items.count
+            items[0] = "not an item"
+            json["Items"] = items
+            json["TotalRecordCount"] = count
+        }
+        let page = try await client.items(ItemQuery(kinds: [.movie]))
+        #expect(!page.items.isEmpty)
+        #expect(page.items.allSatisfy { !$0.name.isEmpty })
+    }
+
+    @Test func datesStillDecodeInARepairedResponse() async throws {
+        let client = await signedInClient()
+        try serveEdited("items-movies") { json in
+            editItem(0, in: &json) {
+                $0["VideoType"] = "SomethingNew"
+                $0["PremiereDate"] = "2021-03-04T05:06:07.1234567Z"
+            }
+        }
+        let page = try await client.items(ItemQuery(kinds: [.movie]))
+        let parts = try #require(page.items[0].premiereDate).timeIntervalSince1970
+        #expect(abs(parts - 1_614_834_367.123) < 0.01)
+    }
+
+    @Test func somethingThatIsNotJSONIsStillAnError() async throws {
+        let client = await signedInClient()
+        serve(status: 200, body: "<html>not json</html>")
+        await #expect(throws: JellyfinError.self) {
+            _ = try await client.items(ItemQuery(kinds: [.movie]))
+        }
+    }
+
+    // MARK: Quick Connect and sign-out
+
+    @Test func anExpiredQuickConnectSecretSaysSo() async throws {
+        let client = makeClient()
+        serve(status: 404)
+        let request = QuickConnectRequest(code: "123456", secret: "gone", isAuthenticated: false)
+        await #expect(throws: JellyfinError.quickConnectExpired) {
+            _ = try await client.quickConnectStatus(request)
+        }
+    }
+
+    /// The server can't be told, so the error is still reported, but this client holds no session.
+    @Test func signingOutOfflineStillClearsTheSession() async throws {
+        let client = await signedInClient()
+        StubURLProtocol.reset { _ in .failure(URLError(.notConnectedToInternet)) }
+        await #expect(throws: JellyfinError.self) {
+            try await client.signOut()
+        }
+        #expect(await client.currentSession() == nil)
+    }
 }

@@ -135,6 +135,108 @@ import Testing
         #expect(model.phase == .loaded)
     }
 
+    private func gatedShow() async throws -> (DetailModel, GatedJellyfinClient) {
+        var show = MediaItem(id: "show", name: "Show", kind: .series)
+        show.images = ItemImages()
+        var season = MediaItem(id: "season", name: "Season 1", kind: .season)
+        season.seriesID = "show"
+        let next = episode(1)
+        let base = try await makeClient([show, season, next], nextUp: [next])
+        let client = GatedJellyfinClient(base: base)
+        let model = DetailModel(item: show, client: client)
+        await model.load()
+        #expect(model.seasons.map(\.id) == ["season"])
+        #expect(model.playTarget != nil)
+        return (model, client)
+    }
+
+    @Test func aFailedQuietRefreshKeepsRowsAndPlay() async throws {
+        let (model, client) = try await gatedShow()
+        let similar = model.similar
+        let target = model.playTarget
+
+        await client.fail(["seasons", "similar", "nextUp", "episodes"])
+        await model.load()
+
+        #expect(model.phase == .loaded)
+        #expect(model.seasons.map(\.id) == ["season"])
+        #expect(model.similar == similar)
+        #expect(model.playTarget == target)
+    }
+
+    @Test func aCancelledRefreshKeepsRows() async throws {
+        let (model, client) = try await gatedShow()
+        await client.hold("seasons")
+        let refresh = Task { await model.load() }
+        await client.waitUntilWaiting("seasons")
+        refresh.cancel()
+        await client.release("seasons")
+        await refresh.value
+
+        #expect(model.phase == .loaded)
+        #expect(model.seasons.map(\.id) == ["season"])
+    }
+
+    @Test func aFirstLoadCancelledHalfwayIsNotShownAsLoaded() async throws {
+        var show = MediaItem(id: "show", name: "Show", kind: .series)
+        show.images = ItemImages()
+        let base = try await makeClient([show])
+        let client = GatedJellyfinClient(base: base)
+        let model = DetailModel(item: show, client: client)
+        await client.hold("seasons")
+        let load = Task { await model.load() }
+        await client.waitUntilWaiting("seasons")
+        load.cancel()
+        await client.release("seasons")
+        await load.value
+
+        #expect(model.phase == .loading)
+    }
+
+    @Test func anOlderLoadFinishingLastDoesNotOverwriteANewerOne() async throws {
+        let (model, client) = try await gatedShow()
+        await client.hold("item")
+        let older = Task { await model.load() }
+        await client.waitUntilWaiting("item")
+
+        let state = try await client.base.setPlayed(true, itemID: "show")
+        #expect(state.isPlayed)
+        await model.load()
+        #expect(model.item.userState.isPlayed)
+
+        await client.release("item")
+        await older.value
+        #expect(model.item.userState.isPlayed)
+    }
+
+    @Test func aSecondMarkWatchedWhileTheFirstIsOutIsIgnored() async throws {
+        let (model, client) = try await gatedShow()
+        await client.hold("setPlayed")
+        let first = Task { await model.toggleWatched() }
+        await client.waitUntilWaiting("setPlayed")
+
+        await model.toggleWatched()
+
+        await client.release("setPlayed")
+        await first.value
+        #expect(await client.calls["setPlayed"] == 1)
+        #expect(model.item.userState.isPlayed)
+    }
+
+    @Test func aSecondFavouriteWhileTheFirstIsOutIsIgnored() async throws {
+        let (model, client) = try await gatedShow()
+        await client.hold("setFavorite")
+        let first = Task { await model.toggleFavorite() }
+        await client.waitUntilWaiting("setFavorite")
+
+        await model.toggleFavorite()
+
+        await client.release("setFavorite")
+        await first.value
+        #expect(await client.calls["setFavorite"] == 1)
+        #expect(model.item.userState.isFavorite)
+    }
+
     @Test func revokedTokenExpiresSession() async {
         let model = DetailModel(item: MediaItem(id: "m", name: "M", kind: .movie), client: InMemoryJellyfinClient())
         await model.load()

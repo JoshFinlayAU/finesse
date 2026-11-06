@@ -67,8 +67,16 @@ final class DetailModel {
     /// Set when the server refused the token, so the app should return to sign-in.
     private(set) var sessionExpired = false
 
+    private enum Action {
+        case watched
+        case favorite
+    }
+
     private let client: any JellyfinClient
     private let similarLimit: Int
+    private var loadGeneration = 0
+    /// A second press while the first is out would send the same value again, not undo it.
+    private var actionsInFlight: Set<Action> = []
 
     init(item: MediaItem, client: any JellyfinClient, similarLimit: Int = 18) {
         self.item = item
@@ -92,19 +100,23 @@ final class DetailModel {
     }
 
     /// Loads the page, and updates it quietly if it is already showing. Only the item itself can
-    /// fail the page. A row that can't load just stays hidden.
+    /// fail the page. A row that can't load stays as it was, or hidden if it never loaded. A newer
+    /// load replaces an older one still running, so a slow answer can't undo a fresh one.
     func load() async {
         if case .failed = phase {
             phase = .loading
         }
+        loadGeneration += 1
+        let current = loadGeneration
         do {
             let loaded = try await client.item(id: item.id)
-            guard !Task.isCancelled else { return }
+            guard isCurrent(current) else { return }
             item = loaded
-            await loadRelated()
+            await loadRelated(current)
+            guard isCurrent(current) else { return }
             phase = .loaded
         } catch {
-            guard !(error is CancellationError) else { return }
+            guard !(error is CancellationError), current == loadGeneration else { return }
             if error.isSessionExpired {
                 sessionExpired = true
             } else if phase != .loaded {
@@ -113,7 +125,13 @@ final class DetailModel {
         }
     }
 
+    private func isCurrent(_ generation: Int) -> Bool {
+        generation == loadGeneration && !Task.isCancelled
+    }
+
     func toggleWatched() async {
+        guard actionsInFlight.insert(.watched).inserted else { return }
+        defer { actionsInFlight.remove(.watched) }
         await change { client, id, state in
             try await client.setPlayed(!state.isPlayed, itemID: id)
         }
@@ -122,6 +140,8 @@ final class DetailModel {
     }
 
     func toggleFavorite() async {
+        guard actionsInFlight.insert(.favorite).inserted else { return }
+        defer { actionsInFlight.remove(.favorite) }
         await change { client, id, state in
             try await client.setFavorite(!state.isFavorite, itemID: id)
         }
@@ -141,27 +161,35 @@ final class DetailModel {
         }
     }
 
-    private func loadRelated() async {
+    private func loadRelated(_ current: Int) async {
         switch item.kind {
         case .movie:
-            similar = await optional { try await $0.similarItems(id: $1.id, limit: self.similarLimit) } ?? []
+            if let loaded = await optional({ try await $0.similarItems(id: $1.id, limit: self.similarLimit) }), isCurrent(current) {
+                similar = loaded
+            }
             playTarget = item
         case .series:
-            seasons = await optional { try await $0.seasons(seriesID: $1.id) } ?? []
-            similar = await optional { try await $0.similarItems(id: $1.id, limit: self.similarLimit) } ?? []
-            playTarget = await seriesPlayTarget()
-        case .season:
-            if let seriesID = item.seriesID {
-                episodes = await optional { client, item in
-                    try await client.episodes(seriesID: seriesID, seasonID: item.id)
-                } ?? []
+            if let loaded = await optional({ try await $0.seasons(seriesID: $1.id) }), isCurrent(current) {
+                seasons = loaded
             }
-            playTarget = Self.nextEpisode(in: episodes)
+            if let loaded = await optional({ try await $0.similarItems(id: $1.id, limit: self.similarLimit) }), isCurrent(current) {
+                similar = loaded
+            }
+            if let target = await seriesPlayTarget(), isCurrent(current) {
+                playTarget = target
+            }
+        case .season:
+            if let seriesID = item.seriesID,
+               let loaded = await optional({ client, item in try await client.episodes(seriesID: seriesID, seasonID: item.id) }),
+               isCurrent(current) {
+                episodes = loaded
+                playTarget = Self.nextEpisode(in: loaded)
+            }
         case .episode:
-            if let seriesID = item.seriesID, let seasonID = item.seasonID {
-                episodes = await optional { client, _ in
-                    try await client.episodes(seriesID: seriesID, seasonID: seasonID)
-                } ?? []
+            if let seriesID = item.seriesID, let seasonID = item.seasonID,
+               let loaded = await optional({ client, _ in try await client.episodes(seriesID: seriesID, seasonID: seasonID) }),
+               isCurrent(current) {
+                episodes = loaded
             }
             playTarget = item
         case .other:
@@ -169,13 +197,17 @@ final class DetailModel {
         }
     }
 
-    private func seriesPlayTarget() async -> MediaItem? {
+    /// The outer nil means it couldn't be worked out, so what's showing should stay. The inner nil
+    /// means the show has nothing to play.
+    private func seriesPlayTarget() async -> MediaItem?? {
         if let next = await optional({ client, item in try await client.nextUp(seriesID: item.id) }) ?? nil {
             return next
         }
         // Next Up is empty when everything has been watched, so offer the show from the start.
-        let all = await optional { client, item in try await client.episodes(seriesID: item.id, seasonID: nil) } ?? []
-        return Self.nextEpisode(in: all)
+        guard let all = await optional({ client, item in try await client.episodes(seriesID: item.id, seasonID: nil) }) else {
+            return nil
+        }
+        return .some(Self.nextEpisode(in: all))
     }
 
     /// The first episode started and not finished, else the first unwatched, else the first.

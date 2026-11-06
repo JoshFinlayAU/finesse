@@ -26,6 +26,22 @@ final class BrowseFlowUITests: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", title)).firstMatch
     }
 
+    /// Rows depend on what the server offers, so go by what has focus rather than counting presses.
+    private func moveInMenu(to title: String) {
+        XCTAssertTrue(menuItem(title).waitForExistence(timeout: 5), "\(title) should be in the menu")
+        for _ in 0..<12 where !menuRowHasFocus(title) {
+            press(.down)
+        }
+        XCTAssertTrue(menuRowHasFocus(title), "\(title) should have focus")
+    }
+
+    /// A focused menu row has no label of its own. Its text is on an element inside it.
+    private func menuRowHasFocus(_ title: String) -> Bool {
+        let focused = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
+        let inside = focused.descendants(matching: .any).matching(NSPredicate(format: "label == %@", title))
+        return focused.label == title || inside.count > 0
+    }
+
     private var focusedLabel: String {
         app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch.label
     }
@@ -123,12 +139,30 @@ final class BrowseFlowUITests: XCTestCase {
         XCTAssertEqual(filter.value as? String, "Filtered")
         remote.press(.select)
         sleep(1)
-        // From the checked Unwatched row: Watched, Favourites, Genre, Year, Rating, Clear Filters.
-        XCTAssertTrue(menuItem("Clear Filters").waitForExistence(timeout: 5))
-        press(.down, times: 6)
+        moveInMenu(to: "Clear Filters")
         remote.press(.select)
         sleep(3)
         capture("library-5b-filter-cleared")
+        XCTAssertEqual(filter.value as? String, "All")
+
+        // A genre from the server, which only appears if the filter options really loaded.
+        let unfiltered = focusedLabel
+        remote.press(.select)
+        sleep(1)
+        moveInMenu(to: "Genre")
+        capture("library-5c-genre-row")
+        remote.press(.select)
+        sleep(2)
+        capture("library-5d-genre-list")
+        remote.press(.select)
+        sleep(4)
+        capture("library-5e-genre-chosen")
+        XCTAssertEqual(filter.value as? String, "Filtered", "Choosing a genre should filter from \(unfiltered)")
+        remote.press(.select)
+        sleep(1)
+        moveInMenu(to: "Clear Filters")
+        remote.press(.select)
+        sleep(3)
         XCTAssertEqual(filter.value as? String, "All")
 
         // Well past the first page of 60, six to a row.
