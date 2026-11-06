@@ -257,9 +257,11 @@ import Testing
         #expect(await client.progressReports.last?.isPaused == true)
         await session.stop()
     }
+}
 
-    // MARK: MPVEngine shutdown
-
+/// Serialized because these count every live mpv core in the process.
+@MainActor
+@Suite(.serialized) struct MPVEngineShutdownTests {
     @Test func droppingAnEngineWithoutStoppingItShutsMpvDown() async throws {
         let before = MPVEngine.liveCoreCount
         var engine: MPVEngine? = MPVEngine()
