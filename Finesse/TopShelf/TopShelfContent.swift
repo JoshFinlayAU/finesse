@@ -99,7 +99,9 @@ enum TopShelfContent {
         item.title = entry.title
         item.imageShape = entry.shape == .poster ? .poster : .hdtv
         if let url = entry.imageURL {
-            item.setImageURL(url, for: [.screenScale1x, .screenScale2x])
+            // One at a time: given both together, the system returned nothing for either.
+            item.setImageURL(url, for: .screenScale1x)
+            item.setImageURL(url, for: .screenScale2x)
         }
         if let progress = entry.progress {
             item.playbackProgress = progress
