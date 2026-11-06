@@ -59,14 +59,41 @@ targets:
       - framework: ../FinesseDeps/dist/OpenSSL.xcframework
       # Only a UIWindow category is used from AVKit, so autolinking would otherwise drop it.
       - sdk: AVKit.framework
+      - target: FinesseTopShelf
     settings:
       base:
         PRODUCT_NAME: Finesse
         PRODUCT_MODULE_NAME: FinEsse
         PRODUCT_BUNDLE_IDENTIFIER: au.com.athenanetworks.finesse
         INFOPLIST_FILE: Finesse/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Finesse/Resources/Finesse.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: App Icon & Top Shelf Image
         ENABLE_PREVIEWS: "YES"
+
+  # Draws the Top Shelf. It compiles the client layer in rather than sharing a framework, because
+  # it only runs for a moment and shouldn't load the player's libraries.
+  FinesseTopShelf:
+    type: app-extension
+    platform: tvOS
+    sources:
+      - path: FinesseTopShelf
+      - path: Finesse/TopShelf
+      - path: Finesse/Jellyfin
+        excludes:
+          - Fake
+      - path: Finesse/App/SecureStorage.swift
+      - path: Finesse/SharedUI/MediaItem+Display.swift
+    dependencies:
+      - package: JellyfinAPI
+        product: JellyfinAPI
+      - package: Get
+        product: Get
+    settings:
+      base:
+        PRODUCT_NAME: FinesseTopShelf
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.athenanetworks.finesse.TopShelf
+        INFOPLIST_FILE: FinesseTopShelf/Info.plist
+        CODE_SIGN_ENTITLEMENTS: FinesseTopShelf/FinesseTopShelf.entitlements
 
   FinesseTests:
     type: bundle.unit-test

@@ -9,6 +9,9 @@ struct FinesseApp: App {
             RootView()
                 .environment(app)
                 .task { await app.restore() }
+                .onOpenURL { url in
+                    Task { await app.open(url) }
+                }
         }
     }
 }

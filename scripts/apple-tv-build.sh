@@ -11,6 +11,7 @@ cd ~/Developer/Finesse || exit 1
 UDID=00000000-0000000000000000
 SHA=45CF62320027F92459D1D8905667A23B91A7466E
 PROFILE="Finesse tvOS Development"
+EXTENSION_PROFILE="Finesse Top Shelf tvOS Development"
 KEYCHAIN="$HOME/Library/Keychains/aisbuild.keychain-db"
 APP=build/Build/Products/Debug-appletvos/Finesse.app
 LOGS=$(mktemp -d /tmp/finesse-device.XXXXXX)
@@ -33,7 +34,7 @@ security list-keychains -d user -s "${ORIGINAL[@]}" "$KEYCHAIN"
 security unlock-keychain -p "$(cat "$HOME/.aisbuild/keychain.pass")" "$KEYCHAIN" || exit 7
 
 # The specifier resolves per target, because SwiftPM resource bundles refuse any profile.
-"${XCODE[@]}" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=$SHA 'PROVISIONING_PROFILE_SPECIFIER=$(PP_$(WRAPPER_EXTENSION))' PP_app="$PROFILE" > "$LOGS/signed.log" 2>&1 || { grep 'error:' "$LOGS/signed.log" | head -15 | cut -c1-240; echo "signed build failed, log in $LOGS"; exit 8; }
+"${XCODE[@]}" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=$SHA 'PROVISIONING_PROFILE_SPECIFIER=$(PP_$(WRAPPER_EXTENSION))' PP_app="$PROFILE" PP_appex="$EXTENSION_PROFILE" > "$LOGS/signed.log" 2>&1 || { grep 'error:' "$LOGS/signed.log" | head -15 | cut -c1-240; echo "signed build failed, log in $LOGS"; exit 8; }
 
 # installd refuses a framework whose signing identifier differs from its bundle ID, and sign-on-copy keeps the old one.
 resigned=0
@@ -48,6 +49,7 @@ if [ $resigned -gt 0 ]; then
   codesign -f -s $SHA --entitlements "$LOGS/app.entitlements" --timestamp=none "$APP" 2>/dev/null || exit 9
 fi
 codesign --verify --deep --strict "$APP" || exit 10
+codesign --verify --strict "$APP/PlugIns/FinesseTopShelf.appex" || exit 10
 echo "signed, $resigned frameworks needed their identifier fixed"
 restore; trap - EXIT
 security list-keychains -d user

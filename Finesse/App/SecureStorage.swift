@@ -14,13 +14,19 @@ struct KeychainError: Error, Equatable {
 
 struct KeychainStorage: SecureStorage {
     let service: String
+    /// Nil is the app's own default group, where the accounts have always been.
+    var accessGroup: String?
 
     private func query(_ account: String) -> [String: Any] {
-        [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
+        if let accessGroup {
+            query[kSecAttrAccessGroup as String] = accessGroup
+        }
+        return query
     }
 
     func data(for account: String) throws -> Data? {

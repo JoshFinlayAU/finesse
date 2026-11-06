@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>keychain-access-groups</key>
+	<array>
+		<!-- First, because it's where new items go by default. It's also where accounts already
+		     stored on a device are, so nothing has to move. -->
+		<string>$(AppIdentifierPrefix)au.com.athenanetworks.finesse</string>
+		<string>$(AppIdentifierPrefix)au.com.athenanetworks.finesse.shared</string>
+	</array>
+</dict>
+</plist>

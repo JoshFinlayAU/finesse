@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.jellyfinClient) private var client
     @State private var navigator = AppNavigator()
 
     var body: some View {
@@ -26,6 +28,30 @@ struct MainTabView: View {
         .fullScreenCover(item: $navigator.activePlayback) { request in
             PlayerScreen(request: request)
                 .environment(navigator)
+        }
+        .task(id: app.pendingLink) { await openPendingLink() }
+    }
+
+    /// Here because the navigator lives here. A switch to another user rebuilds this view, so the
+    /// link for them is picked up by the new one.
+    private func openPendingLink() async {
+        guard let link = app.pendingLink, link.account == app.session?.accountKey else {
+            return
+        }
+        do {
+            try await navigator.open(link, client: client)
+            app.finishLink()
+        } catch is CancellationError {
+            return
+        } catch JellyfinError.notSignedIn {
+            app.finishLink()
+            app.sessionExpired()
+        } catch JellyfinError.notFound {
+            app.finishLink()
+            app.linkError = "That's no longer on the server."
+        } catch {
+            app.finishLink()
+            app.linkError = error.userMessage
         }
     }
 

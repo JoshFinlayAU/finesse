@@ -38,4 +38,18 @@ final class AppNavigator {
     func play(_ item: MediaItem, resumeFrom position: Ticks? = nil) {
         activePlayback = PlaybackRequest(item: item, resumePosition: position)
     }
+
+    /// Opens a link from the Top Shelf. Asks the server first, so the position is current and an
+    /// item that has gone throws here, with the screen as it was.
+    func open(_ link: FinesseDeepLink, client: any JellyfinClient) async throws {
+        let item = try await client.item(id: link.itemID)
+        if link.action == .play, item.isPlayable {
+            guard activePlayback?.item.id != item.id else { return }
+            play(item, resumeFrom: item.resumePosition)
+        } else {
+            activePlayback = nil
+            selectedTab = .home
+            paths[.home] = [.detail(item)]
+        }
+    }
 }

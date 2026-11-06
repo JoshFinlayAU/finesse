@@ -7,17 +7,21 @@ actor LiveJellyfinClient: JellyfinClient {
     nonisolated let serverURL: URL
     private let device: DeviceIdentity
     private let makeSessionConfiguration: @Sendable () -> URLSessionConfiguration
+    /// Called after anything that changes what the user has watched.
+    private let onWatchStateChanged: @Sendable () -> Void
     private var sdk: JellyfinAPI.JellyfinClient
     private var session: UserSession?
 
     init(
         serverURL: URL,
         device: DeviceIdentity,
-        makeSessionConfiguration: @escaping @Sendable () -> URLSessionConfiguration = LiveJellyfinClient.sessionConfiguration
+        makeSessionConfiguration: @escaping @Sendable () -> URLSessionConfiguration = LiveJellyfinClient.sessionConfiguration,
+        onWatchStateChanged: @escaping @Sendable () -> Void = {}
     ) {
         self.serverURL = serverURL
         self.device = device
         self.makeSessionConfiguration = makeSessionConfiguration
+        self.onWatchStateChanged = onWatchStateChanged
         self.sdk = Self.makeSDK(
             serverURL: serverURL,
             device: device,
@@ -390,7 +394,9 @@ actor LiveJellyfinClient: JellyfinClient {
         let request = played
             ? Paths.markPlayedItem(itemID: itemID, userID: userID)
             : Paths.markUnplayedItem(itemID: itemID, userID: userID)
-        return try await UserItemState(send(request))
+        let state = try await UserItemState(send(request))
+        onWatchStateChanged()
+        return state
     }
 
     func setFavorite(_ favorite: Bool, itemID: String) async throws -> UserItemState {
@@ -529,6 +535,7 @@ actor LiveJellyfinClient: JellyfinClient {
             positionTicks: Int(report.position.rawValue)
         )
         try await sendVoid(Paths.reportPlaybackStopped(info))
+        onWatchStateChanged()
     }
 
     // MARK: Transport
