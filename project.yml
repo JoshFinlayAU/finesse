@@ -9,7 +9,9 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    "CODE_SIGNING_ALLOWED[sdk=appletvsimulator*]": "NO"
+    # Ad-hoc in the simulator: no team needed, and Keychain calls fail with -34018 when unsigned.
+    "CODE_SIGN_IDENTITY[sdk=appletvsimulator*]": "-"
+    "CODE_SIGN_STYLE[sdk=appletvsimulator*]": Manual
 
 targets:
   Finesse:
@@ -53,6 +55,19 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Finesse.app/Finesse"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
+  FinesseUITests:
+    type: bundle.ui-testing
+    platform: tvOS
+    sources:
+      - path: FinesseUITests
+    dependencies:
+      - target: Finesse
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: invalid.placeholder.finesse.uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: Finesse
+
 schemes:
   Finesse:
     build:
@@ -65,9 +80,11 @@ schemes:
       targets:
         - FinesseTests
         - FinesseIntegrationTests
+        - FinesseUITests
       testPlans:
         - path: Finesse.xctestplan
           defaultPlan: true
         - path: Integration.xctestplan
+        - path: UI.xctestplan
     archive:
       config: Release

@@ -2,10 +2,13 @@ import SwiftUI
 
 @main
 struct FinesseApp: App {
+    @State private var app = AppModel.live()
+
     var body: some Scene {
         WindowGroup {
-            Text("Finesse")
-                .font(.largeTitle)
+            RootView()
+                .environment(app)
+                .task { app.restore() }
         }
     }
 }
