@@ -261,6 +261,46 @@ struct PlaybackTracksEndToEndTests {
         }
     }
 
+    /// Causes a genuine AVPlayer failure by telling the router it can play an MKV, which it can't.
+    /// That fails while loading rather than mid-playback, but it's the same path out of the engine.
+    @Test func avPlayerFailingForRealMovesToMpvAtThePosition() async throws {
+        let client = try await LiveServer.signedInClient()
+        guard let item = try? await client.item(id: Item.mpvMultiAudio) else {
+            print("SKIP item is no longer in the library")
+            return
+        }
+        var pretending = EngineCapabilities.avPlayer
+        pretending.containers.insert("mkv")
+        pretending.embeddedSubtitleCodecs.insert("subrip")
+        let model = PlayerModel(
+            client: client,
+            request: PlaybackRequest(item: item, resumePosition: Ticks(seconds: 300)),
+            engines: [pretending, .mpv]
+        )
+        await model.start()
+        #expect(model.engine?.kind == .avPlayer)
+        mark("avplayer given an mkv")
+
+        let deadline = ContinuousClock.now + .seconds(60)
+        while model.engine?.kind != .mpv || model.engine?.state != .playing, ContinuousClock.now < deadline {
+            await model.tick()
+            if case .failed = model.phase { break }
+            try await Task.sleep(for: .milliseconds(250))
+        }
+        let engine = try #require(model.engine as? MPVEngine, "Phase \(model.phase)")
+        let view = show(engine)
+        defer { view?.removeFromSuperview() }
+        #expect(model.phase == .playing)
+        #expect(engine.state == .playing)
+        #expect(engine.position.seconds >= 300 && engine.position.seconds < 330)
+        mark("moved to mpv at \(engine.position.seconds)")
+        try await Task.sleep(for: .seconds(6))
+        #expect(engine.position.seconds > 303)
+
+        await model.exit()
+        try await client.reportPlaybackStopped(PlaybackReport(itemID: item.id, position: .zero, playMethod: .directPlay))
+    }
+
     /// Plays the last seconds of an episode on each engine and checks the server moves on.
     @Test(arguments: [PlaybackEngineKind.avPlayer, .mpv])
     func episodeEndAdvancesToNextEpisodeAndServerMarksItPlayed(_ kind: PlaybackEngineKind) async throws {

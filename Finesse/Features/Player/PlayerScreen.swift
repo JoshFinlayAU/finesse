@@ -18,9 +18,17 @@ struct PlayerScreen: View {
             }
         }
         .task {
-            if model == nil {
-                model = PlayerModel(client: client, request: request)
+            guard model == nil else {
+                return
             }
+            #if DEBUG
+            if SeededPlayback.isEnabled {
+                await SeededPlayback.prepare(client: client, request: request)
+                model = PlayerModel(client: client, request: request, makeEngine: { _ in SeededPlaybackEngine() })
+                return
+            }
+            #endif
+            model = PlayerModel(client: client, request: request)
         }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear {
@@ -102,7 +110,12 @@ private struct PlayerContent: View {
                 focus = .transport
             }
         }
-        .onChange(of: focus) { _, focus in
+        .onChange(of: focus) { old, focus in
+            // A skip button going away leaves focus empty for a moment. That isn't the user moving
+            // to the track buttons, and treating it as that would bring the controls up by themselves.
+            if old == .skip, focus == nil {
+                return
+            }
             model.focusMoved(toControls: focus != .transport && focus != .skip)
         }
         .alert(

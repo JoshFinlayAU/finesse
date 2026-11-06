@@ -40,6 +40,7 @@ final class PlayerModel {
     @ObservationIgnored private let client: any JellyfinClient
     @ObservationIgnored private var resumePosition: Ticks?
     @ObservationIgnored private let makeEngine: PlaybackSession.EngineFactory
+    @ObservationIgnored private let engines: [EngineCapabilities]
     @ObservationIgnored private let now: @MainActor () -> Date
     @ObservationIgnored private var segments: [MediaSegment] = []
     @ObservationIgnored private var skippedSegmentIDs: Set<String> = []
@@ -49,13 +50,15 @@ final class PlayerModel {
     init(
         client: any JellyfinClient,
         request: PlaybackRequest,
-        makeEngine: @escaping PlaybackSession.EngineFactory = PlaybackSession.makeDefaultEngine,
-        now: @escaping @MainActor () -> Date = { .now }
+        engines: [EngineCapabilities] = EngineCapabilities.routingOrder,
+        now: @escaping @MainActor () -> Date = { .now },
+        makeEngine: @escaping PlaybackSession.EngineFactory = PlaybackSession.makeDefaultEngine
     ) {
         self.client = client
         item = request.item
         resumePosition = request.resumePosition
         self.makeEngine = makeEngine
+        self.engines = engines
         self.now = now
         lastActivity = now()
     }
@@ -95,6 +98,7 @@ final class PlayerModel {
             client: client,
             itemID: item.id,
             startPosition: resumePosition ?? .zero,
+            engines: engines,
             makeEngine: makeEngine
         )
         self.session = session
@@ -120,6 +124,9 @@ final class PlayerModel {
             await handleEnd()
             return
         case .failed(let message):
+            if await session?.recoverFromEngineFailure() == true {
+                return
+            }
             await session?.stop()
             session = nil
             phase = .failed(message)

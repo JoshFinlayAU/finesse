@@ -68,8 +68,8 @@ private final class Harness {
         model = PlayerModel(
             client: client,
             request: PlaybackRequest(item: item, resumePosition: resume),
-            makeEngine: factory,
-            now: { clock() }
+            now: { clock() },
+            makeEngine: factory
         )
         made = { [unowned self] in
             engines.append($0)
@@ -142,14 +142,55 @@ private final class Harness {
         }
     }
 
-    @Test func engineFailureStopsAndShowsAnError() async throws {
+    @Test func avPlayerFailingMovesToMpvAtTheCurrentPositionWithNoError() async throws {
         let harness = Harness(item: episode())
         try await harness.prepare()
         await harness.model.start()
+        harness.engine.position = Ticks(seconds: 300)
         harness.engine.state = .failed("broken")
+
         await harness.model.tick()
-        #expect(harness.model.phase == .failed("broken"))
+
+        #expect(harness.model.phase == .playing)
+        #expect(harness.engines.map(\.kind) == [.avPlayer, .mpv])
+        #expect(harness.engine.loaded?.startPosition == Ticks(seconds: 300))
+        #expect(harness.model.engine?.kind == .mpv)
+        #expect(await harness.client.stopReports.isEmpty)
+        await harness.model.exit()
         #expect(await harness.client.stopReports.count == 1)
+    }
+
+    @Test func theErrorShowsOnlyWhenMpvFailsToo() async throws {
+        let harness = Harness(item: episode())
+        try await harness.prepare()
+        await harness.model.start()
+        harness.engine.state = .failed("first")
+        await harness.model.tick()
+        harness.engine.position = Ticks(seconds: 50)
+        harness.engine.state = .failed("second")
+
+        await harness.model.tick()
+
+        #expect(harness.model.phase == .failed("second"))
+        #expect(harness.engines.count == 2)
+        #expect(await harness.client.stopReports.count == 1)
+        #expect(await harness.client.stopReports.first?.position == Ticks(seconds: 50))
+    }
+
+    @Test func tryAgainAfterBothFailStartsFreshOnAVPlayer() async throws {
+        let harness = Harness(item: episode())
+        try await harness.prepare()
+        await harness.model.start()
+        harness.engine.state = .failed("first")
+        await harness.model.tick()
+        harness.engine.state = .failed("second")
+        await harness.model.tick()
+
+        await harness.model.start()
+
+        #expect(harness.model.phase == .playing)
+        #expect(harness.engine.kind == .avPlayer)
+        await harness.model.exit()
     }
 
     @Test func backStepsOutThenReportsStopOnce() async throws {

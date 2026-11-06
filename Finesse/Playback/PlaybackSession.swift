@@ -25,19 +25,21 @@ final class PlaybackSession {
     @ObservationIgnored private var reporter: PlaybackProgressReporter?
     /// Narrowed for good once an engine turns out not to reach a track this file has,
     /// so a later track change can't route back to it and lose the user's choice.
-    @ObservationIgnored private var engines = EngineCapabilities.routingOrder
+    @ObservationIgnored private var engines: [EngineCapabilities]
 
     init(
         client: any JellyfinClient,
         itemID: String,
         startPosition: Ticks = .zero,
         reportInterval: Duration = .seconds(10),
+        engines: [EngineCapabilities] = EngineCapabilities.routingOrder,
         makeEngine: @escaping EngineFactory = PlaybackSession.makeDefaultEngine
     ) {
         self.client = client
         self.itemID = itemID
         self.startPosition = startPosition
         self.reportInterval = reportInterval
+        self.engines = engines
         self.makeEngine = makeEngine
     }
 
@@ -99,6 +101,31 @@ final class PlaybackSession {
             audioStreamIndex: engine?.selectedAudioTrackID,
             subtitle: id.map(SubtitleChoice.stream) ?? .off
         )
+    }
+
+    /// Moves to another engine at the same position after this one fails. A failed engine is never
+    /// tried again in this session, so this can't bounce between engines, and it ends with false
+    /// once nothing is left. A transcode isn't tried, because the server only does those in software.
+    func recoverFromEngineFailure() async -> Bool {
+        guard let engine, let current = route else {
+            return false
+        }
+        let remaining = engines.filter { $0.engine != current.engine }
+        guard !remaining.isEmpty, case .success(let next) = PlaybackRouter.route(
+            sources: info.mediaSources,
+            audioStreamIndex: engine.selectedAudioTrackID,
+            subtitle: currentSubtitleChoice,
+            engines: remaining
+        ), next.method == .directPlay else {
+            return false
+        }
+        engines = remaining
+        let position = engine.position
+        engine.stop()
+        start(next, at: position)
+        reporter?.updateRoute(next)
+        await reporter?.reportProgress()
+        return true
     }
 
     /// Reports the final position while the engine still knows it, then ends the engine.

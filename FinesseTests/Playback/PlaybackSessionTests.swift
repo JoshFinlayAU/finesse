@@ -261,6 +261,62 @@ private final class FakeEngine: PlaybackEngine {
         await session.stop()
     }
 
+    @Test func aFailedEngineMovesToTheOtherAtTheSamePositionKeepingTracks() async throws {
+        let client = try await makeClient(makeUngroupedAudioInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+        try await session.selectAudioTrack(id: 2)
+        engines()[0].position = Ticks(seconds: 200)
+        engines()[0].state = .failed("broken")
+
+        #expect(await session.recoverFromEngineFailure())
+
+        #expect(engines().map(\.kind) == [.avPlayer, .mpv])
+        #expect(engines()[0].stopped)
+        #expect(engines()[1].loaded?.startPosition == Ticks(seconds: 200))
+        #expect(engines()[1].loaded?.audioStreamIndex == 2)
+        #expect(session.route?.engine == .mpv)
+        #expect(await client.startReports.count == 1)
+        #expect(await client.stopReports.isEmpty)
+        #expect(await client.progressReports.last?.position == Ticks(seconds: 200))
+        await session.stop()
+    }
+
+    @Test func aFailedEngineIsNeverTriedAgainSoThereIsNoLoop() async throws {
+        let client = try await makeClient(makeUngroupedAudioInfo())
+        let (session, engines) = makeSession(client)
+        try await session.start()
+
+        #expect(await session.recoverFromEngineFailure())
+        #expect(!(await session.recoverFromEngineFailure()))
+        #expect(!(await session.recoverFromEngineFailure()))
+        #expect(engines().map(\.kind) == [.avPlayer, .mpv])
+
+        // Nor does a later track change route back to the engine that failed.
+        try await session.selectSubtitleTrack(id: nil)
+        #expect(engines().count == 2)
+        await session.stop()
+    }
+
+    @Test func noOtherEngineToMoveToIsAFailure() async throws {
+        let client = try await makeClient(makeInfo())
+        let session = PlaybackSession(client: client, itemID: "item", engines: [.avPlayer]) { FakeEngine(kind: $0) }
+        try await session.start()
+        #expect(!(await session.recoverFromEngineFailure()))
+        await session.stop()
+    }
+
+    @Test func aFormatTheOtherEngineCannotPlayIsAFailure() async throws {
+        var mpvCannot = EngineCapabilities.mpv
+        mpvCannot.videoCodecs = ["vp9"]
+        let client = try await makeClient(makeInfo())
+        let session = PlaybackSession(client: client, itemID: "item", engines: [.avPlayer, mpvCannot]) { FakeEngine(kind: $0) }
+        try await session.start()
+        #expect(session.engine?.kind == .avPlayer)
+        #expect(!(await session.recoverFromEngineFailure()))
+        await session.stop()
+    }
+
     @Test func stopReportsPositionBeforeStoppingEngine() async throws {
         let client = try await makeClient(makeInfo())
         let (session, engines) = makeSession(client)
