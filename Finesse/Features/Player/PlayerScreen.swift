@@ -24,7 +24,7 @@ struct PlayerScreen: View {
             #if DEBUG
             if SeededPlayback.isEnabled {
                 await SeededPlayback.prepare(client: client, request: request)
-                model = PlayerModel(client: client, request: request, makeEngine: { _ in SeededPlaybackEngine() })
+                model = PlayerModel(client: client, request: request, makeEngine: { SeededPlaybackEngine(kind: $0) })
                 return
             }
             #endif
@@ -108,6 +108,12 @@ private struct PlayerContent: View {
                 focus = .skip
             } else if skip == nil, focus == .skip {
                 focus = .transport
+            }
+        }
+        .onChange(of: model.controlsVisible) { _, visible in
+            // With the controls gone there's nothing else to press, so one click should skip.
+            if !visible, model.skip != nil, focus == .transport {
+                focus = .skip
             }
         }
         .onChange(of: focus) { old, focus in

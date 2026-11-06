@@ -18,7 +18,7 @@ final class SkipSegmentUITests: XCTestCase {
         (bar.value as? String)?.contains("paused") == true
     }
 
-    func testSeededSkipButtonsAppearSkipAndGoAway() throws {
+    private func openPlayer() {
         continueAfterFailure = false
         app.launchArguments = ["-FinesseFakeServer", "-FinesseSeededPlayback"]
         app.launch()
@@ -38,7 +38,27 @@ final class SkipSegmentUITests: XCTestCase {
         XCTAssertTrue(play.waitForExistence(timeout: 10))
         sleep(1)
         remote.press(.select)
+    }
 
+    func testOneClickSkipsOnceTheControlsHideDuringASegment() throws {
+        openPlayer()
+        let bar = app.buttons["transportBar"]
+        let skip = app.buttons["skipSegment"]
+        XCTAssertTrue(bar.waitForExistence(timeout: 15))
+        let start = seconds(bar) - 2
+        XCTAssertTrue(skip.waitForExistence(timeout: 12))
+        // Appeared with the controls up. Wait for them to hide while the segment is still running.
+        sleep(4)
+        capture("skip-11-controls-hid-during-intro")
+        XCTAssertTrue(skip.exists, "The intro should still be running")
+        remote.press(.select)
+        XCTAssertTrue(skip.waitForNonExistence(timeout: 5), "One click should skip, not just show the controls")
+        XCTAssertGreaterThanOrEqual(seconds(bar), start + 14)
+        XCTAssertFalse(isPaused(bar))
+    }
+
+    func testSeededSkipButtonsAppearSkipAndGoAway() throws {
+        openPlayer()
         let bar = app.buttons["transportBar"]
         let skip = app.buttons["skipSegment"]
         XCTAssertTrue(bar.waitForExistence(timeout: 15))

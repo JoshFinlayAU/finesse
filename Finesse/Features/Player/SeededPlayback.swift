@@ -10,6 +10,16 @@ enum SeededPlayback {
         ProcessInfo.processInfo.arguments.contains("-FinesseSeededPlayback")
     }
 
+    /// Add `-FinesseSeededAVPlayerFails` or `-FinesseSeededBothFail` to make engines fail soon after
+    /// loading, so the move between engines can be seen without a file that really breaks one.
+    static var failingEngines: Set<PlaybackEngineKind> {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-FinesseSeededBothFail") {
+            return [.avPlayer, .mpv]
+        }
+        return arguments.contains("-FinesseSeededAVPlayerFails") ? [.avPlayer] : []
+    }
+
     /// Seconds after the start position: Skip Intro, Skip Credits, then one left to pass by itself.
     static let introRange = 4.0..<14.0
     static let creditsRange = 24.0..<30.0
@@ -56,7 +66,7 @@ enum SeededPlayback {
 @MainActor
 @Observable
 final class SeededPlaybackEngine: PlaybackEngine {
-    let kind = PlaybackEngineKind.avPlayer
+    let kind: PlaybackEngineKind
     private(set) var state = PlaybackState.idle
     private(set) var position = Ticks.zero
     private(set) var duration: Ticks? = Ticks(seconds: 6000)
@@ -65,6 +75,11 @@ final class SeededPlaybackEngine: PlaybackEngine {
     private(set) var selectedAudioTrackID: Int?
     private(set) var selectedSubtitleTrackID: Int?
     @ObservationIgnored private var clock: Task<Void, Never>?
+    @ObservationIgnored private var secondsPlayed = 0.0
+
+    init(kind: PlaybackEngineKind) {
+        self.kind = kind
+    }
 
     func load(_ request: PlaybackLoadRequest) {
         position = request.startPosition
@@ -95,7 +110,9 @@ final class SeededPlaybackEngine: PlaybackEngine {
 
     func makeRenderView() -> UIView {
         let label = UILabel()
-        label.text = "Seeded playback: no video, and these segments are not from a server"
+        label.text = "Seeded playback on \(kind.rawValue): no video, and these segments are not from a server"
+        label.isAccessibilityElement = true
+        label.accessibilityIdentifier = "seededEngine"
         label.textAlignment = .center
         label.textColor = .white
         label.backgroundColor = .darkGray
@@ -107,6 +124,10 @@ final class SeededPlaybackEngine: PlaybackEngine {
             return
         }
         position = Ticks(seconds: position.seconds + seconds)
+        secondsPlayed += seconds
+        if secondsPlayed >= 3, SeededPlayback.failingEngines.contains(kind) {
+            state = .failed("The seeded \(kind.rawValue) engine failed")
+        }
     }
 }
 #endif
