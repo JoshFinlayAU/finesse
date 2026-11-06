@@ -19,9 +19,6 @@ packages:
   Get:
     url: https://github.com/kean/Get
     from: 2.2.1
-  MPVKit:
-    url: https://github.com/mpvkit/MPVKit
-    exactVersion: 1.0.0
 
 settings:
   base:
@@ -42,8 +39,22 @@ targets:
         product: JellyfinAPI
       - package: Get
         product: Get
-      - package: MPVKit
-        product: MPVKit
+      # Our own mpv and FFmpeg, built by tvos-deps. These local paths are a stand-in on fin-mac until the
+      # way builds fetch them is decided. See tvos-deps/README.md.
+      - framework: ../FinesseDeps/dist/Libmpv.xcframework
+      - framework: ../FinesseDeps/dist/Libavcodec.xcframework
+      - framework: ../FinesseDeps/dist/Libavfilter.xcframework
+      - framework: ../FinesseDeps/dist/Libavformat.xcframework
+      - framework: ../FinesseDeps/dist/Libavutil.xcframework
+      - framework: ../FinesseDeps/dist/Libswresample.xcframework
+      - framework: ../FinesseDeps/dist/Libswscale.xcframework
+      - framework: ../FinesseDeps/dist/Libass.xcframework
+      - framework: ../FinesseDeps/dist/Libfribidi.xcframework
+      - framework: ../FinesseDeps/dist/Libdav1d.xcframework
+      - framework: ../FinesseDeps/dist/Libplacebo.xcframework
+      - framework: ../FinesseDeps/dist/Libuchardet.xcframework
+      - framework: ../FinesseDeps/dist/MoltenVK.xcframework
+      - framework: ../FinesseDeps/dist/OpenSSL.xcframework
       # Only a UIWindow category is used from AVKit, so autolinking would otherwise drop it.
       - sdk: AVKit.framework
     settings:
