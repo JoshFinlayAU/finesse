@@ -64,7 +64,7 @@ extension Error {
         case .quickConnectDisabled:
             return "Quick Connect is turned off on this server."
         case .insecureConnectionBlocked:
-            return "This connection isn't allowed over plain HTTP. Use an HTTPS or local address."
+            return "This address can't be used over plain HTTP. Use HTTPS, or your server's local IP address."
         case .server(let status):
             return "The server reported an error (\(status))."
         case .network:
