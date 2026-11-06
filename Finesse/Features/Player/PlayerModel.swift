@@ -52,6 +52,8 @@ final class PlayerModel {
     @ObservationIgnored private let preferenceStore: PlayerPreferenceStore
     @ObservationIgnored private let captionStyle: SystemCaptionStyle
     @ObservationIgnored private var preferencesUserID: String?
+    /// Where each episode was left in this sitting, in case the server didn't hear about it.
+    @ObservationIgnored private var positionsLeftAt: [String: Ticks] = [:]
     /// Set by `exit`. Whatever was in flight checks this when it resumes, because the player is closing.
     @ObservationIgnored private var isExiting = false
 
@@ -208,7 +210,11 @@ final class PlayerModel {
                 return
             }
             self.session = nil
-            phase = .failed(error.userMessage)
+            if preferences.maxBitrate != nil, error as? PlaybackSessionError == .noPlayableSource {
+                phase = .failed("This video can't play within your quality limit.")
+            } else {
+                phase = .failed(error.userMessage)
+            }
             return
         }
         // Most servers have no segments, and playback doesn't depend on any of these.
@@ -292,6 +298,9 @@ final class PlayerModel {
             now: now()
         )
         let effects = controls.handle(event, context)
+        if event != .tick, event != .activity {
+            PlayerRemoteLog.note("event \(event) now \(controls.mode) effects \(effects) position \(context.position.seconds)")
+        }
         session?.setLiftsSubtitles(controls.isShowing)
         for effect in effects {
             switch effect {
@@ -367,6 +376,9 @@ final class PlayerModel {
     }
 
     func selectAudioTrack(id: Int) async {
+        guard id != engine?.selectedAudioTrackID else {
+            return
+        }
         do {
             try await session?.selectAudioTrack(id: id)
         } catch {
@@ -375,6 +387,9 @@ final class PlayerModel {
     }
 
     func selectSubtitleTrack(id: Int?) async {
+        guard id != engine?.selectedSubtitleTrackID else {
+            return
+        }
         do {
             try await session?.selectSubtitleTrack(id: id)
         } catch {
@@ -418,6 +433,9 @@ final class PlayerModel {
     }
 
     func setMaxBitrate(_ bitrate: Int?) async {
+        guard bitrate != preferences.maxBitrate else {
+            return
+        }
         let source = session?.preferredSourceID
         do {
             try await session?.setQuality(maxBitrate: bitrate, sourceID: source)
@@ -429,6 +447,9 @@ final class PlayerModel {
     }
 
     func selectVersion(id: String) async {
+        guard id != session?.route?.mediaSourceID else {
+            return
+        }
         do {
             try await session?.setQuality(maxBitrate: session?.maxBitrate, sourceID: id)
         } catch {
@@ -448,12 +469,32 @@ final class PlayerModel {
             return
         }
         controls.reset()
+        session?.setLiftsSubtitles(false)
+        guard episode.id != item.id else {
+            return
+        }
+        if let position = engine?.position {
+            positionsLeftAt[item.id] = position
+        }
         await session?.stop()
         guard !isExiting else {
             return
         }
         session = nil
-        await play(episode)
+        await play(await current(episode))
+    }
+
+    /// The list was read when playback began, so its positions can be long out of date, and resuming
+    /// from one would overwrite the real position with the first progress report. The stop report
+    /// can also fail, so the server's answer can't be earlier than where this was left, unless it
+    /// has marked the episode finished.
+    private func current(_ episode: MediaItem) async -> MediaItem {
+        var latest = (try? await client.item(id: episode.id)) ?? episode
+        if !latest.userState.isPlayed, let left = positionsLeftAt[episode.id],
+           left > latest.userState.playbackPosition {
+            latest.userState.playbackPosition = left
+        }
+        return latest
     }
 
     private static func clampedScale(_ scale: Double) -> Double {
@@ -467,13 +508,18 @@ final class PlayerModel {
         return min(max(value, limits.lowerBound), limits.upperBound)
     }
 
+    /// Holds the new value straight away, so a second press during an engine move builds on this one.
     private func update(_ change: (inout PlaybackOptions) -> Void) async {
+        let previous = options
         var new = options
         change(&new)
+        options = new
         do {
             try await session?.setOptions(new)
-            options = new
         } catch {
+            if options == new {
+                options = previous
+            }
             trackError = error.userMessage
         }
     }
@@ -482,6 +528,21 @@ final class PlayerModel {
         if let preferencesUserID {
             preferenceStore.save(preferences, userID: preferencesUserID)
         }
+    }
+
+    /// A saved limit can leave a title unplayable when the server can't convert it, and this is the
+    /// one screen that shows when it does, so the way out has to be here.
+    var canRemoveQualityLimit: Bool {
+        if case .failed = phase {
+            return preferences.maxBitrate != nil
+        }
+        return false
+    }
+
+    func removeQualityLimit() async {
+        preferences.maxBitrate = nil
+        savePreferences()
+        await start()
     }
 
     func clearTrackError() {

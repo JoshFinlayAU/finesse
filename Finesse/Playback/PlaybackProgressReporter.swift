@@ -25,6 +25,8 @@ final class PlaybackProgressReporter {
     private var ticker: Task<Void, Never>?
     private var isStarted = false
     private var isStopped = false
+    private var needsReport = false
+    private var reporting: Task<Void, Never>?
 
     init(
         client: any JellyfinClient,
@@ -69,7 +71,7 @@ final class PlaybackProgressReporter {
                 guard let self else {
                     return
                 }
-                await self.reportProgress()
+                self.reportSoon()
             }
         }
     }
@@ -84,6 +86,26 @@ final class PlaybackProgressReporter {
             return
         }
         try? await client.reportPlaybackProgress(report(snapshot()))
+    }
+
+    /// For a pause, seek or track change. What the person did must never wait on the network, so
+    /// this returns at once. One report goes at a time, so they can't arrive out of order, and it
+    /// reads the position when it's sent, so several changes in a row become one report.
+    func reportSoon() {
+        guard isStarted, !isStopped else {
+            return
+        }
+        needsReport = true
+        guard reporting == nil else {
+            return
+        }
+        reporting = Task { [weak self] in
+            while let self, self.needsReport, !self.isStopped {
+                self.needsReport = false
+                await self.reportProgress()
+            }
+            self?.reporting = nil
+        }
     }
 
     /// The engine can switch mid-playback when the user picks a track only the other engine plays.
@@ -101,6 +123,9 @@ final class PlaybackProgressReporter {
         ticker?.cancel()
         ticker = nil
         await startReport?.value
+        // Otherwise a progress report still on its way could land after the stop and move it back.
+        reporting?.cancel()
+        await reporting?.value
         try? await client.reportPlaybackStopped(report(snapshot()))
     }
 

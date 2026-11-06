@@ -53,7 +53,7 @@ struct PlayerHUDBar: View {
                         Task { await model.playEpisode(previous) }
                     }
                 }
-                HUDButton(symbol: model.isPaused ? "play.fill" : "pause.fill", title: "Seek", id: "hudPlayPause") {
+                HUDButton(symbol: "arrow.left.and.right", title: "Seek", id: "hudPlayPause") {
                     Task { await model.send(.click) }
                 }
                 .focused(focus, equals: .main)

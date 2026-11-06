@@ -71,8 +71,16 @@ private struct PlayerContent: View {
                     onCancel: { model.cancelUpNext() }
                 )
             case .failed(let message):
-                ErrorStateView(message: message) {
-                    Task { await model.start() }
+                VStack(spacing: 32) {
+                    ErrorStateView(message: message) {
+                        Task { await model.start() }
+                    }
+                    if model.canRemoveQualityLimit {
+                        Button("Play Without the Quality Limit") {
+                            Task { await model.removeQualityLimit() }
+                        }
+                        .accessibilityIdentifier("removeQualityLimit")
+                    }
                 }
             case .finished:
                 EmptyView()
@@ -190,6 +198,7 @@ private struct PlayerContent: View {
     }
 
     private func moved(_ direction: MoveCommandDirection) {
+        PlayerRemoteLog.note("move \(direction) focus \(String(describing: focus))")
         let event: PlayerControls.Event
         switch direction {
         case .up: event = .swipeUp

@@ -318,6 +318,7 @@ import Testing
 
         #expect(await session.recoverFromEngineFailure())
 
+        await letOtherTasksRun()
         await expectPaused(session, engines()[1], at: 100, client: client)
         await session.stop()
     }
@@ -470,6 +471,7 @@ import Testing
         await session.pause()
 
         #expect(engines()[0].state == .playing, "The fake should still be catching up")
+        await letOtherTasksRun()
         #expect(await client.progressReports.last?.isPaused == true)
         await session.stop()
     }
@@ -485,6 +487,7 @@ import Testing
         await session.play()
 
         #expect(engines()[0].state == .paused, "The fake should still be catching up")
+        await letOtherTasksRun()
         #expect(await client.progressReports.last?.isPaused == false)
         await session.stop()
     }
@@ -503,6 +506,7 @@ import Testing
         engines()[0].state = .paused
         await session.seek(to: Ticks(seconds: 10))
 
+        await letOtherTasksRun()
         #expect(await client.progressReports.last?.isPaused == true)
         await session.stop()
     }

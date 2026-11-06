@@ -44,12 +44,17 @@ enum SeededPlayback {
         return PlayerPreferenceStore(defaults: defaults)
     }()
 
+    /// `-FinesseSeededStuckOnLimit` has a saved quality limit, on a file over it that can't be converted.
+    static var isStuckOnLimit: Bool {
+        ProcessInfo.processInfo.arguments.contains("-FinesseSeededStuckOnLimit")
+    }
+
     /// Seconds after the start position: Skip Intro, Skip Credits, then one left to pass by itself.
     static let introRange = 4.0..<14.0
     static let creditsRange = 24.0..<30.0
     static let unusedRange = 40.0..<46.0
 
-    static func prepare(client: any JellyfinClient, request: PlaybackRequest) async {
+    @MainActor static func prepare(client: any JellyfinClient, request: PlaybackRequest) async {
         guard let fake = client as? InMemoryJellyfinClient else {
             return
         }
@@ -91,6 +96,12 @@ enum SeededPlayback {
         source.bitRate = 5_000_000
         source.supportsTranscoding = true
         source.transcodingURL = URL(string: "http://seeded.invalid/master.m3u8")
+        if isStuckOnLimit, let userID = await client.currentSession()?.user.id {
+            source.supportsTranscoding = false
+            var saved = preferenceStore.load(userID: userID)
+            saved.maxBitrate = 1_000_000
+            preferenceStore.save(saved, userID: userID)
+        }
         let info = PlaybackInfo(playSessionID: "seeded", mediaSources: [source])
         await fake.configure {
             $0.playbackInfoValue = info

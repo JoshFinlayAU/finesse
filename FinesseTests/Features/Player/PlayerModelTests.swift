@@ -356,6 +356,7 @@ private final class Harness {
         #expect(harness.engine.seeks == [Ticks(seconds: 120)])
         #expect(harness.model.scrubPosition == nil)
         #expect(!harness.model.isPaused)
+        await letOtherTasksRun()
         #expect(await harness.client.progressReports.last?.position == Ticks(seconds: 120))
         await harness.model.exit()
     }
@@ -810,6 +811,258 @@ private final class Harness {
         #expect(model.phase == .playing)
         #expect(model.controls.mode == .hidden)
         await model.exit()
+    }
+
+    @Test func goingBackResumesFromTheServersPositionNotTheOldList() async throws {
+        let (harness, model) = try await harness()
+        let first = try #require(model.previousEpisode)
+        #expect(first.userState.playbackPosition == .zero)
+        await harness.client.configure { $0.allItems[0].userState.playbackPosition = Ticks(seconds: 1200) }
+
+        await model.playEpisode(first)
+
+        #expect(harness.engine.loaded?.startPosition == Ticks(seconds: 1200))
+        await model.exit()
+    }
+
+    /// The stop report can fail, so the server's answer can be older than what was just watched.
+    @Test func goingBackNeverResumesEarlierThanWhereItWasLeft() async throws {
+        let (harness, model) = try await harness()
+        harness.engine.position = Ticks(seconds: 700)
+        let left = model.item
+        await model.playEpisode(try #require(model.nextEpisode))
+        // What the server would hold if the stop report had been lost.
+        await harness.client.configure { $0.allItems[1].userState.playbackPosition = Ticks(seconds: 30) }
+
+        await model.playEpisode(left)
+
+        #expect(harness.engine.loaded?.startPosition == Ticks(seconds: 700))
+        await model.exit()
+    }
+
+    /// Finishing an episode clears its position on the server, and that one should start over.
+    @Test func aFinishedEpisodeStartsFromTheBeginning() async throws {
+        let (harness, model) = try await harness()
+        harness.engine.position = Ticks(seconds: 990)
+        let left = model.item
+        await model.playEpisode(try #require(model.nextEpisode))
+        await harness.client.configure {
+            $0.allItems[1].userState.playbackPosition = .zero
+            $0.allItems[1].userState.isPlayed = true
+        }
+
+        await model.playEpisode(left)
+
+        #expect(harness.engine.loaded?.startPosition == .zero)
+        await model.exit()
+    }
+
+    @Test func choosingTheCurrentEpisodeOnlyClosesThePanel() async throws {
+        let (harness, model) = try await harness()
+        harness.engine.position = Ticks(seconds: 400)
+        await model.send(.swipeUp)
+        await model.send(.openPanel(.episodes))
+
+        await model.playEpisode(model.item)
+
+        #expect(harness.engines.count == 1, "It should keep playing")
+        #expect(!harness.engine.stopped)
+        #expect(model.controls.mode == .hidden)
+        await model.exit()
+    }
+
+    // MARK: Nothing waits on a report
+
+    private func holdingReports(_ harness: Harness) async -> TestGate {
+        let gate = TestGate()
+        await harness.client.configure { $0.reportProgressGate = { await gate.pass() } }
+        return gate
+    }
+
+    @Test(.timeLimit(.minutes(1))) func aCommittedScrubResumesWithoutWaitingForTheNetwork() async throws {
+        let (harness, model) = try await harness()
+        harness.engine.settle()
+        let gate = await holdingReports(harness)
+
+        let click = Task { await model.send(.click) }
+        await letOtherTasksRun()
+        harness.engine.settle()
+        let move = Task { await model.send(.moveRight) }
+        await letOtherTasksRun()
+        let commit = Task { await model.send(.click) }
+        await letOtherTasksRun()
+
+        #expect(!model.isPaused, "Playback should resume while the report is out")
+        #expect(harness.engine.seeks.count == 1)
+
+        await gate.open()
+        _ = await (click.value, move.value, commit.value)
+        await model.exit()
+    }
+
+    /// A click just after a commit is a new scrub of something playing, so Back should resume it.
+    @Test(.timeLimit(.minutes(1))) func aClickWhileAReportIsOutStartsACleanScrub() async throws {
+        let (harness, model) = try await harness()
+        harness.engine.settle()
+        let gate = await holdingReports(harness)
+
+        let first = Task { await model.send(.click) }
+        await letOtherTasksRun()
+        harness.engine.settle()
+        let move = Task { await model.send(.moveRight) }
+        await letOtherTasksRun()
+        let commit = Task { await model.send(.click) }
+        await letOtherTasksRun()
+        let again = Task { await model.send(.click) }
+        await letOtherTasksRun()
+
+        #expect(model.controls.scrub?.wasPlaying == true)
+        #expect(model.isPaused, "The new scrub pauses")
+
+        await gate.open()
+        _ = await (first.value, move.value, commit.value, again.value)
+        await letOtherTasksRun()
+        #expect(model.isPaused, "A queued play mustn't start video under the scrub")
+        #expect(model.controls.scrub != nil)
+        await model.exit()
+    }
+
+    @Test(.timeLimit(.minutes(1))) func aPlayPauseWhileAReportIsOutIsNotUndone() async throws {
+        let (harness, model) = try await harness()
+        harness.engine.settle()
+        let gate = await holdingReports(harness)
+
+        let click = Task { await model.send(.click) }
+        await letOtherTasksRun()
+        harness.engine.settle()
+        let move = Task { await model.send(.moveRight) }
+        await letOtherTasksRun()
+        let commit = Task { await model.send(.click) }
+        await letOtherTasksRun()
+        let pause = Task { await model.send(.playPause) }
+        await letOtherTasksRun()
+
+        await gate.open()
+        _ = await (click.value, move.value, commit.value, pause.value)
+        await letOtherTasksRun()
+        #expect(model.isPaused, "The person's pause should win")
+        await model.exit()
+    }
+
+    @Test(.timeLimit(.minutes(1))) func aSecondDelayPressDuringAMoveIsKept() async throws {
+        let (harness, model) = try await harness()
+        let gate = await holdingReports(harness)
+
+        let first = Task { await model.adjustAudioDelay(by: 1) }
+        await letOtherTasksRun()
+        let second = Task { await model.adjustAudioDelay(by: 1) }
+        await letOtherTasksRun()
+
+        #expect(model.options.audioDelay == 0.2)
+        #expect(harness.engines.map(\.kind) == [.avPlayer, .mpv], "One move")
+        #expect(harness.engine.applied.last?.audioDelay == 0.2)
+
+        await gate.open()
+        _ = await (first.value, second.value)
+        await model.exit()
+    }
+
+    @Test(.timeLimit(.minutes(1))) func aPauseDuringAMoveIsKept() async throws {
+        let (harness, model) = try await harness()
+        let gate = await holdingReports(harness)
+
+        let move = Task { await model.adjustAudioDelay(by: 1) }
+        await letOtherTasksRun()
+        let pause = Task { await model.send(.playPause) }
+        await letOtherTasksRun()
+
+        #expect(harness.engine.kind == .mpv)
+        #expect(model.isPaused)
+
+        await gate.open()
+        _ = await (move.value, pause.value)
+        await letOtherTasksRun()
+        #expect(model.isPaused)
+        await model.exit()
+    }
+
+    // MARK: Choosing what's already chosen
+
+    @Test func choosingTheCurrentQualityDoesNotRestartPlayback() async throws {
+        let (harness, model) = try await harness()
+        let requests = await harness.client.playbackInfoRequests.count
+        await model.setMaxBitrate(nil)
+        #expect(harness.engines.count == 1)
+        #expect(await harness.client.playbackInfoRequests.count == requests)
+        await model.exit()
+    }
+
+    @Test func choosingTheCurrentTracksDoesNotRestartATranscode() async throws {
+        let (harness, model) = try await harness()
+        await harness.client.configure {
+            $0.playbackInfoValue.mediaSources[0].bitRate = 5_000_000
+            $0.playbackInfoValue.mediaSources[0].supportsTranscoding = true
+            $0.playbackInfoValue.mediaSources[0].transcodingURL = URL(string: "http://server.invalid/master.m3u8")
+        }
+        await model.setMaxBitrate(1000)
+        #expect(model.session?.route?.method == .transcode)
+        let engines = harness.engines.count
+        let requests = await harness.client.playbackInfoRequests.count
+        await model.selectAudioTrack(id: 1)
+        await model.selectSubtitleTrack(id: nil)
+        #expect(harness.engines.count == engines)
+        #expect(await harness.client.playbackInfoRequests.count == requests)
+        await model.exit()
+    }
+
+    @Test func choosingTheCurrentVersionDoesNotRestartPlayback() async throws {
+        let (harness, model) = try await harness()
+        let current = try #require(model.session?.route?.mediaSourceID)
+        await model.selectVersion(id: current)
+        #expect(harness.engines.count == 1)
+        await model.exit()
+    }
+
+    // MARK: A saved limit
+
+    @Test func aSavedLimitThatCantPlayOffersAWayOut() async throws {
+        let store = PlayerPreferenceStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let session = try await InMemoryJellyfinClient().signIn(username: "Test User", password: "password")
+        var saved = PlayerPreferences()
+        saved.maxBitrate = 1000
+        store.save(saved, userID: session.user.id)
+        let harness = Harness(item: episode("two"), store: store)
+        try await harness.prepare()
+        // A file over the limit, on a server that can't convert it.
+        await harness.client.configure {
+            $0.playbackInfoValue.mediaSources[0].bitRate = 5_000_000
+            $0.playbackInfoValue.mediaSources[0].supportsTranscoding = false
+        }
+
+        await harness.model.start()
+
+        guard case .failed = harness.model.phase else {
+            Issue.record("Expected a failure, got \(harness.model.phase)")
+            return
+        }
+        #expect(harness.model.canRemoveQualityLimit)
+
+        await harness.model.removeQualityLimit()
+
+        #expect(harness.model.phase == .playing)
+        #expect(harness.model.session?.route?.method == .directPlay)
+        #expect(store.load(userID: session.user.id).maxBitrate == nil)
+        #expect(!harness.model.canRemoveQualityLimit)
+        await harness.model.exit()
+    }
+
+    @Test func aFailureWithNoLimitOffersNothingExtra() async throws {
+        let harness = Harness(item: episode("two"))
+        try await harness.prepare()
+        await harness.client.configure { $0.playbackInfoValue.mediaSources = [] }
+        await harness.model.start()
+        #expect(!harness.model.canRemoveQualityLimit)
+        await harness.model.exit()
     }
 
     @Test func infoDescribesTheCurrentEngineAndRoute() async throws {

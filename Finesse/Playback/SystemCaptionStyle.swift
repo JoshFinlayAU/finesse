@@ -65,17 +65,40 @@ struct SystemCaptionStyle: Hashable, Sendable {
         guard isAlwaysOn else {
             return nil
         }
-        let wanted = Set(languages.compactMap { Locale(identifier: $0).language.languageCode?.identifier(.alpha3) })
+        let wanted = Set(languages.compactMap(Self.languageCode))
         let matching = streams.filter { stream in
             guard stream.kind == .subtitle, let language = stream.language else {
                 return false
             }
-            return wanted.contains(language.lowercased())
+            return Self.languageCode(language).map(wanted.contains) ?? false
         }
         let sdh = matching.first { Self.isSDH($0) }
         let plain = matching.first { !Self.isSDH($0) && !$0.isForced }
         return (prefersSDH ? sdh ?? plain : plain ?? sdh)?.index
     }
+
+    /// One form for any way of writing a language. Apple gives the terminology code (fra, deu) and
+    /// Jellyfin mostly reports the bibliographic one (fre, ger), and files can hold any of them.
+    private static func languageCode(_ language: String) -> String? {
+        let lowered = language.lowercased()
+        if bibliographicCodes.values.contains(lowered) {
+            return lowered
+        }
+        if let bibliographic = bibliographicCodes[lowered] {
+            return bibliographic
+        }
+        guard let code = Locale(identifier: lowered).language.languageCode?.identifier(.alpha3) else {
+            return lowered
+        }
+        return bibliographicCodes[code] ?? code
+    }
+
+    /// The ISO 639-2 languages with two codes, terminology first.
+    private static let bibliographicCodes = [
+        "bod": "tib", "ces": "cze", "cym": "wel", "deu": "ger", "ell": "gre", "eus": "baq", "fas": "per",
+        "fra": "fre", "hye": "arm", "isl": "ice", "kat": "geo", "mkd": "mac", "mri": "mao", "msa": "may",
+        "mya": "bur", "nld": "dut", "ron": "rum", "slk": "slo", "sqi": "alb", "zho": "chi",
+    ]
 
     /// Jellyfin puts this in the track's title.
     private static func isSDH(_ stream: MediaStreamInfo) -> Bool {

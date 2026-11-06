@@ -107,12 +107,14 @@ private actor ManualClock {
         position.snapshot.position = Ticks(seconds: 10)
         await clock.tick()
         await clock.waitForSleeper()
+        await letOtherTasksRun()
         #expect(await client.progressReports.last?.position == Ticks(seconds: 10))
 
         position.snapshot.position = Ticks(seconds: 20)
         position.snapshot.isPaused = true
         await clock.tick()
         await clock.waitForSleeper()
+        await letOtherTasksRun()
         #expect(await client.progressReports.count == 2)
         #expect(await client.progressReports.last?.position == Ticks(seconds: 20))
         #expect(await client.progressReports.last?.isPaused == true)

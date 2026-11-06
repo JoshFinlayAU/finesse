@@ -51,6 +51,7 @@ final class FakePlaybackEngine: PlaybackEngine {
     var unreachableAudio: Set<Int> = []
     var canSelectGate: TestGate?
     var applied: [PlaybackOptions] = []
+    var playCalls = 0
     private var pendingState: PlaybackState?
 
     init(kind: PlaybackEngineKind) {
@@ -76,7 +77,10 @@ final class FakePlaybackEngine: PlaybackEngine {
         pendingState = nil
     }
 
-    func play() { pendingState = .playing }
+    func play() {
+        playCalls += 1
+        pendingState = .playing
+    }
     func pause() { pendingState = .paused }
     func seek(to position: Ticks) {
         seeks.append(position)

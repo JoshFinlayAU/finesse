@@ -247,6 +247,143 @@ private final class OptionsHarness {
         #expect(!harness.engine.stopped)
     }
 
+    // MARK: Tracks on a transcode
+
+    private func transcodeOnly() -> PlaybackMediaSource {
+        var source = OptionsHarness.source()
+        source.supportsDirectPlay = false
+        var french = MediaStreamInfo(index: 2, kind: .audio)
+        french.codec = "aac"
+        var subtitle = MediaStreamInfo(index: 3, kind: .subtitle)
+        subtitle.codec = "subrip"
+        source.streams += [french, subtitle]
+        return source
+    }
+
+    /// Without the source's ID, the server ignores the tracks asked for.
+    @Test func anAudioChangeOnATranscodeNamesTheSource() async throws {
+        let harness = OptionsHarness()
+        let session = try await harness.session(sources: [transcodeOnly()])
+        try await session.selectAudioTrack(id: 2)
+        let request = await harness.client.playbackInfoRequests.last
+        #expect(request?.audioStreamIndex == 2)
+        #expect(request?.mediaSourceID == "source")
+    }
+
+    @Test func aSubtitleChangeOnATranscodeNamesTheSource() async throws {
+        let harness = OptionsHarness()
+        let session = try await harness.session(sources: [transcodeOnly()])
+        try await session.selectSubtitleTrack(id: 3)
+        let request = await harness.client.playbackInfoRequests.last
+        #expect(request?.subtitleStreamIndex == 3)
+        #expect(request?.mediaSourceID == "source")
+    }
+
+    /// Nil leaves the default subtitle burned in. Only -1 with the source's ID turns it off.
+    @Test func subtitlesOffOnATranscodeAsksForNone() async throws {
+        var source = transcodeOnly()
+        source.defaultSubtitleStreamIndex = 3
+        let harness = OptionsHarness()
+        let session = try await harness.session(sources: [source])
+        try await session.selectSubtitleTrack(id: nil)
+        let request = await harness.client.playbackInfoRequests.last
+        #expect(request?.subtitleStreamIndex == -1)
+        #expect(request?.mediaSourceID == "source")
+    }
+
+    @Test func aQualityLimitKeepsTheTracksChosen() async throws {
+        var source = OptionsHarness.source()
+        var subtitle = MediaStreamInfo(index: 3, kind: .subtitle)
+        subtitle.codec = "mov_text"
+        source.streams.append(subtitle)
+        source.defaultSubtitleStreamIndex = 3
+        let harness = OptionsHarness()
+        let session = try await harness.session(sources: [source])
+        try await session.selectSubtitleTrack(id: nil)
+
+        try await session.setQuality(maxBitrate: 2_000_000, sourceID: nil)
+
+        let request = await harness.client.playbackInfoRequests.last
+        #expect(request?.subtitleStreamIndex == -1)
+        #expect(request?.mediaSourceID == "source")
+    }
+
+    /// With a limit already saved, always-on captions have to reach the server's transcode too.
+    @Test func alwaysOnCaptionsReachAStartingTranscode() async throws {
+        var source = transcodeOnly()
+        source.streams[3].language = "eng"
+        var captions = SystemCaptionStyle()
+        captions.isAlwaysOn = true
+        let harness = OptionsHarness()
+        let session = try await harness.session(sources: [source], captions: captions)
+        #expect(session.route?.method == .transcode)
+        let request = await harness.client.playbackInfoRequests.last
+        #expect(request?.subtitleStreamIndex == 3)
+        #expect(request?.mediaSourceID == "source")
+    }
+
+    // MARK: Nothing waits on a report
+
+    @Test(.timeLimit(.minutes(1))) func seekAndPlayDoNotWaitForTheReport() async throws {
+        let harness = OptionsHarness()
+        let session = try await harness.session()
+        let engine = harness.engine
+        let gate = TestGate()
+        await harness.client.configure { $0.reportProgressGate = { await gate.pass() } }
+
+        let seek = Task { await session.seek(to: Ticks(seconds: 100)); await session.play() }
+        await letOtherTasksRun()
+        #expect(engine.seeks == [Ticks(seconds: 100)])
+        #expect(engine.playCalls == 1, "Play shouldn't wait for the seek's report")
+
+        await gate.open()
+        await seek.value
+        await session.stop()
+    }
+
+    /// The report that was held mustn't arrive after the stop report and bring the position back.
+    @Test(.timeLimit(.minutes(1))) func aHeldReportCannotArriveAfterTheStopReport() async throws {
+        let harness = OptionsHarness()
+        let session = try await harness.session()
+        harness.engine.position = Ticks(seconds: 50)
+        let gate = TestGate()
+        await harness.client.configure { $0.reportProgressGate = { await gate.pass() } }
+        let seek = Task { await session.seek(to: Ticks(seconds: 60)) }
+        await letOtherTasksRun()
+
+        let stop = Task { await session.stop() }
+        await letOtherTasksRun()
+        await gate.open()
+        await seek.value
+        await stop.value
+        await letOtherTasksRun()
+
+        #expect(await harness.client.stopReports.count == 1)
+        #expect(await harness.client.stopReports.last?.position == Ticks(seconds: 60))
+    }
+
+    @Test(.timeLimit(.minutes(1))) func aSecondOptionDuringAMoveDoesNotMoveAgain() async throws {
+        let harness = OptionsHarness()
+        let session = try await harness.session()
+        let gate = TestGate()
+        await harness.client.configure { $0.reportProgressGate = { await gate.pass() } }
+        var options = session.options
+        options.audioDelay = 0.1
+        let first = Task { try await session.setOptions(options) }
+        await letOtherTasksRun()
+        options.audioDelay = 0.2
+        let latest = options
+        let second = Task { try await session.setOptions(latest) }
+        await letOtherTasksRun()
+        #expect(harness.engines.count == 2, "One move, not two")
+        #expect(harness.engine.applied.last?.audioDelay == 0.2, "The second press should apply straight away")
+
+        await gate.open()
+        try await first.value
+        try await second.value
+        await session.stop()
+    }
+
     @Test func aChosenVersionPlaysFirstAndGoesToTheServer() async throws {
         let sources = [OptionsHarness.source(id: "first"), OptionsHarness.source(id: "second")]
         let harness = OptionsHarness()
@@ -369,6 +506,16 @@ private final class OptionsHarness {
     @Test func aPreferenceForSDHChoosesThatTrack() {
         let tracks = [stream(4, "eng", title: "English"), stream(3, "eng", title: "English SDH")]
         #expect(style(sdh: true).defaultSubtitle(in: tracks, languages: ["en-AU"]) == 3)
+    }
+
+    /// Apple gives one three-letter code for these and the server's lists use the other.
+    @Test(arguments: [("fr-CA", "fre"), ("de", "ger"), ("zh-Hans", "chi"), ("cs", "cze"), ("nl", "dut"), ("el", "gre"), ("ro", "rum"), ("fr", "fra"), ("fr", "fr")])
+    func languageCodesMatchWhatTheServerUses(language: String, code: String) {
+        #expect(style().defaultSubtitle(in: [stream(7, code, title: "Track")], languages: [language]) == 7, "\(language) and \(code)")
+    }
+
+    @Test func aDifferentLanguageStillDoesNotMatch() {
+        #expect(style().defaultSubtitle(in: [stream(7, "ger", title: "Track")], languages: ["fr"]) == nil)
     }
 
     @Test func eachFallsBackToTheOtherKind() {

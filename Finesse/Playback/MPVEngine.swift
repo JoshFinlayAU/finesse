@@ -137,6 +137,13 @@ final class MPVEngine: PlaybackEngine {
         "\(color.red)/\(color.green)/\(color.blue)/\(color.alpha)"
     }
 
+    #if DEBUG
+    /// What mpv really has, as opposed to what was asked for. For tests.
+    func property(_ name: String) -> String? {
+        core?.string(name)
+    }
+    #endif
+
     /// What mpv has really selected, as opposed to what was asked for.
     var activeAudioTrackID: Int? {
         core?.int64("aid").flatMap { streamIndexes["audio-\($0)"] }

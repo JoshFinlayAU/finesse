@@ -26,15 +26,9 @@ final class PlayerOptionsUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 20))
         sleep(1)
+        focusFirstHomeCard(in: app)
+        remote.press(.select)
         let play = app.buttons["detailPlay"]
-        for _ in 0..<4 where !play.exists {
-            remote.press(.select)
-            sleep(2)
-            if !play.exists {
-                remote.press(.down)
-                sleep(1)
-            }
-        }
         XCTAssertTrue(play.waitForExistence(timeout: 10))
         sleep(1)
         remote.press(.select)
@@ -255,6 +249,30 @@ final class PlayerOptionsUITests: XCTestCase {
         remote.press(.select)
         sleep(2)
         XCTAssertTrue(app.buttons["bitrate-0"].isSelected)
+    }
+
+    func testASavedLimitThatCantPlayOffersAWayOut() throws {
+        continueAfterFailure = false
+        app.launchArguments = ["-FinesseFakeServer", "-FinesseSeededPlayback", "-FinesseSeededNoSegments", "-FinesseSeededStuckOnLimit"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 20))
+        sleep(1)
+        focusFirstHomeCard(in: app)
+        remote.press(.select)
+        let play = app.buttons["detailPlay"]
+        XCTAssertTrue(play.waitForExistence(timeout: 10))
+        sleep(1)
+        remote.press(.select)
+
+        let wayOut = app.buttons["removeQualityLimit"]
+        XCTAssertTrue(wayOut.waitForExistence(timeout: 15), "The failure should offer a way out of the limit")
+        sleep(1)
+        capture("options-stuck-on-limit")
+        remote.press(.down)
+        sleep(1)
+        remote.press(.select)
+        XCTAssertTrue(player.bar.waitForExistence(timeout: 15), "Should now play")
+        XCTAssertFalse(wayOut.exists)
     }
 
     func testChaptersSeekAndHideTheControls() throws {

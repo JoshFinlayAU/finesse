@@ -146,6 +146,8 @@ struct PlayerControls: Equatable {
         switch event {
         case .back:
             showBar(context)
+        case .click:
+            return startScrub(context)
         case .playPause:
             return [.toggle]
         case .openPanel(let panel):

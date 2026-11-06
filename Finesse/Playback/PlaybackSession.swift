@@ -86,6 +86,19 @@ final class PlaybackSession {
         }
         let subtitle = initialSubtitle
         var route = try makeRoute(audioStreamIndex: nil, subtitle: subtitle)
+        // A transcode's tracks are burned in, so one chosen here has to go back to the server.
+        if route.method != .directPlay, case .stream(let index) = subtitle {
+            info = try await fetchInfo(
+                startPosition: startPosition,
+                audioStreamIndex: nil,
+                subtitleStreamIndex: index,
+                sourceID: route.mediaSourceID
+            )
+            guard !isStopped else {
+                return
+            }
+            route = try makeRoute(audioStreamIndex: nil, subtitle: subtitle)
+        }
         var engine = start(route, at: startPosition)
         // The server's default audio can be a track this engine can't reach.
         let moved = await routeAvoidingUnreachableAudio(route, on: engine, subtitle: subtitle)
@@ -137,19 +150,19 @@ final class PlaybackSession {
         staysPaused = false
         requestedPause = false
         engine?.play()
-        await reporter?.reportProgress()
+        reporter?.reportSoon()
     }
 
     func pause() async {
         staysPaused = true
         requestedPause = true
         engine?.pause()
-        await reporter?.reportProgress()
+        reporter?.reportSoon()
     }
 
     func seek(to position: Ticks) async {
         engine?.seek(to: position)
-        await reporter?.reportProgress()
+        reporter?.reportSoon()
     }
 
     func selectAudioTrack(id: Int) async throws {
@@ -255,7 +268,8 @@ final class PlaybackSession {
 
     /// Stays on the new engine for the rest of the session, so a track change can't lose the setting.
     private func move(to next: PlaybackRoute, supporting option: PlaybackOption) async throws {
-        guard !isStopped, let engine else {
+        // An earlier press may have made this move already.
+        guard !isStopped, let engine, !option.isSupported(by: engine.kind) else {
             return
         }
         engines = engines.filter { option.isSupported(by: $0.engine) }
@@ -264,7 +278,7 @@ final class PlaybackSession {
         engine.stop()
         start(next, at: position)
         reporter?.updateRoute(next, playSessionID: info.playSessionID)
-        await reporter?.reportProgress()
+        reporter?.reportSoon()
     }
 
     private func reload(maxBitrate: Int?, sourceID: String?) async throws {
@@ -280,8 +294,11 @@ final class PlaybackSession {
         self.maxBitrate = maxBitrate
         preferredSourceID = sourceID
         do {
-            let subtitleIndex: Int? = if case .stream(let index) = subtitle { index } else { nil }
-            info = try await fetchInfo(startPosition: position, audioStreamIndex: audio, subtitleStreamIndex: subtitleIndex)
+            info = try await fetchInfo(
+                startPosition: position,
+                audioStreamIndex: audio,
+                subtitleStreamIndex: Self.requestIndex(for: subtitle)
+            )
             guard isStillCurrent(engine) else {
                 return
             }
@@ -294,7 +311,7 @@ final class PlaybackSession {
             (self.maxBitrate, preferredSourceID, info) = previous
             throw error
         }
-        await reporter?.reportProgress()
+        reporter?.reportSoon()
         if wasTranscoding, let previousPlaySession, previousPlaySession != info.playSessionID {
             try? await client.stopTranscoding(playSessionID: previousPlaySession)
         }
@@ -348,7 +365,7 @@ final class PlaybackSession {
         engine.stop()
         start(next, at: position)
         reporter?.updateRoute(next, playSessionID: info.playSessionID)
-        await reporter?.reportProgress()
+        reporter?.reportSoon()
         return true
     }
 
@@ -398,11 +415,10 @@ final class PlaybackSession {
         let previousPlaySession = info.playSessionID
         // A transcode's tracks are burned into its URL, so the server has to make a new one.
         if current.method != .directPlay {
-            let subtitleIndex: Int? = if case .stream(let index) = subtitle { index } else { nil }
             info = try await fetchInfo(
                 startPosition: engine.position,
                 audioStreamIndex: audioStreamIndex,
-                subtitleStreamIndex: subtitleIndex
+                subtitleStreamIndex: Self.requestIndex(for: subtitle)
             )
             guard isStillCurrent(engine) else {
                 return
@@ -441,7 +457,7 @@ final class PlaybackSession {
             }
             reporter?.updateRoute(next, playSessionID: info.playSessionID)
         }
-        await reporter?.reportProgress()
+        reporter?.reportSoon()
         // Otherwise the old ffmpeg job runs on until the server's idle cleanup, about a minute later.
         if current.method != .directPlay, let previousPlaySession, previousPlaySession != info.playSessionID {
             try? await client.stopTranscoding(playSessionID: previousPlaySession)
@@ -493,14 +509,25 @@ final class PlaybackSession {
         return engine
     }
 
+    /// What the server needs to be told. Nil would leave its default subtitle burned in, so off is -1.
+    private static func requestIndex(for subtitle: SubtitleChoice) -> Int? {
+        switch subtitle {
+        case .sourceDefault: nil
+        case .off: -1
+        case .stream(let index): index
+        }
+    }
+
+    /// The server ignores the tracks asked for unless it's also told which source they belong to.
     private func fetchInfo(
         startPosition: Ticks,
         audioStreamIndex: Int?,
-        subtitleStreamIndex: Int?
+        subtitleStreamIndex: Int?,
+        sourceID: String? = nil
     ) async throws -> PlaybackInfo {
         let info = try await client.playbackInfo(PlaybackInfoRequest(
             itemID: itemID,
-            mediaSourceID: preferredSourceID,
+            mediaSourceID: preferredSourceID ?? sourceID ?? route?.mediaSourceID,
             startPosition: startPosition,
             audioStreamIndex: audioStreamIndex,
             subtitleStreamIndex: subtitleStreamIndex,

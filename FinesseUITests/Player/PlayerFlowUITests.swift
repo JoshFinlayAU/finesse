@@ -84,6 +84,69 @@ final class PlayerFlowUITests: XCTestCase {
         remote.press(.select)
     }
 
+    /// Needs titles truly wider than the screen, so Fit leaves black along the top and Fill doesn't. A
+    /// 1920x1080 file with bars in its picture won't do, because Fill can't remove those.
+    /// Only a real picture shows this, so it reads the pixels. It waits for a frame that isn't dark.
+    private func checkFillReallyFillsThePicture(_ player: PlayerDriver, engine: String) throws {
+        func topBand() throws -> Int {
+            let screenshot = XCUIScreen.main.screenshot()
+            let image = try XCTUnwrap(screenshot.image.cgImage)
+            let data = try XCTUnwrap(image.dataProvider?.data as Data?)
+            let bytes = image.bitsPerPixel / 8
+            let y = image.height / 50
+            return stride(from: image.width / 20, to: image.width / 2, by: 40).map { x in
+                let offset = y * image.bytesPerRow + x * bytes
+                return Int(data[offset]) + Int(data[offset + 1]) + Int(data[offset + 2])
+            }.max() ?? 0
+        }
+        func brightest(forSeconds seconds: Int) throws -> Int {
+            var most = 0
+            for _ in 0..<seconds {
+                most = max(most, try topBand())
+                sleep(1)
+            }
+            return most
+        }
+        // Well into the film, because the opening's frames are too dark to show anything either way.
+        remote.press(.select)
+        XCTAssertTrue(player.waitFor("scrubbing"))
+        press(.right, times: 50)
+        remote.press(.select)
+        XCTAssertTrue(player.waitFor("hidden"))
+        XCTAssertLessThan(try brightest(forSeconds: 5), 30, "Fit should leave the top of the screen black")
+
+        // Speed's six rows, opening on Normal, then Fit and Fill.
+        player.openPanel("playback")
+        press(.down, times: 5)
+        remote.press(.select)
+        sleep(1)
+        press(.menu)
+        press(.menu)
+        XCTAssertTrue(player.waitFor("hidden"))
+        let filled = try brightest(forSeconds: 30)
+        capture("\(engine)-9b-fill")
+        XCTAssertGreaterThan(filled, 60, "Fill should put picture where Fit left black")
+
+        // It's saved for this user, so put it back.
+        player.openPanel("playback")
+        press(.down, times: 4)
+        remote.press(.select)
+        sleep(1)
+        press(.menu)
+        press(.menu)
+        XCTAssertTrue(player.waitFor("hidden"))
+        sleep(2)
+        XCTAssertLessThan(try brightest(forSeconds: 3), 30, "Back on Fit")
+
+        // Back near the start, so the server keeps no position for this title.
+        remote.press(.select)
+        XCTAssertTrue(player.waitFor("scrubbing"))
+        press(.left, times: 50)
+        remote.press(.select)
+        XCTAssertTrue(player.waitFor("hidden"))
+        sleep(2)
+    }
+
     private func checkPlayer(title: String, engine: String) throws {
         try launchSignedIn()
         openPlayer(title: title)
@@ -196,6 +259,7 @@ final class PlayerFlowUITests: XCTestCase {
         XCTAssertTrue(player.waitFor("bar"), "Back should close a panel to the bar")
         press(.menu)
         XCTAssertTrue(player.waitFor("hidden"))
+        try checkFillReallyFillsThePicture(player, engine: engine)
         let afterPanels = player.seconds
         sleep(4)
         XCTAssertGreaterThan(player.seconds, afterPanels, "Playback should still be moving")

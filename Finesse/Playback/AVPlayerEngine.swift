@@ -348,10 +348,14 @@ private final class AVPlayerRenderView: UIView {
             .foregroundColor: subtitleColor,
             .shadow: shadow,
         ])
-        let width = bounds.width * 0.8
-        let height = subtitleLabel.sizeThatFits(CGSize(width: width, height: bounds.height)).height
+        subtitleLabel.isHidden = subtitleText.isEmpty
+        // Hugs the words, so a background from the system's caption settings sits behind them alone.
+        let maximum = bounds.width * 0.8
+        let size = subtitleLabel.sizeThatFits(CGSize(width: maximum, height: bounds.height))
+        let hasBackground = subtitleLabel.backgroundColor != .clear
+        let width = min(size.width + (hasBackground ? bounds.height * 0.02 : 0), maximum)
         let bottom = bounds.height * (0.95 - Double(subtitleRaise) / 100)
-        subtitleLabel.frame = CGRect(x: (bounds.width - width) / 2, y: bottom - height, width: width, height: height)
+        subtitleLabel.frame = CGRect(x: (bounds.width - width) / 2, y: bottom - size.height, width: width, height: size.height)
     }
 
     /// AVPlayerLayer doesn't request match-content by itself the way AVPlayerViewController does.

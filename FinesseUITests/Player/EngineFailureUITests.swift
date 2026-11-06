@@ -19,15 +19,9 @@ final class EngineFailureUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 20))
         sleep(1)
+        focusFirstHomeCard(in: app)
+        remote.press(.select)
         let play = app.buttons["detailPlay"]
-        for _ in 0..<4 where !play.exists {
-            remote.press(.select)
-            sleep(2)
-            if !play.exists {
-                remote.press(.down)
-                sleep(1)
-            }
-        }
         XCTAssertTrue(play.waitForExistence(timeout: 10))
         sleep(1)
         remote.press(.select)

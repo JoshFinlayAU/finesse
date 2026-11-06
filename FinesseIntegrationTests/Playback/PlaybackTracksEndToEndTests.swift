@@ -394,12 +394,49 @@ struct PlaybackTracksEndToEndTests {
         #expect(try await waitUntil { second.state == .playing })
         try await Task.sleep(for: .seconds(10))
 
+        // The server has to have honoured it, which shows in the URL it built.
+        let audioURL = try #require(session.route?.url.absoluteString)
+        #expect(audioURL.contains("AudioStreamIndex=2"), "Should stream the audio asked for")
+
         print("PROBE \(Date.now.timeIntervalSince1970) stopping")
         await session.stop()
         print("PROBE \(Date.now.timeIntervalSince1970) stopped")
         try await Task.sleep(for: .seconds(15))
         try await client.reportPlaybackStopped(PlaybackReport(itemID: Item.mpvMultiAudio, position: .zero, playMethod: .directPlay))
         #expect(try await remember(audio: 1, on: Item.mpvMultiAudio) == 1)
+    }
+
+    /// A PGS subtitle has to be burned in, so the server's URL shows whether it listened.
+    @Test(.enabled(if: LiveServer.environment["FINESSE_TRANSCODE_PROBE"] != nil))
+    func aTranscodeBurnsInTheSubtitleChosenAndOffRemovesIt() async throws {
+        let client = try await LiveServer.signedInClient()
+        var profile = DeviceProfileBuilder.make()
+        profile.directPlayProfiles = []
+        profile.maxStreamingBitrate = 1_500_000
+        let session = PlaybackSession(client: client, itemID: Item.pgs, startPosition: Ticks(seconds: 900), deviceProfile: profile)
+        try await session.start()
+        #expect(session.route?.method == .transcode)
+
+        try await session.selectSubtitleTrack(id: 2)
+        #expect(session.route?.subtitleStreamIndex == 2)
+        let chosen = try #require(session.route?.url.absoluteString)
+        #expect(chosen.contains("SubtitleStreamIndex=2"), "Should burn in the subtitle asked for")
+        let engine = try #require(session.engine)
+        let view = show(engine)
+        defer { view?.removeFromSuperview() }
+        #expect(try await waitUntil { engine.state == .playing })
+
+        try await session.selectSubtitleTrack(id: nil)
+        #expect(session.route?.subtitleStreamIndex == nil)
+        let off = try #require(session.route?.url.absoluteString)
+        #expect(!off.contains("SubtitleStreamIndex=2"), "Off should stop burning it in")
+        let second = try #require(session.engine)
+        let secondView = show(second)
+        defer { secondView?.removeFromSuperview() }
+        #expect(try await waitUntil { second.state == .playing })
+
+        await session.stop()
+        try await client.reportPlaybackStopped(PlaybackReport(itemID: Item.pgs, position: .zero, playMethod: .directPlay))
     }
 
     /// Causes a genuine AVPlayer failure by telling the router it can play an MKV, which it can't.

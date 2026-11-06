@@ -26,15 +26,9 @@ final class SkipSegmentUITests: XCTestCase {
         sleep(1)
 
         // Home, the resume card, then Resume on Detail.
+        focusFirstHomeCard(in: app)
+        remote.press(.select)
         let play = app.buttons["detailPlay"]
-        for _ in 0..<4 where !play.exists {
-            remote.press(.select)
-            sleep(2)
-            if !play.exists {
-                remote.press(.down)
-                sleep(1)
-            }
-        }
         XCTAssertTrue(play.waitForExistence(timeout: 10))
         sleep(1)
         remote.press(.select)

@@ -173,6 +173,14 @@ import Testing
         #expect(controls.panel == .audio)
     }
 
+    @Test func theBarsMainButtonStillWorksWithAPanelOpen() {
+        var controls = PlayerControls()
+        _ = controls.handle(.swipeUp, context())
+        _ = controls.handle(.openPanel(.audio), context())
+        #expect(controls.handle(.click, context()) == [.pause])
+        #expect(controls.scrub != nil)
+    }
+
     @Test func comingBackFromAPanelRestartsTheTimeout() {
         var controls = PlayerControls()
         _ = controls.handle(.swipeUp, context())

@@ -300,6 +300,7 @@ private typealias FakeEngine = FakePlaybackEngine
         let (session, _) = makeSession(client)
         try await session.start()
         await session.pause()
+        await letOtherTasksRun()
         #expect(await client.progressReports.last?.isPaused == true)
         await session.stop()
     }
