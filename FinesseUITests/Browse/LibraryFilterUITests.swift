@@ -387,7 +387,7 @@ final class LibraryFilterUITests: XCTestCase {
         XCTAssertEqual(sort.value as? String, "Random")
         remote.press(.select)
         sleep(2)
-        panel.chooseInMenu("Name", moving: .up)
+        panel.chooseInMenu("Name", moving: .down)
         sleep(3)
         XCTAssertEqual(sort.value as? String, "Name")
     }
