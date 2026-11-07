@@ -8,7 +8,7 @@
       {"n": 5, "file": "g05-user-picker-fake", "title": "User picker", "src": "fake", "note": "Fake users from the built-in fake server. The real picker is left out because it shows household names."}
     ]},
     {"name": "Home", "screens": [
-      {"n": 6, "file": "g06-home", "title": "Home billboard, focus on the tab bar", "src": "seeded", "note": "Watch progress was set on the test user for this shot. Doctor Who, Rings of Power and Futurama in Next Up are left over from earlier test runs."},
+      {"n": 6, "file": "g06-home", "title": "Home billboard, focus on the tab bar", "src": "seeded", "note": "Watch progress was set on the test user for this shot. Shows in Next Up can be left over from earlier test runs."},
       {"n": 53, "file": "g53-home-play-focused", "title": "Billboard with Play focused", "src": "seeded", "note": "Same seeded progress as 6."},
       {"n": 7, "file": "g07-home-focused-card", "title": "Focused card, billboard following it", "src": "seeded", "note": "Same seeded progress as 6."},
       {"n": 54, "file": "g54-home-poster-row", "title": "A poster row with the billboard above", "src": "seeded", "note": "Same seeded progress as 6."},
@@ -47,9 +47,9 @@
       {"n": 23, "file": "g23-search-empty", "title": "Search, empty", "src": "real"},
       {"n": 24, "file": "g24-search-typed", "title": "Search, typing with results", "src": "real"},
       {"n": 25, "file": "g25-search-results", "title": "Search results", "src": "real"},
-      {"n": 26, "file": "g26-settings", "title": "Settings", "src": "real", "note": "Captured before the Licences row was added."},
-      {"n": 35, "file": "g35-licences-list", "title": "Licences list, with the source offer placeholder", "src": "real", "note": "Not captured in this refresh yet."},
-      {"n": 36, "file": "g36-licence-text", "title": "Licence full text", "src": "real", "note": "Not captured in this refresh yet."}
+      {"n": 26, "file": "g26-settings", "title": "Settings", "src": "real"},
+      {"n": 35, "file": "g35-licences-list", "title": "Licences list, with the source offer placeholder", "src": "real"},
+      {"n": 36, "file": "g36-licence-text", "title": "Licence full text", "src": "real"}
     ]},
     {"name": "Player", "screens": [
       {"n": 27, "file": "g27-player-picture", "title": "Playing, with nothing on screen", "src": "seeded", "note": "Started part way through for this shot, over a real picture."},
@@ -57,18 +57,18 @@
       {"n": 29, "file": "g29-player-paused", "title": "Paused", "src": "seeded", "note": "Same seeded position as 27."},
       {"n": 30, "file": "g30-player-audio-panel", "title": "Audio panel", "src": "seeded", "note": "Same seeded position as 27."},
       {"n": 31, "file": "g31-player-subtitle-panel", "title": "Subtitle panel", "src": "seeded", "note": "Same seeded position as 27."},
-      {"n": 32, "file": "g32-skip-intro", "title": "Skip Intro", "src": "fake", "note": "Fake server and made-up segments with no video, because the test server has no segments. Captured before the player redesign."},
-      {"n": 33, "file": "g33-skip-credits", "title": "Skip Credits", "src": "fake", "note": "Fake server and made-up segments with no video, because the test server has no segments. Captured before the player redesign."},
-      {"n": 34, "file": "g34-up-next", "title": "Up Next", "src": "seeded", "note": "A real episode, started near its end for this shot. Captured before the player redesign."},
+      {"n": 32, "file": "g32-skip-intro", "title": "Skip Intro", "src": "fake", "note": "Fake server and made-up segments with no video, because the test server has no segments."},
+      {"n": 33, "file": "g33-skip-credits", "title": "Skip Credits", "src": "fake", "note": "Fake server and made-up segments with no video, because the test server has no segments."},
+      {"n": 34, "file": "g34-up-next", "title": "Up Next", "src": "seeded", "note": "A real episode, started near its end for this shot."},
       {"n": 37, "file": "g37-player-bar", "title": "Control bar", "src": "seeded", "note": "Same seeded position as 27."},
       {"n": 38, "file": "g38-player-speed-picture", "title": "Picture and Speed panel, speed rows", "src": "seeded", "note": "A real episode, started part way through for this shot."},
       {"n": 39, "file": "g39-player-chapters", "title": "Chapters panel", "src": "seeded", "note": "Same seeded episode as 38."},
       {"n": 40, "file": "g40-player-episodes", "title": "Episodes panel", "src": "seeded", "note": "Same seeded episode as 38."},
       {"n": 41, "file": "g41-player-quality", "title": "Quality panel", "src": "seeded", "note": "Same seeded episode as 38."},
       {"n": 42, "file": "g42-player-info", "title": "Info panel", "src": "seeded", "note": "Same seeded episode as 38."},
-      {"n": 43, "file": "g43-player-subtitle-style", "title": "Subtitle style: offset, size and position", "src": "seeded", "note": "Same seeded episode as 38. Not captured in this refresh yet."},
+      {"n": 43, "file": "g43-player-subtitle-style", "title": "Subtitle style: offset, size and position", "src": "seeded", "note": "Same seeded episode as 38."},
       {"n": 44, "file": "g44-player-scrub-mode", "title": "Scrub mode, just after the click", "src": "seeded", "note": "Same seeded episode as 38."},
-      {"n": 52, "file": "g52-player-picture", "title": "Picture and Speed panel, picture rows", "src": "seeded", "note": "Same seeded episode as 38. Not captured in this refresh yet."}
+      {"n": 52, "file": "g52-player-picture", "title": "Picture and Speed panel, picture rows", "src": "seeded", "note": "Same seeded episode as 38."}
     ]}
   ]
 }
