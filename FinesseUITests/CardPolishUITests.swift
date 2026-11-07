@@ -30,23 +30,25 @@ final class CardPolishUITests: XCTestCase {
         try await api.markPlayed(watched)
         try await api.setResume(partlyWatched)
 
+        // Always signs in from the server step. Starting from whatever an earlier test left, it
+        // could land on the user picker and wait for a tab bar that never comes.
+        app.launchArguments = ["-FinesseSignedOut"]
         app.launch()
         let address = app.textFields["serverAddress"]
-        if address.waitForExistence(timeout: 8) {
-            enter(server, into: address, in: app)
-            focus(app.buttons["connect"], in: app)
-            remote.press(.select)
-            let other = app.buttons["otherUser"]
-            XCTAssertTrue(other.waitForExistence(timeout: 20))
-            focus(other, in: app)
-            remote.press(.select)
-            let usernameField = app.textFields["username"]
-            XCTAssertTrue(usernameField.waitForExistence(timeout: 10))
-            enter(username, into: usernameField, in: app)
-            enter(TypedPassword.first, into: app.secureTextFields["password"], in: app)
-            focus(app.buttons["signIn"], in: app)
-            remote.press(.select)
-        }
+        XCTAssertTrue(address.waitForExistence(timeout: 20))
+        enter(server, into: address, in: app)
+        focus(app.buttons["connect"], in: app)
+        remote.press(.select)
+        let other = app.buttons["otherUser"]
+        XCTAssertTrue(other.waitForExistence(timeout: 20))
+        focus(other, in: app)
+        remote.press(.select)
+        let usernameField = app.textFields["username"]
+        XCTAssertTrue(usernameField.waitForExistence(timeout: 10))
+        enter(username, into: usernameField, in: app)
+        enter(TypedPassword.first, into: app.secureTextFields["password"], in: app)
+        focus(app.buttons["signIn"], in: app)
+        remote.press(.select)
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30))
         sleep(3)
 
@@ -56,9 +58,12 @@ final class CardPolishUITests: XCTestCase {
             remote.press(.right)
             usleep(500_000)
         }
-        sleep(1)
+        // Open the tab and give it time to load, as the passing search tests do. Moving down
+        // a second after only focusing the tab could miss the keyboard, so typing found no field.
+        remote.press(.select)
+        sleep(3)
         remote.press(.down)
-        sleep(1)
+        sleep(2)
         app.typeText(series.name)
         sleep(4)
         var found = false

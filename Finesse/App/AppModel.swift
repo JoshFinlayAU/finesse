@@ -82,8 +82,15 @@ final class AppModel {
         }
         #endif
         let storage = KeychainStorage(service: "Finesse")
+        let store = SessionStore(storage: storage)
+        #if DEBUG
+        // UI tests that must start at the server step, whatever an earlier test left signed in.
+        if ProcessInfo.processInfo.arguments.contains("-FinesseSignedOut") {
+            try? store.removeAll()
+        }
+        #endif
         return AppModel(
-            store: SessionStore(storage: storage),
+            store: store,
             identity: DeviceIdentityStore(storage: storage).identity(deviceName: UIDevice.current.name),
             makeClient: { url, device in
                 LiveJellyfinClient(serverURL: url, device: device, onWatchStateChanged: {

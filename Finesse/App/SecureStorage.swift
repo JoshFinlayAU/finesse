@@ -118,6 +118,11 @@ struct SessionStore: Sendable {
     func save(_ accounts: StoredAccounts) throws {
         try storage.set(JSONEncoder().encode(accounts), for: Self.account)
     }
+
+    /// Forgets every user and the last server. The device ID is stored separately and stays.
+    func removeAll() throws {
+        try storage.remove(Self.account)
+    }
 }
 
 struct DeviceIdentityStore: Sendable {

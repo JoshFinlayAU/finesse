@@ -1,7 +1,8 @@
 import XCTest
 
 /// Drives the real app with the Siri Remote API against the test server, and keeps a screenshot
-/// of each screen. Skips without credentials. Reset the simulator keychain first, so it starts signed out.
+/// of each screen. Skips without credentials. Each test starts signed out with no remembered server,
+/// whatever ran before it, because `-FinesseSignedOut` makes the DEBUG app forget its stored users.
 @MainActor
 final class SignInFlowUITests: XCTestCase {
     private var remote: XCUIRemote { .shared }
@@ -19,6 +20,7 @@ final class SignInFlowUITests: XCTestCase {
         let username = try environment("JELLYFIN_USERNAME")
         _ = try environment("JELLYFIN_PASSWORD")
         continueAfterFailure = false
+        app.launchArguments = ["-FinesseSignedOut"]
         app.launch()
 
         // Server address.
@@ -80,6 +82,7 @@ final class SignInFlowUITests: XCTestCase {
 
         // Relaunch restores the session with no sign-in.
         app.terminate()
+        app.launchArguments = []
         app.launch()
         XCTAssertTrue(firstHub.waitForExistence(timeout: 30))
 
@@ -103,6 +106,7 @@ final class SignInFlowUITests: XCTestCase {
     func testQuickConnectShowsCodeAndBackLeaves() throws {
         let server = try environment("JELLYFIN_URL")
         continueAfterFailure = false
+        app.launchArguments = ["-FinesseSignedOut"]
         app.launch()
         let address = app.textFields["serverAddress"]
         XCTAssertTrue(address.waitForExistence(timeout: 20))
