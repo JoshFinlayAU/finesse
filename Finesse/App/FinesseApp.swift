@@ -4,6 +4,10 @@ import SwiftUI
 struct FinesseApp: App {
     @State private var app = AppModel.live()
 
+    init() {
+        LiveJellyfinClient.keepSharedResponsesOffDisk()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

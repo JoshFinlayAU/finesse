@@ -46,7 +46,10 @@ struct TestUserSignInTests {
         )
         request.httpBody = try JSONEncoder().encode(["Username": server.username, "Pw": server.password])
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        // Not URLSession.shared: its cache belongs to the app these tests run inside.
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.invalidateAndCancel() }
+        let (data, response) = try await session.data(for: request)
 
         #expect((response as? HTTPURLResponse)?.statusCode == 200)
         let result = try JSONDecoder().decode(AuthenticationResult.self, from: data)

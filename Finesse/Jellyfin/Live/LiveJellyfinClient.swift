@@ -40,6 +40,15 @@ actor LiveJellyfinClient: JellyfinClient {
         return configuration
     }
 
+    /// `URLSession.shared` and any session left on the default configuration write to `Cache.db` in the
+    /// app's caches folder. Nothing here uses them, but anything that runs in this process could, such
+    /// as the integration tests, which run inside the app and once left the password and a token there.
+    /// This empties that cache and stops it reaching disk, on the instance any such session already holds.
+    static func keepSharedResponsesOffDisk() {
+        URLCache.shared.removeAllCachedResponses()
+        URLCache.shared.diskCapacity = 0
+    }
+
     private static func makeSDK(
         serverURL: URL,
         device: DeviceIdentity,

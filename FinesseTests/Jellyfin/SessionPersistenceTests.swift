@@ -24,4 +24,10 @@ import Testing
         #expect(session.configuration.urlCache == nil)
         session.invalidateAndCancel()
     }
+
+    /// The tests run inside the app, and the app has started by now, so this is the app's own setting.
+    @Test func sharedSessionsKeepNothingOnDisk() {
+        #expect(URLCache.shared.diskCapacity == 0)
+        #expect((URLSession.shared.configuration.urlCache?.diskCapacity ?? 0) == 0)
+    }
 }

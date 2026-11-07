@@ -14,6 +14,7 @@ final class ContentProvider: TVTopShelfContentProvider {
     }
 
     private static func loadSections() async -> [TopShelfSection]? {
+        LiveJellyfinClient.keepSharedResponsesOffDisk()
         guard let shared = try? TopShelfSessionStore.live.load() else {
             return nil
         }

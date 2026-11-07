@@ -11,6 +11,8 @@ private enum LiveServer {
     static let username = environment["JELLYFIN_USERNAME"]
     static let password = environment["JELLYFIN_PASSWORD"]
     static let isConfigured = url != nil && username != nil && password != nil
+    /// Not URLSession.shared: its cache belongs to the app these tests run inside, and these URLs carry the token.
+    static let session = URLSession(configuration: .ephemeral)
 
     static func makeClient() throws -> LiveJellyfinClient {
         LiveJellyfinClient(
@@ -234,7 +236,7 @@ struct LiveServerTests {
             index: nil,
             maxWidth: 100
         ))
-        let (image, response) = try await URLSession.shared.data(from: url)
+        let (image, response) = try await LiveServer.session.data(from: url)
         #expect((response as? HTTPURLResponse)?.statusCode == 200)
         #expect(!image.isEmpty)
         try await client.signOut()
@@ -289,7 +291,7 @@ struct LiveServerTests {
         if let directPlayURL = source.directPlayURL {
             var request = URLRequest(url: directPlayURL)
             request.setValue("bytes=0-1023", forHTTPHeaderField: "Range")
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await LiveServer.session.data(for: request)
             #expect((response as? HTTPURLResponse)?.statusCode == 206)
         } else {
             #expect(source.supportsTranscoding, "With no direct play URL, the only way left is a transcode")

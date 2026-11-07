@@ -203,6 +203,9 @@ struct TestServerAPI: Sendable {
         _ = try await Self.send("POST", "\(server)/UserItems/\(movie.id)/UserData?userId=\(userID)", token: token, body: body)
     }
 
+    /// Not URLSession.shared, whose disk cache kept the password and tokens in the test runner's container.
+    private static let session = URLSession(configuration: .ephemeral)
+
     static func send(_ method: String, _ url: String, token: String?, body: Data?) async throws -> Data {
         var request = URLRequest(url: URL(string: url)!)
         request.httpMethod = method
@@ -211,7 +214,7 @@ struct TestServerAPI: Sendable {
         var header = #"MediaBrowser Client="Finesse UI Tests", Device="Simulator", DeviceId="finesse-ui-tests-seed", Version="0""#
         if let token { header += #", Token="\#(token)""# }
         request.setValue(header, forHTTPHeaderField: "Authorization")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let status = (response as? HTTPURLResponse)?.statusCode, (200..<300).contains(status) else {
             throw URLError(.badServerResponse)
         }
