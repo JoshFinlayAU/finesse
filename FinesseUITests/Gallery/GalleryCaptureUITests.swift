@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 /// Captures the owner's numbered screenshot gallery. Numbers are stable, see memory/screenshot-gallery.md.
@@ -512,8 +513,7 @@ final class GalleryCaptureUITests: XCTestCase {
         XCTAssertTrue(skip.waitForExistence(timeout: 30))
         XCTAssertEqual(skip.label, "Skip Intro")
         capture("g32-skip-intro")
-        remote.press(.up)
-        sleep(1)
+        // The button has focus. Up would open the bar and take focus from it.
         remote.press(.select)
         XCTAssertTrue(skip.waitForNonExistence(timeout: 5))
         XCTAssertTrue(skip.waitForExistence(timeout: 15))
@@ -523,9 +523,10 @@ final class GalleryCaptureUITests: XCTestCase {
     }
 
     /// The real shelf, drawn by the system from our extension. The Home Screen reports no focus to
-    /// XCUITest, so this finds Finesse by position, as `TopShelfUITests` does: Settings is first in
-    /// the top row and Finesse second. Choosing the focused shelf item afterwards proves the capture
-    /// was of Finesse's shelf, because only that opens Finesse's Detail.
+    /// XCUITest, and the order of Finesse and the test runner after Settings depends on which was
+    /// installed first. Only Finesse has a shelf, so this tries each icon after Settings and stops
+    /// at the one that draws above the dock. Choosing the shelf item afterwards proves it was
+    /// Finesse's, because only that opens Finesse's Detail.
     func testTopShelf() async throws {
         let api = try await prepare()
         let movies = try await api.movies(startIndex: 60, count: 2)
@@ -539,9 +540,17 @@ final class GalleryCaptureUITests: XCTestCase {
         remote.press(.home)
         sleep(4)
         press(.left, times: 4)
-        press(.right)
-        // Long enough for the system to run the extension and fetch the images.
-        sleep(12)
+        sleep(2)
+        // Settings draws nothing above the dock, so it's the picture of no shelf.
+        let empty = ScreenSample(XCUIScreen.main.screenshot().image)
+        var found = false
+        for _ in 0..<3 where !found {
+            press(.right)
+            // Long enough for the system to run the extension and fetch the images.
+            sleep(12)
+            found = ScreenSample(XCUIScreen.main.screenshot().image).differsAboveTheDock(from: empty)
+        }
+        XCTAssertTrue(found, "No icon after Settings showed a shelf")
         capture("g55-top-shelf")
         press(.up)
         sleep(3)
@@ -590,5 +599,41 @@ final class GalleryCaptureUITests: XCTestCase {
         capture("g34-up-next")
         remote.press(.menu)
         XCTAssertTrue(bar.waitForNonExistence(timeout: 15))
+    }
+}
+
+/// A screenshot shrunk to a few hundred pixels, enough to tell whether a shelf is drawn.
+private struct ScreenSample {
+    private static let width = 32
+    private static let height = 18
+    private var gray = [UInt8](repeating: 0, count: width * height)
+
+    init(_ image: UIImage) {
+        guard let cgImage = image.cgImage else { return }
+        gray.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(
+                data: buffer.baseAddress, width: Self.width, height: Self.height, bitsPerComponent: 8,
+                bytesPerRow: Self.width, space: CGColorSpaceCreateDeviceGray(),
+                bitmapInfo: CGImageAlphaInfo.none.rawValue
+            ) else { return }
+            context.interpolationQuality = .medium
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: Self.width, height: Self.height))
+        }
+    }
+
+    /// The dock is the bottom quarter of the screen, and the shelf fills the space above it.
+    func differsAboveTheDock(from other: ScreenSample) -> Bool {
+        // Core Graphics puts row 0 at the top of the buffer.
+        let rows = 0..<(Self.height * 3 / 4)
+        var total = 0
+        for row in rows {
+            for column in 0..<Self.width {
+                let index = row * Self.width + column
+                total += abs(Int(gray[index]) - Int(other.gray[index]))
+            }
+        }
+        let average = Double(total) / Double(rows.count * Self.width)
+        print("GALLERY shelf difference above the dock: \(average)")
+        return average > 12
     }
 }
