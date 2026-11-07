@@ -75,6 +75,7 @@
     {
       "id": "libplacebo",
       "name": "libplacebo",
+      "note": "Built with one patch to libplacebo under the same licence.",
       "version": "7.387.0",
       "group": "playback",
       "licence": "LGPL 2.1 or later",

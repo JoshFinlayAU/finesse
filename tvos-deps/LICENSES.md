@@ -14,6 +14,7 @@ Read from upstream's own files at the versions in `versions.sh`, on 2026-11-06, 
 | mpv 0.42.0 | LGPL 2.1 or later when built without GPL-only files, with `-Dgpl=false`. Upstream says the switch "does not in itself create a LGPLv2.1+ license grant" | Libmpv, dynamic | `Copyright` |
 | Our mpv patches | Same as mpv. The new file carries mpv's LGPL 2.1 or later header | Libmpv | `patches/mpv` |
 | libplacebo 7.387.0 | LGPL 2.1 or later | Libplacebo, dynamic | `LICENSE`, `README.md`, source headers |
+| Our libplacebo patch | Same as libplacebo. A modified library has to say so, which the in-app licences screen does | Libplacebo | `patches/libplacebo` |
 | FriBidi 1.0.18 | LGPL 2.1 or later | Libfribidi, dynamic | `COPYING`, source headers |
 | libass 0.17.5 | ISC | Libass, dynamic | `COPYING` |
 | FreeType 2.15.0 | We choose the FreeType License (FTL) from its two options. It requires a credit in documentation | Static in Libass | `LICENSE.TXT`, `docs/FTL.TXT` |

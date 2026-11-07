@@ -20,6 +20,9 @@ nice -n 15 cmake --build _b -j "$JOBS"
 cmake --install _b
 
 fresh_tree libplacebo
+for patch in "$DEPS_ROOT"/patches/libplacebo/*.patch; do
+  git apply --whitespace=nowarn "$patch"
+done
 # Meson finds static libraries by searching directories, not through linker flags.
 # libplacebo's lookup of the glslang library itself takes no directories, so name them all here.
 export LIBRARY_PATH="$PREFIX/lib"

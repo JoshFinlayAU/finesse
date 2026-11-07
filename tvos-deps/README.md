@@ -50,11 +50,15 @@ The result is in `~/Developer/FinesseDeps/dist`. Builds run at low priority and 
 
 ## Patches
 
-All in `patches/mpv`, against the mpv commit in `versions.sh`. They were written for this project, and MPVKit's were only read to see which areas needed changing.
+These are in `patches/mpv`, against the mpv commit in `versions.sh`. They were written for this project, and MPVKit's were only read to see which areas needed changing.
 
 1. `0001-vulkan-add-context-for-an-app-owned-metal-layer`: upstream mpv's Vulkan context on Apple platforms needs Cocoa. This adds a context that takes the app's `CAMetalLayer` through `--wid`, selected with `gpu-context=moltenvk`.
 2. `0002-audio-build-the-avfoundation-output-on-tvos`: the AVFoundation audio output depends on the macOS CoreAudio device layer and Cocoa helpers, which tvOS doesn't have. This guards those parts.
 3. `0003-stream-no-fstatfs-on-tvos`: removes `fstatfs`. mpv only uses it to ask whether a local file is on a network mount, which no approved required-reason covers. Without it, `check_stream_network` returns false.
+
+libplacebo has one, in `patches/libplacebo`, against the commit in `versions.sh`:
+
+- `0001-vulkan-treat-moltenvk-host-pointers-as-slow`: stops libplacebo wrapping memory it was handed as a Metal buffer, so it copies instead. It's the switch libplacebo already uses for NVIDIA and AMD. Without it, a subtitle atlas over 32 KB gets rounded out to whole pages of heap memory and wrapped with `newBufferWithBytesNoCopy`, which trapped intermittently in the simulator's Metal layer. Apple's documentation asks for page-aligned memory from `vm_allocate` or `mmap` there, so the same path looks out of contract on a real device too, which nobody has checked there yet. The cost is one copy when an atlas that size changes, and for any larger software-decoded upload that doesn't use direct rendering.
 
 ## What the scan proves
 
