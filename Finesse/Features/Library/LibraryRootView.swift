@@ -176,6 +176,14 @@ private struct LibraryControls: View {
 
     private var sortMenu: some View {
         Menu {
+            // First, because a new order is why anyone opens this menu while the sort is Random.
+            if model.sort == .random {
+                Section {
+                    Button("Shuffle Again", systemImage: "shuffle") {
+                        Task { await model.reshuffle() }
+                    }
+                }
+            }
             Section("Sort By") {
                 ForEach(model.sortOptions, id: \.self) { sort in
                     Button {
@@ -186,13 +194,7 @@ private struct LibraryControls: View {
                 }
             }
             // A random order has no direction, and keeps to itself until asked for a new one.
-            if model.sort == .random {
-                Section {
-                    Button("Shuffle Again", systemImage: "shuffle") {
-                        Task { await model.reshuffle() }
-                    }
-                }
-            } else {
+            if model.sort != .random {
                 Section("Order") {
                     Button {
                         Task { await model.setDirection(.ascending) }

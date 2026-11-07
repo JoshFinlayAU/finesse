@@ -167,8 +167,19 @@ final class GalleryCaptureUITests: XCTestCase {
         sleep(3)
         capture("g06-home")
         press(.down)
-        sleep(1)
+        sleep(2)
+        capture("g53-home-play-focused")
+        press(.down)
+        sleep(2)
         capture("g07-home-focused-card")
+        press(.down)
+        sleep(2)
+        press(.down)
+        sleep(2)
+        capture("g54-home-poster-row")
+        remote.press(.menu)
+        sleep(2)
+        focusFirstHomeCard(in: app)
         remote.press(.select, forDuration: 2)
         sleep(1)
         capture("g08-card-menu")
@@ -435,7 +446,7 @@ final class GalleryCaptureUITests: XCTestCase {
         launchSignedIn()
         XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 20))
         sleep(2)
-        press(.down)
+        focusFirstHomeCard(in: app)
         remote.press(.select)
         let play = app.buttons["detailPlay"]
         XCTAssertTrue(play.waitForExistence(timeout: 20))
@@ -491,14 +502,8 @@ final class GalleryCaptureUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 20))
         sleep(1)
         let play = app.buttons["detailPlay"]
-        for _ in 0..<4 where !play.exists {
-            remote.press(.select)
-            sleep(2)
-            if !play.exists {
-                remote.press(.down)
-                sleep(1)
-            }
-        }
+        focusFirstHomeCard(in: app)
+        remote.press(.select)
         XCTAssertTrue(play.waitForExistence(timeout: 10))
         sleep(1)
         remote.press(.select)
@@ -530,7 +535,7 @@ final class GalleryCaptureUITests: XCTestCase {
         sleep(2)
         let play = app.buttons["detailPlay"]
         let bar = app.buttons["transportBar"]
-        press(.down)
+        focusFirstHomeCard(in: app)
         remote.press(.select)
         XCTAssertTrue(play.waitForExistence(timeout: 20))
         sleep(1)

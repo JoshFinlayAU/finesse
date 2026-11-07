@@ -8,8 +8,10 @@
       {"n": 5, "file": "g05-user-picker-fake", "title": "User picker", "src": "fake", "note": "Fake users from the built-in fake server. The real picker is left out because it shows household names."}
     ]},
     {"name": "Home", "screens": [
-      {"n": 6, "file": "g06-home", "title": "Home with Continue Watching", "src": "seeded", "note": "Watch progress was set on the test user for this shot. Doctor Who, Rings of Power and Futurama in Next Up are left over from earlier test runs."},
-      {"n": 7, "file": "g07-home-focused-card", "title": "Focused card", "src": "seeded", "note": "Same seeded progress as 6."},
+      {"n": 6, "file": "g06-home", "title": "Home billboard, focus on the tab bar", "src": "seeded", "note": "Watch progress was set on the test user for this shot. Doctor Who, Rings of Power and Futurama in Next Up are left over from earlier test runs."},
+      {"n": 53, "file": "g53-home-play-focused", "title": "Billboard with Play focused", "src": "seeded", "note": "Same seeded progress as 6."},
+      {"n": 7, "file": "g07-home-focused-card", "title": "Focused card, billboard following it", "src": "seeded", "note": "Same seeded progress as 6."},
+      {"n": 54, "file": "g54-home-poster-row", "title": "A poster row with the billboard above", "src": "seeded", "note": "Same seeded progress as 6."},
       {"n": 8, "file": "g08-card-menu", "title": "Card long-press menu", "src": "seeded", "note": "Same seeded progress as 6."}
     ]},
     {"name": "Libraries", "screens": [

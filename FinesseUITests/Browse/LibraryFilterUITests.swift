@@ -28,7 +28,7 @@ struct FilterPanelDriver {
         sleep(4)
     }
 
-    private func hasFocus(_ title: String) -> Bool {
+    func hasFocus(_ title: String) -> Bool {
         guard focused.exists else { return false }
         if focused.label == title || focused.label.hasPrefix("\(title),") { return true }
         let inside = focused.descendants(matching: .any).matching(NSPredicate(format: "label == %@ OR label BEGINSWITH %@", title, "\(title),"))
@@ -372,7 +372,17 @@ final class LibraryFilterUITests: XCTestCase {
         remote.press(.select)
         sleep(2)
         capture("filter-42-random-menu")
-        panel.chooseInMenu("Shuffle Again", moving: .down)
+        let shuffle = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Shuffle Again")).firstMatch
+        let name = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Name")).firstMatch
+        XCTAssertTrue(shuffle.exists && name.exists)
+        XCTAssertLessThan(shuffle.frame.minY, name.frame.minY, "Shuffle Again should be above the sort rows")
+        // From where the menu opens, it should only be a press or two away.
+        for _ in 0..<2 where !panel.hasFocus("Shuffle Again") {
+            press(.up)
+        }
+        XCTAssertTrue(panel.hasFocus("Shuffle Again"), "Shuffle Again should be within two presses of where the menu opens")
+        remote.press(.select)
+        sleep(2)
         sleep(3)
         XCTAssertEqual(sort.value as? String, "Random")
         remote.press(.select)
