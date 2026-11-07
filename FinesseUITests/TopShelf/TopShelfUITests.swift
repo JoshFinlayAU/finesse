@@ -6,7 +6,6 @@ import XCTest
 final class TopShelfUITests: XCTestCase {
     private var remote: XCUIRemote { .shared }
     private lazy var app = XCUIApplication.forSignIn()
-    private let home = XCUIApplication(bundleIdentifier: "com.apple.PineBoard")
 
     private func environment(_ name: String) throws -> String {
         guard let value = ProcessInfo.processInfo.environment[name] else {
@@ -61,54 +60,78 @@ final class TopShelfUITests: XCTestCase {
         press(.right)
     }
 
-    private func attach(_ name: String) {
-        let attachment = XCTAttachment(string: home.debugDescription)
-        attachment.name = "home-\(name).txt"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-    }
-
-    /// Asked for by name, because it drives the simulator's Home Screen rather than the app.
-    func testTheShelfShowsAndItsItemsOpenTheApp() throws {
-        _ = try environment("FINESSE_TOP_SHELF_TEST")
-        try launchSignedIn()
-        sleep(3)
+    private func showShelf(_ name: String) {
         remote.press(.home)
         sleep(4)
-        capture("shelf-1-home")
-        attach("start")
         focusFinesseIcon()
         // Long enough for the system to run the extension and fetch the images.
         sleep(12)
-        capture("shelf-2-finesse-focused")
-        attach("focused")
+        capture(name)
+    }
 
-        // Up from the icon goes into the shelf.
+    /// Asked for by name, because it drives the simulator's Home Screen rather than the app. The
+    /// Home Screen reports nothing about the shelf, so what it shows is proved by the screenshots,
+    /// and what the items do is proved by where the app ends up.
+    func testTheShelfFollowsTheUserAndItsItemsOpenTheApp() async throws {
+        _ = try environment("FINESSE_TOP_SHELF_TEST")
+        let api = try await TestServerAPI.signIn(
+            server: try environment("JELLYFIN_URL"),
+            username: try environment("JELLYFIN_USERNAME"),
+            password: try environment("JELLYFIN_PASSWORD")
+        )
+        let movies = try await api.movies(startIndex: 60, count: 1)
+        let movie = try XCTUnwrap(movies.first)
+        try await api.setResume(movie)
+        addTeardownBlock { try await api.clearPlayedState(movie) }
+
+        try launchSignedIn()
+        sleep(3)
+
+        // A cold start: the app isn't running when the item is chosen.
+        app.terminate()
+        showShelf("shelf-1-continue-watching")
         press(.up)
         sleep(2)
-        capture("shelf-3-in-the-shelf")
-        attach("shelf")
-
+        capture("shelf-2-in-the-shelf")
         remote.press(.select)
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20), "Choosing an item should open Finesse")
-        sleep(6)
-        capture("shelf-4-opened-detail")
-        XCTAssertTrue(app.buttons["detailWatched"].waitForExistence(timeout: 20), "A press on a shelf item should open its Detail")
-
-        // Play goes to the player.
-        remote.press(.home)
-        sleep(4)
-        focusFinesseIcon()
+        XCTAssertTrue(app.buttons["detailWatched"].waitForExistence(timeout: 30), "Select on a shelf item should open its Detail")
         sleep(3)
+        capture("shelf-3-cold-start-detail")
+
+        // Watch state changing should change the shelf: that title leaves Continue Watching.
+        focus(app.buttons["detailWatched"], in: app)
+        remote.press(.select)
+        sleep(3)
+        showShelf("shelf-4-after-marking-watched")
+
+        // Already running: Play goes straight to the player.
         press(.up)
-        sleep(1)
+        sleep(2)
         remote.press(.playPause)
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
-        sleep(6)
-        capture("shelf-5-opened-player")
         XCTAssertTrue(
             app.descendants(matching: .any)["transportBar"].waitForExistence(timeout: 30),
             "Play on a shelf item should open the player"
         )
+        sleep(6)
+        capture("shelf-5-play-while-running")
+        press(.menu)
+        sleep(2)
+        press(.menu)
+        sleep(3)
+
+        // Signing out should leave only the static image.
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30))
+        press(.menu)
+        focus(app.tabBars.buttons["Home"], in: app)
+        press(.right, times: 4)
+        remote.press(.select)
+        XCTAssertTrue(app.buttons["signOut"].waitForExistence(timeout: 10))
+        sleep(1)
+        focus(app.buttons["signOut"], in: app)
+        remote.press(.select)
+        XCTAssertTrue(app.buttons["otherUser"].waitForExistence(timeout: 20), "Sign-out should reach the user picker")
+        showShelf("shelf-6-signed-out")
     }
 }
