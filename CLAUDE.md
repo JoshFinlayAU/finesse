@@ -105,6 +105,7 @@ sed 's/^/TEST_RUNNER_/' .env.local | ssh fin-mac 'set -a; . /dev/stdin; set +a; 
 - `FakeServerUITests` needs no server. It launches with `-FinesseFakeServer`, a DEBUG-only mode with two signed-in users and seeded hubs.
 - `SignInFlowUITests` signs in to the test server using the same stdin credentials as the integration tests, and skips without them. Reset first so it starts signed out: `xcrun simctl keychain "Finesse Apple TV 4K" reset`.
 - `TwoUserSwitchingUITests` and the integration `TwoUserSwitchingTests` need `JELLYFIN_USERNAME_2` and `JELLYFIN_PASSWORD_2` in `.env.local` for the second test user, and skip without them.
+- `TopShelfUITests` drives the simulator's Home Screen rather than the app, so it only runs when asked. Add `TEST_RUNNER_FINESSE_TOP_SHELF_TEST=1` to the stdin values along with the credentials, and name it with `-only-testing:FinesseUITests/TopShelfUITests`. The Home Screen reports nothing about the shelf to XCTest, so review the `shelf-` screenshots for what it shows. The assertions only prove what choosing an item does. It changes only the test user's own state and undoes it.
 - The real user picker shows household names from `/Users/Public`, so never commit or quote those screenshots.
 
 ### Real Apple TV
