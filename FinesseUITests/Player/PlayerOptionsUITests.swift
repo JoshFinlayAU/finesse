@@ -19,14 +19,18 @@ final class PlayerOptionsUITests: XCTestCase {
         app.descendants(matching: .any)["seededEngine"].label
     }
 
-    /// Home's first card is Next Up's episode, which is what these play.
-    private func openPlayer(_ arguments: String...) {
+    /// Home's first row is Continue Watching, which is a film. Next Up, below it, is an episode.
+    private func openPlayer(onNextUp: Bool = false, _ arguments: String...) {
         continueAfterFailure = false
         app.launchArguments = ["-FinesseFakeServer", "-FinesseSeededPlayback", "-FinesseSeededNoSegments"] + arguments
         app.launch()
         XCTAssertTrue(app.staticTexts["Continue Watching"].waitForExistence(timeout: 20))
         sleep(1)
         focusFirstHomeCard(in: app)
+        if onNextUp {
+            press(.down)
+            sleep(1)
+        }
         remote.press(.select)
         let play = app.buttons["detailPlay"]
         XCTAssertTrue(play.waitForExistence(timeout: 10))
@@ -288,7 +292,7 @@ final class PlayerOptionsUITests: XCTestCase {
     }
 
     func testEpisodesPreviousAndNext() throws {
-        openPlayer()
+        openPlayer(onNextUp: true)
         XCTAssertTrue(player.isShowing("hidden"))
         remote.press(.up)
         XCTAssertTrue(player.waitFor("focus main"))
