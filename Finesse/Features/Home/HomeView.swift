@@ -84,6 +84,8 @@ private struct HomeLanding: View {
     @State private var focusedCard: FocusedCard?
     /// The focused card lost focus to Detail or the player, which doesn't mean leaving the rows.
     @State private var lostFocusWhileCovered = false
+    /// More Info opened Detail, so focus coming back to it is a return and not a move from elsewhere.
+    @State private var isReturningToMoreInfo = false
 
     private var isOnRows: Bool { focusedCard != nil }
     /// Only while nothing is being browsed, and never behind the player. Detail ends this by
@@ -115,6 +117,9 @@ private struct HomeLanding: View {
                 model.cardFocused(focusedCard.item)
             }
         }
+        .onChange(of: heroFocus) { previous, current in
+            enterButtonsOnPlay(from: previous, to: current)
+        }
         .onChange(of: isCovered) { _, covered in
             if !covered { checkFocusAfterReturning() }
         }
@@ -133,10 +138,8 @@ private struct HomeLanding: View {
             ScrollView {
                 // The buttons stay outside the lazy stack, so Back can always move focus to them.
                 VStack(alignment: .leading, spacing: 56) {
-                    // Full width, so a move down from anywhere on the tab bar stops here first,
-                    // and on Play however far along the tab bar it came from.
+                    // Full width, so a move down from anywhere on the tab bar stops here first.
                     heroButtons
-                        .defaultFocus($heroFocus, preferredHeroFocus)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, Layout.buttonsTop - Layout.rowsTop)
                         .id(topID)
@@ -193,6 +196,7 @@ private struct HomeLanding: View {
             }
             Button {
                 if let item = model.featuredHero?.item {
+                    isReturningToMoreInfo = true
                     navigator.show(.detail(item))
                 }
             } label: {
@@ -260,6 +264,17 @@ private struct HomeLanding: View {
             focusedCard = nil
             model.cardFocusEnded(card.item)
             heroFocus = preferredHeroFocus
+        }
+    }
+
+    /// Focus goes to whichever button is nearest, and Home on the tab bar is over More Info. Coming
+    /// in from anywhere else should land on Play, the main thing this screen offers.
+    private func enterButtonsOnPlay(from previous: HeroFocus?, to current: HeroFocus?) {
+        if previous == nil, current == .moreInfo, !isReturningToMoreInfo {
+            heroFocus = preferredHeroFocus
+        }
+        if current != nil {
+            isReturningToMoreInfo = false
         }
     }
 

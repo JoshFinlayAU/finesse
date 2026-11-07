@@ -249,6 +249,14 @@ final class HomeRealLibraryUITests: XCTestCase {
         try launchToHome()
         sleep(4)
         focusFirstHomeCard(in: app)
+        // Recently Added Movies always has a full row, and the rows above it might not.
+        let movies = app.staticTexts["Recently Added Movies"]
+        for _ in 0..<3 where !movies.exists {
+            remote.press(.down)
+            sleep(2)
+        }
+        remote.press(.down)
+        sleep(2)
         let start = Date()
         var labels = Set<String>()
         for _ in 0..<20 {
@@ -266,7 +274,7 @@ final class HomeRealLibraryUITests: XCTestCase {
         }
         let across = Date().timeIntervalSince(down)
         print("HOME scrolling: 20 cards in \(along)s, 6 rows in \(across)s, \(labels.count) distinct cards")
-        XCTAssertGreaterThan(labels.count, 3, "Focus should have moved")
+        XCTAssertGreaterThan(labels.count, 15, "Focus should have moved along a full row and down the rows")
         XCTAssertEqual(app.state, .runningForeground)
     }
 }
