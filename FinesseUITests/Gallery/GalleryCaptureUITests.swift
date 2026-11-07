@@ -524,9 +524,9 @@ final class GalleryCaptureUITests: XCTestCase {
 
     /// The real shelf, drawn by the system from our extension. The Home Screen reports no focus to
     /// XCUITest, and the order of Finesse and the test runner after Settings depends on which was
-    /// installed first. Only Finesse has a shelf, so this tries each icon after Settings and stops
-    /// at the one that draws above the dock. Choosing the shelf item afterwards proves it was
-    /// Finesse's, because only that opens Finesse's Detail.
+    /// installed first. Only Finesse has a shelf, so this looks at both icons after Settings and
+    /// goes back to the one with posters above the dock. Choosing the shelf item afterwards proves
+    /// it was Finesse's, because only that opens Finesse's Detail.
     func testTopShelf() async throws {
         let api = try await prepare()
         let movies = try await api.movies(startIndex: 60, count: 2)
@@ -540,17 +540,23 @@ final class GalleryCaptureUITests: XCTestCase {
         remote.press(.home)
         sleep(4)
         press(.left, times: 4)
-        sleep(2)
-        // Settings draws nothing above the dock, so it's the picture of no shelf.
-        let empty = ScreenSample(XCUIScreen.main.screenshot().image)
-        var found = false
-        for _ in 0..<3 where !found {
+        // Finesse and the test runner are the two icons after Settings. A shelf of posters has far
+        // more detail above the dock than the plain background behind an app without one.
+        var detail: [Double] = []
+        for _ in 0..<2 {
             press(.right)
             // Long enough for the system to run the extension and fetch the images.
             sleep(12)
-            found = ScreenSample(XCUIScreen.main.screenshot().image).differsAboveTheDock(from: empty)
+            detail.append(ScreenSample(XCUIScreen.main.screenshot().image).detailAboveTheDock)
         }
-        XCTAssertTrue(found, "No icon after Settings showed a shelf")
+        if detail[0] > detail[1] {
+            press(.left)
+            sleep(12)
+        }
+        XCTAssertGreaterThan(
+            detail.max() ?? 0, (detail.min() ?? 0) * 2 + 1,
+            "Neither icon after Settings showed a shelf, detail \(detail)"
+        )
         capture("g55-top-shelf")
         press(.up)
         sleep(3)
@@ -621,19 +627,11 @@ private struct ScreenSample {
         }
     }
 
-    /// The dock is the bottom quarter of the screen, and the shelf fills the space above it.
-    func differsAboveTheDock(from other: ScreenSample) -> Bool {
+    /// How much the picture varies above the dock, which is the bottom quarter of the screen.
+    var detailAboveTheDock: Double {
         // Core Graphics puts row 0 at the top of the buffer.
-        let rows = 0..<(Self.height * 3 / 4)
-        var total = 0
-        for row in rows {
-            for column in 0..<Self.width {
-                let index = row * Self.width + column
-                total += abs(Int(gray[index]) - Int(other.gray[index]))
-            }
-        }
-        let average = Double(total) / Double(rows.count * Self.width)
-        print("GALLERY shelf difference above the dock: \(average)")
-        return average > 12
+        let values = gray.prefix(Self.width * Self.height * 3 / 4).map(Double.init)
+        let mean = values.reduce(0, +) / Double(values.count)
+        return (values.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(values.count)).squareRoot()
     }
 }
