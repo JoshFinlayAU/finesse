@@ -522,8 +522,10 @@ final class GalleryCaptureUITests: XCTestCase {
         capture("g33-skip-credits")
     }
 
-    /// The real shelf, drawn by the system from our extension. Finesse is the newest app on the
-    /// simulator, so it's the last icon in the top row.
+    /// The real shelf, drawn by the system from our extension. The Home Screen reports no focus to
+    /// XCUITest, so this finds Finesse by position, as `TopShelfUITests` does: Settings is first in
+    /// the top row and Finesse second. Choosing the focused shelf item afterwards proves the capture
+    /// was of Finesse's shelf, because only that opens Finesse's Detail.
     func testTopShelf() async throws {
         let api = try await prepare()
         let movies = try await api.movies(startIndex: 60, count: 2)
@@ -536,14 +538,24 @@ final class GalleryCaptureUITests: XCTestCase {
         sleep(4)
         remote.press(.home)
         sleep(4)
-        press(.left, times: 6)
-        press(.right, times: 6)
+        press(.left, times: 4)
+        press(.right)
         // Long enough for the system to run the extension and fetch the images.
         sleep(12)
         capture("g55-top-shelf")
         press(.up)
         sleep(3)
         capture("g56-top-shelf-item-focused")
+
+        remote.press(.select)
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: 20),
+            "The focused icon wasn't Finesse, so g55 and g56 show the wrong app"
+        )
+        XCTAssertTrue(
+            app.buttons["detailWatched"].waitForExistence(timeout: 30),
+            "The shelf item should open its Detail, or g56 didn't capture Finesse's shelf"
+        )
     }
 
     /// A real episode: seeded at 88 percent, the furthest the server keeps, then scrubbed to the end.
