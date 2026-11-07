@@ -251,12 +251,12 @@ final class HomeRealLibraryUITests: XCTestCase {
         focusFirstHomeCard(in: app)
         // Recently Added Movies always has a full row, and the rows above it might not.
         let movies = app.staticTexts["Recently Added Movies"]
-        for _ in 0..<3 where !movies.exists {
+        // A focused row's title settles under the details, so its position shows when it's reached.
+        for _ in 0..<5 where !(movies.exists && movies.frame.minY < 600) {
             remote.press(.down)
             sleep(2)
         }
-        remote.press(.down)
-        sleep(2)
+        XCTAssertTrue(movies.exists && movies.frame.minY < 600, "Should have reached Recently Added Movies")
         let start = Date()
         var labels = Set<String>()
         for _ in 0..<20 {
