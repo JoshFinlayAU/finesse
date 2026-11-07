@@ -14,6 +14,10 @@
       {"n": 54, "file": "g54-home-poster-row", "title": "A poster row with the billboard above", "src": "seeded", "note": "Same seeded progress as 6."},
       {"n": 8, "file": "g08-card-menu", "title": "Card long-press menu", "src": "seeded", "note": "Same seeded progress as 6."}
     ]},
+    {"name": "Apple TV Home Screen", "screens": [
+      {"n": 55, "file": "g55-top-shelf", "title": "Top Shelf with the Finesse icon focused", "src": "seeded", "note": "On the simulator's Home Screen. The icon's parallax only shows in motion, so judge that on the TV."},
+      {"n": 56, "file": "g56-top-shelf-item-focused", "title": "A Top Shelf item focused", "src": "seeded", "note": "Same seeded progress as 55."}
+    ]},
     {"name": "Libraries", "screens": [
       {"n": 9, "file": "g09-movies-grid", "title": "Movies grid", "src": "seeded", "note": "One title was marked watched for this shot."},
       {"n": 10, "file": "g10-watched-badge", "title": "Watched badge, focused", "src": "seeded", "note": "4 First Dates was marked watched for this shot."},

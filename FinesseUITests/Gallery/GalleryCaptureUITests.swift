@@ -522,6 +522,30 @@ final class GalleryCaptureUITests: XCTestCase {
         capture("g33-skip-credits")
     }
 
+    /// The real shelf, drawn by the system from our extension. Finesse is the newest app on the
+    /// simulator, so it's the last icon in the top row.
+    func testTopShelf() async throws {
+        let api = try await prepare()
+        let movies = try await api.movies(startIndex: 60, count: 2)
+        clearAfterwards(api, movies)
+        for movie in movies {
+            try await api.setResume(movie)
+        }
+
+        launchSignedIn()
+        sleep(4)
+        remote.press(.home)
+        sleep(4)
+        press(.left, times: 6)
+        press(.right, times: 6)
+        // Long enough for the system to run the extension and fetch the images.
+        sleep(12)
+        capture("g55-top-shelf")
+        press(.up)
+        sleep(3)
+        capture("g56-top-shelf-item-focused")
+    }
+
     /// A real episode: seeded at 88 percent, the furthest the server keeps, then scrubbed to the end.
     func testUpNext() async throws {
         let api = try await prepare()
