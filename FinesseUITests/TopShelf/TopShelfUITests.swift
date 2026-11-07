@@ -53,19 +53,34 @@ final class TopShelfUITests: XCTestCase {
         XCTAssertTrue(tabBar.waitForExistence(timeout: 30))
     }
 
-    /// The Home Screen reports no focus labels to XCUITest. Its top row on our simulator is Settings,
-    /// then Finesse, so this goes by position and the screenshots show that it landed there.
+    /// The Home Screen reports no focus labels to XCUITest, and Finesse and the test runner swap places
+    /// after Settings depending on which was installed first. Only Finesse has a shelf, so this looks at
+    /// both and goes back to the one with more going on above the dock. Choosing a shelf item then
+    /// proves it was Finesse's, because only that opens Finesse.
     private func focusFinesseIcon() {
         press(.left, times: 4)
-        press(.right)
+        var detail: [Double] = []
+        for _ in 0..<2 {
+            press(.right)
+            // Long enough for the system to run the extension and fetch the images.
+            sleep(12)
+            detail.append(ScreenSample(XCUIScreen.main.screenshot().image).detailAboveTheDock)
+        }
+        if detail[0] > detail[1] {
+            press(.left)
+            sleep(12)
+        }
+        print("TOPSHELF detail above the dock: \(detail)")
+        XCTAssertGreaterThan(
+            detail.max() ?? 0, (detail.min() ?? 0) * 2 + 1,
+            "Neither icon after Settings showed a shelf, detail \(detail)"
+        )
     }
 
     private func showShelf(_ name: String) {
         remote.press(.home)
         sleep(4)
         focusFinesseIcon()
-        // Long enough for the system to run the extension and fetch the images.
-        sleep(12)
         capture(name)
     }
 
