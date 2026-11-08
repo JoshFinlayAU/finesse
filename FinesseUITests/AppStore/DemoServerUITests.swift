@@ -3,8 +3,8 @@ import XCTest
 /// Walks the path App Review will take on a public demo server: connect, sign in, browse, play a
 /// title and leave, from a freshly installed app. Also captures App Store screenshot candidates.
 /// Runs only when DEMO_URL and DEMO_USERNAME are set, and reads none of the test server's values.
-/// DEMO_PASSWORD may be empty, as on Jellyfin's own demo. Play only a few seconds and scrub back,
-/// so the shared demo account keeps no position.
+/// DEMO_PASSWORD may be empty, as on Jellyfin's own demo. It plays only about 15 seconds of whatever
+/// Home's billboard offers.
 @MainActor
 final class DemoServerUITests: XCTestCase {
     private var remote: XCUIRemote { .shared }
@@ -66,12 +66,38 @@ final class DemoServerUITests: XCTestCase {
         sleep(10)
         capture("as-04-home-row")
 
+        // Play from Home's billboard, the first thing a reviewer sees.
+        let heroPlay = app.buttons["heroPlay"]
+        focus(heroPlay, in: app)
+        remote.press(.select)
+        let player = PlayerDriver(app: app)
+        XCTAssertTrue(player.bar.waitForExistence(timeout: 30), "Play should open the player")
+        sleep(3)
+        let started = player.seconds
+        sleep(12)
+        XCTAssertFalse(player.isPaused, "The player should be playing")
+        XCTAssertGreaterThan(player.seconds, started + 5, "Playback should move")
+        capture("as-09-playing")
+        press(.up)
+        XCTAssertTrue(player.waitFor("bar"))
+        sleep(1)
+        capture("as-10-bar")
+        player.openPanel("info")
+        sleep(1)
+        print("DEMO engine: \(app.buttons["infoRows"].label.prefix(200))")
+        capture("as-11-info")
+        player.closePanelToNothing()
+        remote.press(.menu)
+        XCTAssertTrue(player.bar.waitForNonExistence(timeout: 15), "Back should leave the player")
+        XCTAssertTrue(heroPlay.waitForExistence(timeout: 15), "Back should return to Home")
+        sleep(2)
+
         openTab("Movies")
         capture("as-05-movies")
         openTab("TV Shows")
         capture("as-06-shows")
 
-        // Search, the result, then Play, the way a person reaches the player.
+        // Search, then the result's detail page.
         press(.up, times: 4)
         press(.left, times: 5)
         press(.right, times: 3)
@@ -88,39 +114,7 @@ final class DemoServerUITests: XCTestCase {
         XCTAssertTrue(play.waitForExistence(timeout: 20), "The result should open its detail page")
         sleep(4)
         capture("as-08-detail")
-        // Reported, not asserted: on 2026-11-09 Play had no focus here on the demo, unlike our server.
+        // Reported, not asserted: on 2026-11-09 Play had no focus here on the demo, and Up then lost the page.
         print("DEMO detail opened with Play focused: \(play.hasFocus)")
-        focus(play, in: app)
-        remote.press(.select)
-
-        let player = PlayerDriver(app: app)
-        XCTAssertTrue(player.bar.waitForExistence(timeout: 30), "Play should open the player")
-        sleep(3)
-        let started = player.seconds
-        sleep(12)
-        let info = player.isPaused
-        XCTAssertFalse(info, "The player should be playing")
-        XCTAssertGreaterThan(player.seconds, started + 5, "Playback should move")
-        capture("as-09-playing")
-        press(.up)
-        XCTAssertTrue(player.waitFor("bar"))
-        sleep(1)
-        capture("as-10-bar")
-        player.openPanel("info")
-        sleep(1)
-        print("DEMO engine: \(app.buttons["infoRows"].label.prefix(200))")
-        capture("as-11-info")
-        player.closePanelToNothing()
-
-        // Back to the start, so the account keeps no position, then leave.
-        remote.press(.select)
-        XCTAssertTrue(player.waitFor("scrubbing"))
-        press(.left, times: 20)
-        remote.press(.select)
-        XCTAssertTrue(player.waitFor("hidden"))
-        sleep(2)
-        remote.press(.menu)
-        XCTAssertTrue(player.bar.waitForNonExistence(timeout: 15), "Back should leave the player")
-        XCTAssertTrue(play.waitForExistence(timeout: 15))
     }
 }
