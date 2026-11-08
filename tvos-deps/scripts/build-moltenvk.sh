@@ -13,7 +13,6 @@ cat > "$WORK/build/moltenvk.xcconfig" <<X
 TVOS_DEPLOYMENT_TARGET = $TVOS_DEPLOYMENT_TARGET
 ARCHS = arm64
 GCC_GENERATE_DEBUGGING_SYMBOLS = YES
-DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
 X
 export XCODE_XCCONFIG_FILE=$WORK/build/moltenvk.xcconfig
 
@@ -28,15 +27,9 @@ for pair in "tvos:tvos-arm64" "tvossim:tvos-arm64-simulator"; do
   [ -f "$framework/MoltenVK" ] || { echo "No MoltenVK at $framework" >&2; find "$TREE/Package/Release/MoltenVK" -maxdepth 4 >&2; exit 1; }
   mkdir -p "$prefix/lib/pkgconfig" "$prefix/include"
   cp "$framework/MoltenVK" "$prefix/lib/libMoltenVK.dylib"
-  # Xcode made the dSYM beside the framework it built. Package/ only has a copy, so find the one whose UUID matches.
-  uuid=$(dwarfdump --uuid "$framework/MoltenVK" | awk '{print $2}')
-  dsym=""
-  for candidate in $(find "$TREE" -name MoltenVK.framework.dSYM -type d); do
-    if [ "$(dwarfdump --uuid "$candidate" | awk '{print $2}')" = "$uuid" ]; then dsym=$candidate; break; fi
-  done
-  [ -n "$dsym" ] || { echo "No MoltenVK dSYM matches $uuid for $slice" >&2; exit 1; }
+  # The objects it links from are in Xcode's DerivedData, so make the dSYM now, while they're there.
   rm -rf "$prefix/lib/libMoltenVK.dylib.dSYM"
-  cp -R "$dsym" "$prefix/lib/libMoltenVK.dylib.dSYM"
+  dsymutil "$prefix/lib/libMoltenVK.dylib" -o "$prefix/lib/libMoltenVK.dylib.dSYM"
   install_name_tool -id @rpath/libMoltenVK.dylib "$prefix/lib/libMoltenVK.dylib"
   codesign -f -s - "$prefix/lib/libMoltenVK.dylib"
   rm -rf "$prefix/include/vulkan" "$prefix/include/vk_video"
