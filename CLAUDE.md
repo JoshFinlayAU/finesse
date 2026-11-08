@@ -23,7 +23,7 @@ These are the owner's choices. Don't change them without asking.
 | Distribution | TestFlight first, kept App Store-ready |
 | Branding | Concept 04 Palace, nested picture-palace arches with the FINESSE wordmark. It has no letter, so pair it with the wordmark wherever the mark alone wouldn't say Finesse. Source and the tvOS asset requirements are in `branding/` |
 | Licence | Private for now; open or closed source to be decided before release |
-| Bundle ID | `au.com.athenanetworks.finesse`. Registered in the developer portal on 2026-11-07. An App Store Connect record needs a separate go-ahead from the owner |
+| Bundle ID | `au.com.athenanetworks.finesse`. Registered in the developer portal on 2026-11-07. The owner approved an App Store Connect record on 2026-11-09: name Finesse, SKU `finesse-tvos`, tvOS, English (Australia). The API can't create app records, so the owner creates it once in the web UI. It didn't exist as of 2026-11-09 |
 | Apple team | `4S7BG5A4XV` |
 | Plain HTTP | Allowed to any server (`NSAllowsArbitraryLoads`), because servers are user-configured and self-hosted |
 
