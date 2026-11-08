@@ -27,7 +27,8 @@ echo "version $VERSION build $BUILD, output in $OUT"
 
 xcodegen generate >/dev/null || exit 3
 
-others=$(pgrep -fl 'codesign|xcodebuild|productbuild|notarytool|altool')
+# altool starts a 'log stream' that names it and can outlive it, so that doesn't count.
+others=$(pgrep -fl 'codesign|xcodebuild|productbuild|notarytool|altool' | grep -v '/usr/bin/log stream')
 [ -z "$others" ] || { echo "Something else is building or signing, search list left alone:"; echo "$others" | cut -c1-120; exit 5; }
 
 ORIGINAL=()
@@ -136,8 +137,11 @@ echo "checks: $problems problem(s)"
 UPLOAD="xcrun altool --upload-package \"\$HOME/Developer/Finesse/$IPA\" -t tvos --apiKey \"\$ASC_KEY_ID\" --apiIssuer \"\$ASC_ISSUER_ID\""
 if [ "${1:-}" = validate ]; then
   [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ] || { echo "validate needs ASC_KEY_ID and ASC_ISSUER_ID"; exit 13; }
+  before=$(pgrep -f 'log stream --predicate process contains "altool"' | sort)
   xcrun altool --validate-app "$IPA" -t tvos --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" --output-format normal > "$OUT/validate.log" 2>&1
   status=$?
+  # Stop only the log stream this validation started.
+  for pid in $(comm -13 <(echo "$before") <(pgrep -f 'log stream --predicate process contains "altool"' | sort)); do kill "$pid"; done
   grep -vE '^\s*$|Running altool at path' "$OUT/validate.log" | cut -c1-300 | head -40
   echo "validate exit=$status"
 fi
