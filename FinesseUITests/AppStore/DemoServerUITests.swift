@@ -3,8 +3,9 @@ import XCTest
 /// Walks the path App Review will take on a public demo server: connect, sign in, browse, play a
 /// title and leave, from a freshly installed app. Also captures App Store screenshot candidates.
 /// Runs only when DEMO_URL and DEMO_USERNAME are set, and reads none of the test server's values.
-/// DEMO_PASSWORD may be empty, as on Jellyfin's own demo. It plays only about 15 seconds of whatever
-/// Home's billboard offers.
+/// DEMO_PASSWORD may be empty, as on Jellyfin's own demo. It plays about 15 seconds of DEMO_MOVIE,
+/// reached through Search as the review notes describe. DEMO_AVOID, if set, is a title kept out of the
+/// screenshots: while Home's billboard shows it, the app is relaunched for another pick.
 @MainActor
 final class DemoServerUITests: XCTestCase {
     private var remote: XCUIRemote { .shared }
@@ -61,36 +62,23 @@ final class DemoServerUITests: XCTestCase {
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 30), "Signing in should reach Home")
         sleep(8)
+        // The billboard picks a title at random, so relaunch until it isn't one to avoid.
+        if let avoid = environment["DEMO_AVOID"], !avoid.isEmpty {
+            for attempt in 1...8 {
+                let hero = app.descendants(matching: .any)["heroTitle"]
+                guard hero.waitForExistence(timeout: 15), hero.label.contains(avoid) else { break }
+                print("DEMO billboard showed \(avoid), relaunching (\(attempt))")
+                app.terminate()
+                app.launch()
+                XCTAssertTrue(tabBar.waitForExistence(timeout: 30))
+                sleep(8)
+            }
+        }
+        print("DEMO billboard: \(app.descendants(matching: .any)["heroTitle"].label)")
         capture("as-03-home")
         press(.down)
         sleep(10)
         capture("as-04-home-row")
-
-        // Play from Home's billboard, the first thing a reviewer sees.
-        let heroPlay = app.buttons["heroPlay"]
-        focus(heroPlay, in: app)
-        remote.press(.select)
-        let player = PlayerDriver(app: app)
-        XCTAssertTrue(player.bar.waitForExistence(timeout: 30), "Play should open the player")
-        sleep(3)
-        let started = player.seconds
-        sleep(12)
-        XCTAssertFalse(player.isPaused, "The player should be playing")
-        XCTAssertGreaterThan(player.seconds, started + 5, "Playback should move")
-        capture("as-09-playing")
-        press(.up)
-        XCTAssertTrue(player.waitFor("bar"))
-        sleep(1)
-        capture("as-10-bar")
-        player.openPanel("info")
-        sleep(1)
-        print("DEMO engine: \(app.buttons["infoRows"].label.prefix(200))")
-        capture("as-11-info")
-        player.closePanelToNothing()
-        remote.press(.menu)
-        XCTAssertTrue(player.bar.waitForNonExistence(timeout: 15), "Back should leave the player")
-        XCTAssertTrue(heroPlay.waitForExistence(timeout: 15), "Back should return to Home")
-        sleep(2)
 
         openTab("Movies")
         capture("as-05-movies")
@@ -114,7 +102,29 @@ final class DemoServerUITests: XCTestCase {
         XCTAssertTrue(play.waitForExistence(timeout: 20), "The result should open its detail page")
         sleep(4)
         capture("as-08-detail")
-        // Reported, not asserted: on 2026-11-09 Play had no focus here on the demo, and Up then lost the page.
-        print("DEMO detail opened with Play focused: \(play.hasFocus)")
+        // The detail page must hand focus to Play once it loads, even on a slow server (#600).
+        XCTAssertTrue(play.hasFocus, "Play should have focus when the detail page loads")
+        remote.press(.select)
+
+        let player = PlayerDriver(app: app)
+        XCTAssertTrue(player.bar.waitForExistence(timeout: 30), "Play should open the player")
+        sleep(3)
+        let started = player.seconds
+        sleep(12)
+        XCTAssertFalse(player.isPaused, "The player should be playing")
+        XCTAssertGreaterThan(player.seconds, started + 5, "Playback should move")
+        capture("as-09-playing")
+        press(.up)
+        XCTAssertTrue(player.waitFor("bar"))
+        sleep(1)
+        capture("as-10-bar")
+        player.openPanel("info")
+        sleep(1)
+        print("DEMO engine: \(app.buttons["infoRows"].label.prefix(200))")
+        capture("as-11-info")
+        player.closePanelToNothing()
+        remote.press(.menu)
+        XCTAssertTrue(player.bar.waitForNonExistence(timeout: 15), "Back should leave the player")
+        XCTAssertTrue(play.waitForExistence(timeout: 15), "Back should return to the detail page")
     }
 }
