@@ -31,7 +31,7 @@ Not proposed: `as-09-playing`, which shows Dracula with nothing on screen; `as-0
 
 - **Text overlays:** Apple allows captions over screenshots. None are made here.
 - **Fake-server mode:** it gives seeded data with no artwork, which looks worse than the demo, so it isn't used. Its one use would be showing Skip Intro and Up Next, which the demo can't trigger. Gallery numbers 32 to 34 are fake and seeded versions of those.
-- **Credits:** Caminandes is CC-BY. A credit line in the description, such as "Caminandes © Blender Foundation, CC-BY", would cover the attribution. This is the owner's call.
+- **Credits:** Caminandes is CC-BY. A credit line in the description, such as "Caminandes by the Blender Foundation, CC-BY", would cover the attribution. This is the owner's call.
 
 ## Recapture
 

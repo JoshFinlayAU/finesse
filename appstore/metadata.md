@@ -1,107 +1,129 @@
-# App Store metadata draft
+# App Store metadata
 
-For the tvOS listing in English (Australia). The character limits are App Store Connect's. Nothing here has been entered into App Store Connect.
+For the tvOS listing in English (Australia). Status as of 2026-11-09:
 
-## Name
+- **FINAL:** approved by the owner, or set by the manager's defaults in #623.
+- **OPEN:** still needs the owner.
 
-Finesse (7 of 30). This matches the existing record.
+Each final text sits in a block marked `asc:<field>`, which `asc_apply.py` reads, so there is one copy of every string. The limits are App Store Connect's.
 
-## Subtitle
+## Name: FINAL
 
-Up to 30 characters. The first option is recommended:
+Finesse (7 of 30). This matches the existing record, and the script doesn't change it.
 
-1. "For your Jellyfin server" (24)
-2. "A Jellyfin client for Apple TV" (30)
-3. "Your own media, beautifully" (27)
+## Subtitle: FINAL
 
-Apple allows another product's name in the subtitle when it describes compatibility. "Jellyfin" is the most useful search term we have. Jellyfin is a registered project name, so we use it only to say what the app works with. The app doesn't use Jellyfin's logo.
+Option 1 of the three drafted, 24 of 30 characters.
 
-## Promotional text
+<!-- asc:subtitle -->
+```
+For your Jellyfin server
+```
 
-Up to 170 characters. It can be changed without a new version.
+"Jellyfin" only says what the app works with. The app doesn't use Jellyfin's logo, and the description says it isn't affiliated.
 
-> Watch the films and shows on your own Jellyfin server with an Apple TV app built for the big screen: fast browsing, smooth playback and support for almost any file.
+## Promotional text: FINAL
 
-(163)
+164 of 170 characters. It can be changed later without a new version.
 
-## Description
+<!-- asc:promotionalText -->
+```
+Watch the films and shows on your own Jellyfin server with an Apple TV app built for the big screen: fast browsing, smooth playback and support for almost any file.
+```
 
-Up to 4,000 characters.
+## Description: FINAL
 
-> Finesse is an Apple TV app for Jellyfin, the free media server you run yourself. Sign in to your server and your films and TV shows are ready to watch, with an interface designed for the Siri Remote and the living room.
->
-> YOUR LIBRARY, ORGANISED
-> • Home shows Continue Watching, Next Up and Recently Added, so what you were watching is always one click away.
-> • Browse Movies and TV Shows with sorting and filters by genre, year, rating, tags and more.
-> • Detail pages for films, shows, seasons and episodes, with cast and related titles.
-> • Search across your whole library.
-> • Top Shelf puts what you're watching on the Apple TV Home Screen.
->
-> PLAYBACK THAT JUST WORKS
-> • Plays most files directly, including MKV, with AV1, HEVC and many audio formats, using Apple's player where it can and a built-in engine where it can't.
-> • Choose audio and subtitle tracks, including styled ASS and image-based PGS subtitles.
-> • Skip Intro and Skip Credits where your server has marked them.
-> • The next episode plays automatically when the current one ends.
-> • Resume where you left off, on any device that uses your server.
->
-> MADE FOR THE WHOLE HOUSEHOLD
-> • Switch between users on your server in a couple of clicks.
-> • Sign in with a password or with Quick Connect from another device.
->
-> PRIVATE BY DESIGN
-> Finesse talks only to the server you enter. It has no accounts, no ads, no analytics and no tracking, and it collects no data.
->
-> OPEN SOURCE
-> Finesse is open source under the GNU LGPL version 3. The code is on GitHub.
->
-> Finesse requires a Jellyfin server, version 10.10 or later, that you run or have access to. It does not include any films or shows. Jellyfin is a trademark of its respective owners, and Finesse is not affiliated with or endorsed by the Jellyfin project.
+1,752 of 4,000 characters. App Store descriptions are plain text, so lists use hyphens.
 
-**Check before use:**
+<!-- asc:description -->
+```
+Finesse is an Apple TV app for Jellyfin, the free media server you run yourself. Sign in to your server and your films and TV shows are ready to watch, with an interface designed for the Siri Remote and the living room.
 
-- **Server version:** "10.10 or later" is a placeholder. We've only tested against 12.4.0, on our server and the public demo, so the owner should pick a version we can stand behind. "12.4 or later" is the safe choice.
-- **Formats:** check each format claim against the routing in `PlaybackRouter`. AV1 is decoded by dav1d, and HEVC needs hardware or mpv.
+YOUR LIBRARY, ORGANISED
+- Home shows Continue Watching, Next Up and Recently Added, so what you were watching is always one click away.
+- Browse Movies and TV Shows with sorting and filters by genre, year, rating, tags and more.
+- Detail pages for films, shows, seasons and episodes, with cast and related titles.
+- Search across your whole library.
+- Top Shelf puts what you're watching on the Apple TV Home Screen.
 
-## Keywords
+PLAYBACK THAT JUST WORKS
+- Plays most files directly, including MKV, with AV1, HEVC and many audio formats, using Apple's player where it can and a built-in engine where it can't.
+- Choose audio and subtitle tracks, including styled ASS and image-based PGS subtitles.
+- Skip Intro and Skip Credits where your server has marked them.
+- The next episode plays automatically when the current one ends.
+- Resume where you left off, on any device that uses your server.
 
-Up to 100 characters, separated by commas without spaces. Apple already indexes the name and subtitle, so don't repeat them:
+MADE FOR THE WHOLE HOUSEHOLD
+- Switch between users on your server in a couple of clicks.
+- Sign in with a password or with Quick Connect from another device.
 
-`jellyfin,media server,player,mkv,movies,tv shows,home theater,streaming,subtitles,plex,emby,library`
+PRIVATE BY DESIGN
+Finesse talks only to the server you enter. It has no accounts, no ads, no analytics and no tracking, and it collects no data.
 
-That is 96 characters.
+OPEN SOURCE
+Finesse is open source under the GNU LGPL version 3. The code is on GitHub.
 
-Using a competitor's name, such as "plex" or "emby", in keywords risks rejection under guideline 2.3.7. Without them the list is:
+Finesse requires a Jellyfin server, version 12.4 or later, that you run or have access to. It does not include any films or shows. Jellyfin is a trademark of its respective owners, and Finesse is not affiliated with or endorsed by the Jellyfin project.
+```
 
-`jellyfin,media server,video player,mkv,movies,tv shows,home theater,streaming,subtitles,hevc,library`
+**Server version:** 12.4.0 is the lowest version tested. Both our test server and Jellyfin's stable demo ran 12.4.0 on 2026-11-09, and the demo's unstable instance ran 13.0.0, which wasn't tested with the app. Older servers may work, but nothing has been checked against them.
 
-That is 99 characters, and it's the recommended version.
+**Formats:** the claims match `PlaybackCapabilities`. AVPlayer takes H.264 and HEVC. mpv adds AV1 through dav1d, VP8 and VP9, MPEG-2, VC-1 and others. Real-device checks for mpv, such as hardware decode, are still on the list in `memory/player-signoff.md`, so play one file of each format on the Apple TV before release.
 
-## Category
+## Keywords: FINAL
 
-- **Primary:** Entertainment.
-- **Secondary:** Photo & Video is optional and fits. tvOS supports a secondary category.
+The recommended list without competitor names, exactly 100 of 100 characters.
 
-## URLs
+<!-- asc:keywords -->
+```
+jellyfin,media server,video player,mkv,movies,tv shows,home theater,streaming,subtitles,hevc,library
+```
 
-These are proposals, and the owner decides.
+## Category: FINAL
 
-| Field | Required | Proposal |
-|---|---|---|
-| Support URL | Yes | `https://github.com/JoshFinlayAU/finesse/issues`. Apple wants a way to contact the developer, so the page should also give an email address. A `SUPPORT.md` in the repo, or a GitHub Pages page, can carry both. |
-| Marketing URL | No | `https://joshfinlayau.github.io/finesse/`, a one-page GitHub Pages site, or leave it blank for 1.0. |
-| Privacy Policy URL | Yes, for every app | `https://github.com/JoshFinlayAU/finesse/blob/main/PRIVACY.md`, or the same text on the Pages site. See `privacy-policy.md`. |
+- **Primary:** Entertainment (`ENTERTAINMENT`).
+- **Secondary:** none. Photo & Video would fit, but nobody chose it, so it's left empty.
 
-## Copyright
+## URLs: FINAL, except the email
 
-The proposal is "© 2026 Josh Finlay". If the app is published under Athena Networks as seller, use that name instead. It should match the seller name on the developer account, which isn't recorded here.
+| Field | Value |
+|---|---|
+| Support URL | `https://github.com/JoshFinlayAU/finesse/issues` |
+| Marketing URL | None for 1.0 |
+| Privacy Policy URL | `https://github.com/JoshFinlayAU/finesse/blob/main/PRIVACY.md` |
 
-## Version and what's new
+<!-- asc:supportUrl -->
+```
+https://github.com/JoshFinlayAU/finesse/issues
+```
 
-- **Version:** 1.0, which matches App Store Connect. The app and the Top Shelf extension take it from build settings since `b8f56d3` (agent-1, #562).
-- **What's new:** not shown for a first release.
+<!-- asc:privacyPolicyUrl -->
+```
+https://github.com/JoshFinlayAU/finesse/blob/main/PRIVACY.md
+```
 
-## Price and availability
+**Before use:**
 
-These are owner decisions:
+- **Push to GitHub first:** both URLs need the repo on GitHub to be current. The issues page needs Issues enabled. `PRIVACY.md` must be pushed to `main`, which needs the owner's go-ahead.
+- **Email:** OPEN. The owner gave no support email. GitHub Issues is the contact for now, but the licence agreement needs an email, a phone number and an address under Apple's rules. See `eula.md`.
 
-- **Price:** free is recommended. It's open source, and in-app purchases aren't in scope.
-- **Regions:** France affects export compliance. See `export-compliance.md`.
+## Copyright: FINAL
+
+The owner chose "2026 Athena Networks" with the copyright sign. App Store Connect's field takes the year and holder, as in Apple's example "2008 Acme Inc.", and the store adds the copyright sign itself. So the field gets:
+
+<!-- asc:copyright -->
+```
+2026 Athena Networks
+```
+
+Check the product page preview after saving. If the copyright sign is missing, add it to the field.
+
+## Version: FINAL
+
+1.0, which matches App Store Connect. The app and the Top Shelf extension take it from build settings since `b8f56d3`. "What's New" isn't shown for a first release.
+
+## Price and availability: FINAL
+
+- **Price:** free.
+- **Availability:** every territory except France, so no French encryption declaration is needed. See `export-compliance.md`.
+- **New territories:** off, so France or any new territory is never added without someone deciding.

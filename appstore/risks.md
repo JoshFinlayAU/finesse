@@ -26,7 +26,7 @@ Reviewers reject apps that seem to give unauthorised access to third-party strea
 - **Demo content:** what review will see is mostly public domain in the US, such as "Night of the Living Dead" (1968). The Caminandes shorts are the Blender Foundation's, under Creative Commons Attribution.
 - **Dracula (1931):** an exception. 1931 works only enter the US public domain on 1 January 2027, so the demo's copy is probably still under copyright today. It's the Jellyfin project's choice, not ours, but a reviewer could land on it, since Home's billboard picked it in our run. Keep it out of screenshots. Submitting after 1 January 2027 makes this moot.
 - **Screenshots:** use only that content, or the fake-server mode. See risk 6.
-- **Precedent:** Infuse and Plex ship on tvOS as players of a user's own server. Before quoting it to Apple, check whether Swiftfin, Jellyfin's own Apple client, has a current tvOS App Store listing. It wasn't verified here.
+- **Precedent:** checked on 2026-11-09. Swiftfin, Jellyfin's own client, is on the US App Store, and so are Streamyfin, JellyTV, Tomo TV, Infuse, VLC and Plex. All are rated 4+. If 5.2.3 comes up, a reply to App Review can name them.
 
 ## 3. LGPL v3 and the App Store terms
 
@@ -45,7 +45,10 @@ Reviewers reject apps that seem to give unauthorised access to third-party strea
   - **Source offer:** the in-app Licences screen gives the source offer, as of #555 (agent-1).
   - **OpenSSL:** it's Apache 2.0 and has no such conditions.
 - **Remaining gaps:**
-  1. **The licence agreement:** Apple's standard licence still applies to the App Store copy. One mitigation is a custom licence agreement in App Store Connect. It would say that the open-source components, and Finesse itself, are licensed under their own licences, and that nothing in the agreement limits those rights. Apple allows a custom licence, so this is an owner decision.
+  1. **The licence agreement:** the owner chose a custom one on 2026-11-09, `eula.md`.
+     - **What it says:** the App Store copy is licensed on Apple's terms, while the source and components keep their own licences, which nothing in the agreement limits.
+     - **The tension:** Apple's minimum terms say an agreement may not give usage rules less restrictive than the App Store's. The text handles that by separating the two, but Apple could still question it.
+     - **Before release:** a lawyer should read it. It also needs a postal address, phone and email under Apple's term 8, and the owner hasn't given them yet.
   2. **Copyright holders:** the owner is the sole copyright holder of Finesse's own code, so its LGPL licence can't conflict with itself. Outside contributors would change that, so a contributor note may be wanted before accepting pull requests.
   3. **Release tags:** source for each shipped build should be tagged in the repo, so "the source for this version" is exact. Agent-3 could tag the commit each archive was built from.
 
@@ -54,7 +57,7 @@ Reviewers reject apps that seem to give unauthorised access to third-party strea
 **Likelihood: low to medium.**
 
 - **Plain HTTP:** `NSAllowsArbitraryLoads` is set, by the owner's decision. Review may ask for a justification, and the wording is in `memory/privacy-and-test-secrets.md`, also used in `review-notes.md`.
-- **Certificates:** mpv doesn't verify certificates for HTTPS streams. That's a known issue in `tvos-deps/README.md`, and the owner chose to revisit it before release. Review is unlikely to test it, but it's a security weakness in a shipped build: someone on the network could impersonate an https server for mpv-played streams, though not for sign-in or the API, which go through `URLSession` with full checks. Decide whether 1.0 ships with it.
+- **Certificates:** mpv doesn't verify certificates for HTTPS streams. That's a known issue in `tvos-deps/README.md`, and the owner chose to revisit it before release. Review is unlikely to test it, but it's a security weakness in a shipped build: someone on the network could impersonate an https server for mpv-played streams, though not for sign-in or the API, which go through `URLSession` with full checks. **Decision, 2026-11-09:** verification stays off for 1.0, by the owner's decision. It remains a known issue, recorded in CLAUDE.md's Decisions table and in `tvos-deps/README.md`. Revisit it after 1.0. Turning it on needs a CA bundle or a verify callback into Apple's Security framework.
 
 ## 5. Name and trademark
 
@@ -84,7 +87,7 @@ Reviewers reject apps that seem to give unauthorised access to third-party strea
 
 These are for agent-1 or agent-3.
 
-- **Detail page focus on a slow server:** found in the #556 demo runs. On the demo server, a detail page opened from Search showed no focus on Play, and Up then acted on the Search screen hidden underneath. The probable cause is that `.defaultFocus` in `ItemDetailView.swift` only applies once loading finishes. A reviewer on a slow link would hit it. Agent-1 has the fix as a new task, and it is **pending**. It must land before the archive that goes to review.
+- **Detail page focus on a slow server:** found in the #556 demo runs. On the demo server, a detail page opened from Search showed no focus on Play, and Up then acted on the Search screen hidden underneath. The probable cause is that `.defaultFocus` in `ItemDetailView.swift` only applies once loading finishes. A reviewer on a slow link would hit it. Agent-1 fixed it in `3065e19` (#600), so the detail page now takes focus while it loads and hands it to Play. Since `7427197` the demo test requires that focus again. The archive for review must be built from `3065e19` or later.
 - **Version:** already fixed. The app and the extension are 1.0 from build settings since `b8f56d3`.
 - **Validation:** App Store validation hasn't been run (`memory/privacy-and-test-secrets.md`). Expect it to check the privacy manifests, including OpenSSL's, since Apple's list of SDKs needing a manifest and signature names OpenSSL. Our OpenSSL is our own build, so it can't carry the upstream signature. Apple's rule applies to the listed SDKs as binaries, so validation will show whether it treats our build as one. Agent-3's archive will be the first test.
 - **Local network prompt:** `NSLocalNetworkUsageDescription` is present. On first connection to a LAN server, tvOS asks for local network access. The demo server is public, so review won't see the prompt.

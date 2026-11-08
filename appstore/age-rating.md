@@ -12,6 +12,7 @@ The questionnaire rates content that the app itself contains or shows. Finesse s
 |---|---|---|
 | Violence of any kind (cartoon, realistic, prolonged, graphic) | None | The app contains no media |
 | Violent themes (new) | None | The app contains none |
+| Guns or other weapons (new) | None | The app contains none |
 | Sexual content or nudity, graphic or not | None | The app contains none |
 | Profanity or crude humour | None | The app contains none |
 | Mature or suggestive themes | None | The app contains none |
@@ -23,21 +24,33 @@ The questionnaire rates content that the app itself contains or shows. Finesse s
 | User-generated content | No | No sharing or posting between users. The server is the user's own library, not a service we run |
 | Messaging or chat | No | |
 | Advertising | No | |
-| In-app controls, such as parental controls (new) | No | The app has no controls of its own. Jellyfin servers enforce parental ratings for each user on the server. This could be "Yes" if Apple counts server-enforced limits, but the answer should describe the app, so the recommendation is "No" |
+| In-app controls, such as parental controls (new) | No | The app has no controls of its own. Jellyfin servers enforce parental ratings for each user on the server. This could be "Yes" if Apple counts server-enforced limits, but the answer should describe the app, so the answer is "No" |
 | Capabilities, such as AI or assistants (new) | None | |
 | Age assurance | No | |
 
-These answers should produce **4+**.
+These answers produce **4+**. The API field for each is in `asc_apply.py`.
 
-## Owner decision
+## What comparable players are rated
 
-**Option A: 4+, recommended.** It's what the answers produce, and it's honest about the app. This is the usual result for players of a user's own library. The review notes say that content comes from the user's server, and that the server's operator controls what each user can see.
+From the US App Store, checked on 2026-11-09 through Apple's lookup API and the product pages.
 
-**Option B: set a higher minimum age by hand,** such as 16+ or 18+, using the override Apple added in 2025.
+| App | Rating | Notes |
+|---|---|---|
+| VLC media player | 4+ | Plays any file the user supplies, with no in-app controls declared |
+| Infuse | 4+ | Plays the user's own files and servers, including Jellyfin. Some storefronts show it "with content restrictions" and list its own parental controls |
+| Plex | 4+ "with content restrictions" | Declares in-app parental controls. The page says some content may be rated higher and is managed through those controls |
+| Swiftfin, Jellyfin's own client | 4+ | |
+| Streamyfin, JellyTV, Tomo TV, Moonfin (Jellyfin clients) | 4+ | |
+| VidHub | 4+ | |
 
-- It guards against a reviewer deciding that a player of arbitrary files deserves a mature rating.
-- The cost is that a higher rating hides the app from children's accounts, and from family members whose Screen Time limits stop at a lower age. That matters in a household app with user switching.
+User-supplied media doesn't push Apple to a higher rating for any of them. Apple rates what the app itself contains, and players of a user's own library are rated 4+ across the board, Jellyfin clients included.
 
-The demo server App Review will use holds old public-domain films. One of them is "Night of the Living Dead" (1968), which is a horror film with some violence, and a reviewer could see it. That's another reason the review notes should say the content belongs to the server, not the app.
+## Decision: FINAL
 
-Source: Apple, "Updated age ratings in App Store Connect", https://developer.apple.com/news/?id=ks775ehf
+The rating is 4+, from the answers above, by the manager's default in #623 after this check. There's no override and no Korea override.
+
+`parentalControls` stays false. Jellyfin servers do enforce each user's maximum parental rating, and Finesse shows only what the server returns. Plex declares controls of its own, but Finesse has none in the app, so declaring them would overstate it. The review notes say the server operator controls what each user can see.
+
+The demo server App Review will use holds old films, including "Night of the Living Dead" (1968), a horror film with some violence. The review notes say that content belongs to the server, not the app.
+
+Sources: Apple, "Updated age ratings in App Store Connect", https://developer.apple.com/news/?id=ks775ehf. Apple's iTunes Search and Lookup API, `itunes.apple.com/lookup` and `/search`, for the ratings above.

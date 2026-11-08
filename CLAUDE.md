@@ -12,7 +12,7 @@ These are the owner's choices. Don't change them without asking.
 |---|---|
 | Playback | Hybrid: AVPlayer first, libmpv/FFmpeg fallback |
 | Playback package | Our own dynamic mpv and FFmpeg build, with FFmpeg under LGPLv3 and OpenSSL for TLS 1.3, and no GPL components. The scripts and licence record are in `tvos-deps/` |
-| mpv certificate verification | Off for now. Revisit before release |
+| mpv certificate verification | Off for 1.0, confirmed by the owner on 2026-11-09. A known issue, listed in `appstore/risks.md`, to revisit after 1.0 |
 | UI | SwiftUI first, UIKit where needed |
 | Minimum OS | tvOS 26; no back-deployment or availability shims for older versions |
 | Design | Full Liquid Glass; Plex for structure only |
@@ -26,6 +26,9 @@ These are the owner's choices. Don't change them without asking.
 | Bundle ID | `au.com.athenanetworks.finesse`. Registered in the developer portal on 2026-11-07. The owner approved an App Store Connect record on 2026-11-09: name Finesse, SKU `finesse-tvos`, tvOS, English (Australia). The owner created it in the web UI, because the API can't create app records. Apple ID `6832351387`, with version 1.0 for tvOS waiting in Prepare for Submission, checked through the API on 2026-11-09 |
 | Apple team | `4S7BG5A4XV` |
 | Plain HTTP | Allowed to any server (`NSAllowsArbitraryLoads`), because servers are user-configured and self-hosted |
+| App Store availability and price | Free, in every territory except France, chosen by the owner on 2026-11-09. Leaving out France avoids the French encryption declaration that the bundled OpenSSL would need. See `appstore/export-compliance.md` |
+| App Store copyright | "2026 Athena Networks", which the store shows with the copyright sign, chosen by the owner on 2026-11-09. Athena Networks is also the responsible party in `PRIVACY.md` |
+| App Store licence agreement | A custom licence agreement, not Apple's standard one, chosen by the owner on 2026-11-09. It keeps the open-source licences' rights intact. The text is in `appstore/eula.md` |
 
 ## Stack
 
