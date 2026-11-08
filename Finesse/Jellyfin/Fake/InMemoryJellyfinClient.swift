@@ -28,6 +28,8 @@ actor InMemoryJellyfinClient: JellyfinClient {
     var segments: [String: [MediaSegment]] = [:]
     var chapters: [String: [ItemChapter]] = [:]
     var failure: JellyfinError?
+    /// How long every request takes, to show what screens do on a slow server.
+    var responseDelay: Duration?
     /// Hold these calls open, so a test can make something happen during them.
     var playbackInfoGate: (@Sendable () async -> Void)?
     var reportStartGate: (@Sendable () async -> Void)?
@@ -56,35 +58,35 @@ actor InMemoryJellyfinClient: JellyfinClient {
     // MARK: Server and sign-in
 
     func serverInfo() async throws -> ServerInfo {
-        try check()
+        try await check()
         return serverInfoValue
     }
 
     func publicUsers() async throws -> [PublicUser] {
-        try check()
+        try await check()
         return publicUsersValue
     }
 
     func signIn(username: String, password: String) async throws -> UserSession {
-        try check()
+        try await check()
         guard credentials[username] == password else { throw JellyfinError.invalidCredentials }
         return makeSession(username: username)
     }
 
     func isQuickConnectEnabled() async throws -> Bool {
-        try check()
+        try await check()
         return quickConnectEnabled
     }
 
     func startQuickConnect() async throws -> QuickConnectRequest {
-        try check()
+        try await check()
         guard quickConnectEnabled else { throw JellyfinError.quickConnectDisabled }
         quickConnectPolls = 0
         return QuickConnectRequest(code: "123456", secret: "fake-secret", isAuthenticated: false)
     }
 
     func quickConnectStatus(_ request: QuickConnectRequest) async throws -> QuickConnectRequest {
-        try check()
+        try await check()
         quickConnectPolls += 1
         var updated = request
         updated.isAuthenticated = quickConnectPolls >= quickConnectPollsUntilApproved
@@ -92,7 +94,7 @@ actor InMemoryJellyfinClient: JellyfinClient {
     }
 
     func signIn(quickConnect request: QuickConnectRequest) async throws -> UserSession {
-        try check()
+        try await check()
         guard request.isAuthenticated else { throw JellyfinError.invalidCredentials }
         return makeSession(username: publicUsersValue.first?.name ?? "Test User")
     }
@@ -120,36 +122,36 @@ actor InMemoryJellyfinClient: JellyfinClient {
     }
 
     func signOut() async throws {
-        try check()
+        try await check()
         session = nil
     }
 
     // MARK: Home
 
     func resumeItems(limit: Int) async throws -> [MediaItem] {
-        try checkSession()
+        try await checkSession()
         return Array(resumeValue.prefix(limit))
     }
 
     func nextUp(limit: Int) async throws -> [MediaItem] {
-        try checkSession()
+        try await checkSession()
         return Array(nextUpValue.prefix(limit))
     }
 
     func latestItems(libraryID: String?, limit: Int) async throws -> [MediaItem] {
-        try checkSession()
+        try await checkSession()
         return Array(latestValue.prefix(limit))
     }
 
     // MARK: Browsing
 
     func libraries() async throws -> [Library] {
-        try checkSession()
+        try await checkSession()
         return librariesValue
     }
 
     func items(_ query: ItemQuery) async throws -> Page<MediaItem> {
-        try checkSession()
+        try await checkSession()
         itemQueries.append(query)
         var matches = allItems
         if !query.kinds.isEmpty {
@@ -189,12 +191,12 @@ actor InMemoryJellyfinClient: JellyfinClient {
     }
 
     func filterOptions(libraryID: String?, kinds: [ItemKind]) async throws -> FilterOptions {
-        try checkSession()
+        try await checkSession()
         return filterOptionsValue
     }
 
     func studios(libraryID: String?, kinds: [ItemKind]) async throws -> [FilterValue] {
-        try checkSession()
+        try await checkSession()
         return studiosValue
     }
 
@@ -206,46 +208,46 @@ actor InMemoryJellyfinClient: JellyfinClient {
     // MARK: Detail
 
     func item(id: String) async throws -> MediaItem {
-        try checkSession()
+        try await checkSession()
         guard let match = allItems.first(where: { $0.id == id }) else { throw JellyfinError.notFound }
         return match
     }
 
     func seasons(seriesID: String) async throws -> [MediaItem] {
-        try checkSession()
+        try await checkSession()
         return allItems.filter { $0.kind == .season && $0.seriesID == seriesID }
     }
 
     func episodes(seriesID: String, seasonID: String?) async throws -> [MediaItem] {
-        try checkSession()
+        try await checkSession()
         return allItems.filter {
             $0.kind == .episode && $0.seriesID == seriesID && (seasonID == nil || $0.seasonID == seasonID)
         }
     }
 
     func nextUp(seriesID: String) async throws -> MediaItem? {
-        try checkSession()
+        try await checkSession()
         return nextUpValue.first { $0.seriesID == seriesID }
     }
 
     func similarItems(id: String, limit: Int) async throws -> [MediaItem] {
-        try checkSession()
+        try await checkSession()
         return Array(allItems.filter { $0.id != id }.prefix(limit))
     }
 
     func setPlayed(_ played: Bool, itemID: String) async throws -> UserItemState {
-        try updateState(itemID: itemID) {
+        try await updateState(itemID: itemID) {
             $0.isPlayed = played
             $0.playbackPosition = .zero
         }
     }
 
     func setFavorite(_ favorite: Bool, itemID: String) async throws -> UserItemState {
-        try updateState(itemID: itemID) { $0.isFavorite = favorite }
+        try await updateState(itemID: itemID) { $0.isFavorite = favorite }
     }
 
-    private func updateState(itemID: String, _ change: (inout UserItemState) -> Void) throws -> UserItemState {
-        try checkSession()
+    private func updateState(itemID: String, _ change: (inout UserItemState) -> Void) async throws -> UserItemState {
+        try await checkSession()
         guard let index = allItems.firstIndex(where: { $0.id == itemID }) else { throw JellyfinError.notFound }
         change(&allItems[index].userState)
         return allItems[index].userState
@@ -267,53 +269,54 @@ actor InMemoryJellyfinClient: JellyfinClient {
     // MARK: Playback
 
     func playbackInfo(_ request: PlaybackInfoRequest) async throws -> PlaybackInfo {
-        try checkSession()
+        try await checkSession()
         await playbackInfoGate?()
         playbackInfoRequests.append(request)
         return playbackInfoValue
     }
 
     func mediaSegments(itemID: String) async throws -> [MediaSegment] {
-        try checkSession()
+        try await checkSession()
         return segments[itemID] ?? []
     }
 
     func chapters(itemID: String) async throws -> [ItemChapter] {
-        try checkSession()
+        try await checkSession()
         return chapters[itemID] ?? []
     }
 
     func reportPlaybackStart(_ report: PlaybackReport) async throws {
-        try checkSession()
+        try await checkSession()
         await reportStartGate?()
         startReports.append(report)
     }
 
     func reportPlaybackProgress(_ report: PlaybackReport) async throws {
-        try checkSession()
+        try await checkSession()
         await reportProgressGate?()
         progressReports.append(report)
     }
 
     func stopTranscoding(playSessionID: String) async throws {
-        try checkSession()
+        try await checkSession()
         stoppedTranscodes.append(playSessionID)
     }
 
     func reportPlaybackStopped(_ report: PlaybackReport) async throws {
-        try checkSession()
+        try await checkSession()
         await reportStoppedGate?()
         stopReports.append(report)
     }
 
     // MARK: Checks
 
-    private func check() throws {
+    private func check() async throws {
+        if let responseDelay { try? await Task.sleep(for: responseDelay) }
         if let failure { throw failure }
     }
 
-    private func checkSession() throws {
-        try check()
+    private func checkSession() async throws {
+        try await check()
         if session == nil { throw JellyfinError.notSignedIn }
     }
 }

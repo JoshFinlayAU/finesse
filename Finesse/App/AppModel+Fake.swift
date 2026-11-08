@@ -62,6 +62,11 @@ extension AppModel {
                 if ProcessInfo.processInfo.arguments.contains("-FinesseFakeServerFails") {
                     $0.failure = .network("Seeded failure")
                 }
+                // `-FinesseFakeServerDelay 1.5` makes every request take that many seconds, like a slow server.
+                let delay = UserDefaults.standard.double(forKey: "FinesseFakeServerDelay")
+                if delay > 0 {
+                    $0.responseDelay = .milliseconds(Int(delay * 1000))
+                }
             }
         }
         return AppModel(
