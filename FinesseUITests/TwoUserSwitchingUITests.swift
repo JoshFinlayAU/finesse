@@ -201,8 +201,11 @@ struct TestServerAPI: Sendable {
         _ = try await Self.send("DELETE", "\(server)/UserPlayedItems/\(movie.id)?userId=\(userID)", token: token, body: nil)
     }
 
+    /// Also stamps it as played now. Continue Watching sorts by last played, so without the date
+    /// an older in-progress item would sit in front of the seeded one.
     private func setPosition(_ movie: Movie, ticks: Int64) async throws {
-        let body = try JSONSerialization.data(withJSONObject: ["PlaybackPositionTicks": ticks])
+        let now = ISO8601DateFormatter().string(from: Date())
+        let body = try JSONSerialization.data(withJSONObject: ["PlaybackPositionTicks": ticks, "LastPlayedDate": now])
         _ = try await Self.send("POST", "\(server)/UserItems/\(movie.id)/UserData?userId=\(userID)", token: token, body: body)
     }
 
