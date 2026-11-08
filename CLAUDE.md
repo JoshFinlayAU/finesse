@@ -21,7 +21,7 @@ These are the owner's choices. Don't change them without asking.
 | Devices | Simulator plus a real Apple TV |
 | Test server | Existing Jellyfin server, test user only |
 | Distribution | TestFlight first, kept App Store-ready |
-| Branding | Concept 04 Palace, nested picture-palace arches with the FINESSE wordmark. It has no letter, so pair it with the wordmark wherever the mark alone wouldn't say Finesse. Source and the tvOS asset requirements are in `branding/` |
+| Branding | Concept 04 Palace, nested picture-palace arches with the FINESSE wordmark. It has no letter, so pair it with the wordmark wherever the mark alone wouldn't say Finesse. Source is in `branding/`, and the tvOS asset requirements are in `branding/README.md` at `75fde25` in git history |
 | Licence | LGPLv3, open source at github.com/JoshFinlayAU/finesse, which is public. `COPYING.LESSER` and `COPYING` hold the texts, and the in-app licences screen lists Finesse and points its source offer at the repo |
 | Bundle ID | `au.com.athenanetworks.finesse`. Registered in the developer portal on 2026-11-07. The owner approved an App Store Connect record on 2026-11-09: name Finesse, SKU `finesse-tvos`, tvOS, English (Australia). The owner created it in the web UI, because the API can't create app records. Apple ID `6832351387`, with version 1.0 for tvOS waiting in Prepare for Submission, checked through the API on 2026-11-09 |
 | Apple team | `4S7BG5A4XV` |
