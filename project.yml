@@ -23,6 +23,10 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "6.0"
+    # The app and its Top Shelf extension share these, and App Store validation needs them to match.
+    # Archives set their own build number by overriding CURRENT_PROJECT_VERSION.
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: 4S7BG5A4XV
     # Ad-hoc in the simulator: no team needed, and Keychain calls fail with -34018 when unsigned.
     "CODE_SIGN_IDENTITY[sdk=appletvsimulator*]": "-"
