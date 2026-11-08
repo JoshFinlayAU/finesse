@@ -15,8 +15,9 @@ nice -n 15 ./configure \
   --nm="$(xcrun --sdk "$SDK_NAME" -f nm)" --strip="$(xcrun --sdk "$SDK_NAME" -f strip)" \
   --pkg-config=/opt/homebrew/bin/pkg-config \
   --extra-cflags="$BASE_FLAGS -I$PREFIX/include" --extra-ldflags="$LINK_FLAGS -L$PREFIX/lib" --extra-libs=-liconv \
-  "${FEATURES[@]}"
+  "${FEATURES[@]}" --disable-stripping
 # Every library records its configure line, which holds build paths. Keep only the features.
+# --disable-stripping is left out of it on purpose: make_frameworks.py strips after making the dSYMs.
 sed -i '' "s|^#define FFMPEG_CONFIGURATION .*|#define FFMPEG_CONFIGURATION \"${FEATURES[*]}\"|" config.h
 LICENSE_LINE=$(sed -n 's/^#define FFMPEG_LICENSE "\(.*\)"/\1/p' config.h)
 echo "FFmpeg licence reported by configure: $LICENSE_LINE"

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Turns each slice's installed dylibs into embeddable frameworks.
 
-Each framework gets an @rpath install name, rewritten references to the others, an Info.plist, and a
-privacy manifest made from what its binary actually imports. Usage: work dist deps_root deployment_target
+Each framework gets an @rpath install name, rewritten references to the others, an Info.plist, a
+privacy manifest made from what its binary actually imports, and a dSYM beside it, made before the
+binary is stripped. Usage: work dist deps_root deployment_target
 """
 import glob
 import os
@@ -101,7 +102,22 @@ for slice_name, platform in (("tvos", "AppleTVOS"), ("tvossim", "AppleTVSimulato
                 match = next((n for n, (f, _) in files.items() if f.split(".")[0] == base.split(".")[0]), None)
                 assert match, f"{name} depends on {old}"
                 run("install_name_tool", "-change", old, f"@rpath/{match}.framework/{match}", binary)
-        run("strip", "-x", binary)
+        # The dSYM comes from the unstripped binary. OpenSSL and MoltenVK bring their own, because the
+        # objects they were linked from are gone by now. Stripping keeps the UUID, so the dSYM still matches.
+        dsym = f"{dist}/slices/{slice_name}/{name}.framework.dSYM"
+        prebuilt = f"{lib}/{dylib}.dSYM"
+        if os.path.isdir(prebuilt):
+            shutil.copytree(prebuilt, dsym)
+            dwarf = f"{dsym}/Contents/Resources/DWARF"
+            (inner,) = os.listdir(dwarf)
+            os.rename(f"{dwarf}/{inner}", f"{dwarf}/{name}")
+        else:
+            run("dsymutil", binary, "-o", dsym)
+        uuids = lambda path: sorted(line.split()[1] for line in run("dwarfdump", "--uuid", path).splitlines())
+        assert uuids(dsym) == uuids(binary), f"{name} dSYM doesn't match its binary"
+        assert "DW_TAG_compile_unit" in run("dwarfdump", "--debug-info", f"{dsym}/Contents/Resources/DWARF/{name}"), f"{name} dSYM has no debug info"
+        # -S as well as -x, so the debug map, which names files on the build Mac, doesn't ship.
+        run("strip", "-S", "-x", binary)
         # Xcode keeps this identifier when it re-signs on copy, and a device refuses to install a
         # framework whose signing identifier differs from its bundle identifier. The simulator doesn't check.
         identifier = f"au.com.athenanetworks.finesse.deps.{name.lower()}"

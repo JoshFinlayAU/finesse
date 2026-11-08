@@ -18,6 +18,8 @@ nice -n 15 "$CC_BIN" -dynamiclib -target "$TRIPLE" -isysroot "$SDK" \
   -current_version "$OPENSSL_VERSION" -compatibility_version 3.5.0 \
   -Wl,-all_load "$PREFIX/lib/libssl.a" "$PREFIX/lib/libcrypto.a" \
   -o "$PREFIX/lib/libOpenSSL.dylib"
+# The dSYM needs the archives, so it's made before they go.
+dsymutil "$PREFIX/lib/libOpenSSL.dylib" -o "$PREFIX/lib/libOpenSSL.dylib.dSYM"
 rm -f "$PREFIX/lib/libssl.a" "$PREFIX/lib/libcrypto.a"
 
 for name in openssl libssl libcrypto; do
