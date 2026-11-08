@@ -12,10 +12,8 @@ The endpoints and fields were checked against Apple's OpenAPI specification for 
 ## Before running
 
 1. **The owner's go-ahead,** for App Store Connect changes in general.
-2. **The open items filled in:**
-   - **Licence agreement:** the contact lines and governing-law state in `eula.md`. The script refuses to send the agreement while "OWNER TO" remains.
-   - **Review contact:** four environment variables, `ASC_REVIEW_FIRST_NAME`, `ASC_REVIEW_LAST_NAME`, `ASC_REVIEW_PHONE` and `ASC_REVIEW_EMAIL`.
-3. **`PRIVACY.md` pushed to `main` on GitHub,** so the privacy URL works when review opens it. Pushing needs the owner's go-ahead too.
+2. **Nothing left to fill in:** the contact details and governing law came from the owner on 2026-11-09. The script would still refuse the licence agreement if an "OWNER TO" placeholder came back.
+3. **`PRIVACY.md` on GitHub:** pushed on 2026-11-09, and the privacy URL returns 200.
 4. **The final screenshots in one folder,** named as in `screenshots.md`, passed with `--screenshots <folder>`. The script refuses to run if any is missing.
 5. **An API key with the App Manager role:**
    - **IDs:** `ASC_KEY_ID` and `ASC_ISSUER_ID` come from the environment, never the repo.

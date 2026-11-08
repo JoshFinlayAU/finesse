@@ -4,9 +4,9 @@
 
 **Text:** the policy is `PRIVACY.md` at the repo root. It names Athena Networks as responsible, per the owner's 2026-11-09 decision.
 
-**Contact:** GitHub Issues. The owner gave no email, so a marked comment in the file shows where one goes.
+**Contact:** Athena Networks, at support@athenanetworks.com.au, 1300 409 252 and the postal address, plus GitHub Issues. The owner supplied these on 2026-11-09.
 
-**Privacy Policy URL:** `https://github.com/JoshFinlayAU/finesse/blob/main/PRIVACY.md`. It works once `PRIVACY.md` is pushed to `main` on GitHub. Nothing has been pushed yet, and that needs the owner's go-ahead.
+**Privacy Policy URL:** `https://github.com/JoshFinlayAU/finesse/blob/main/PRIVACY.md`. It was pushed to GitHub on 2026-11-09, and the URL returns 200.
 
 **Checked against the code at `9fd9b54`, and still true at `4acb45a`:**
 

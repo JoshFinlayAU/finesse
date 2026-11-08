@@ -84,7 +84,7 @@ jellyfin,media server,video player,mkv,movies,tv shows,home theater,streaming,su
 - **Primary:** Entertainment (`ENTERTAINMENT`).
 - **Secondary:** none. Photo & Video would fit, but nobody chose it, so it's left empty.
 
-## URLs: FINAL, except the email
+## URLs and contact: FINAL
 
 | Field | Value |
 |---|---|
@@ -105,7 +105,8 @@ https://github.com/JoshFinlayAU/finesse/blob/main/PRIVACY.md
 **Before use:**
 
 - **Push to GitHub first:** both URLs need the repo on GitHub to be current. The issues page needs Issues enabled. `PRIVACY.md` must be pushed to `main`, which needs the owner's go-ahead.
-- **Email:** OPEN. The owner gave no support email. GitHub Issues is the contact for now, but the licence agreement needs an email, a phone number and an address under Apple's rules. See `eula.md`.
+- **Contact:** support@athenanetworks.com.au and 1300 409 252, from the owner on 2026-11-09. They're used in `PRIVACY.md`, `SUPPORT.md`, the licence agreement and the App Review contact. GitHub shows `SUPPORT.md` on the repo's new-issue page, so anyone who opens the support URL finds them.
+- **Phone format:** 1300 numbers can't be dialled from outside Australia, including as +61 1300, so the number is written as 1300 409 252, "from within Australia". App Review calls from the US, so it can only use the email. A number that works internationally would have to come from the owner.
 
 ## Copyright: FINAL
 

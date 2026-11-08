@@ -1,6 +1,6 @@
 # App Review notes and demo server plan
 
-**Status:** FINAL, except the reviewer contact details. Demo server: Jellyfin's public demo only for 1.0, by the manager's default in #623. An owner-run server stays an option, not a plan.
+**Status:** FINAL. Demo server: Jellyfin's public demo only for 1.0, by the manager's default in #623. An owner-run server stays an option, not a plan.
 
 ## Demo server options
 
@@ -78,11 +78,13 @@ Encryption: HTTPS through Apple's URLSession, plus OpenSSL (standard TLS) inside
 Finesse is open source under the LGPL v3: https://github.com/JoshFinlayAU/finesse
 ```
 
-## Contact details for App Review: OPEN
+## Contact details for App Review: FINAL
 
-App Store Connect requires a first and last name, a phone number and an email address. App Review calls or emails this person if something fails.
+- **Name:** Josh Finlay
+- **Phone:** 1300 409 252
+- **Email:** support@athenanetworks.com.au
 
-The owner gave no email on 2026-11-09. `asc_apply.py` reads these four from `ASC_REVIEW_FIRST_NAME`, `ASC_REVIEW_LAST_NAME`, `ASC_REVIEW_PHONE` and `ASC_REVIEW_EMAIL`, and refuses to send the review details without them.
+These came from the owner on 2026-11-09, and `asc_apply.py` sends them. The 1300 number can't be dialled from outside Australia, so App Review, which works from the US, can in practice only use the email. A number with an international form would fix that, if the owner wants to give one.
 
 ## Sign-in required
 

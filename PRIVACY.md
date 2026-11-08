@@ -36,6 +36,10 @@ If this policy changes, the new version will be published at this address with a
 
 ## Contact
 
-Open an issue at https://github.com/JoshFinlayAU/finesse/issues.
+Athena Networks
 
-<!-- Owner to provide a contact email; add it here as a second line when it exists. -->
+- Email: support@athenanetworks.com.au
+- Phone: 1300 409 252 (from within Australia)
+- Post: Parcel Locker 10303 80643, 139 Brisbane Road, Booval QLD 4304, Australia
+
+You can also open an issue at https://github.com/JoshFinlayAU/finesse/issues.

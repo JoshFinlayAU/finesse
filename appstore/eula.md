@@ -1,6 +1,6 @@
 # Custom licence agreement
 
-**Status:** the owner chose a custom licence agreement on 2026-11-09. The text below is final, except for the marked contact placeholders. Apple's rule 8 requires a postal address, a phone number and an email address, and the owner hasn't given them yet.
+**Status:** FINAL. The owner chose a custom licence agreement on 2026-11-09 and supplied the contact details and governing law the same day.
 
 **Where it goes:** App Store Connect, under App Information, then License Agreement. It's plain text, so paste everything between the two lines below. `asc-api.md` sends the same text through the API. It applies in every territory where the app is sold, which is all of them except France.
 
@@ -64,9 +64,12 @@ The app plays media from a Jellyfin server that you run or that someone gives yo
 9. Contact
 
 Athena Networks
-[postal address: OWNER TO PROVIDE]
-Phone: [phone number: OWNER TO PROVIDE]
-Email: [email address: OWNER TO PROVIDE]
+Parcel Locker 10303 80643
+139 Brisbane Road
+Booval QLD 4304
+Australia
+Phone: 1300 409 252 (from within Australia)
+Email: support@athenanetworks.com.au
 Issues: https://github.com/JoshFinlayAU/finesse/issues
 
 Questions, complaints or claims about the app should be sent to these contact details. [Apple term 8]
@@ -81,12 +84,12 @@ You and we agree that Apple and Apple's subsidiaries are third-party beneficiari
 
 12. Changes and law
 
-We may update this agreement with a new version of the app, and the date above will change. This agreement is governed by the laws of [state or territory: OWNER TO CONFIRM], Australia, except where the law that applies to you says otherwise.
+We may update this agreement with a new version of the app, and the date above will change. This agreement is governed by the laws of Queensland, Australia, except where the law that applies to you says otherwise.
 
 ---
 
 **Before pasting:**
 
-- **Bracketed notes:** remove "[Apple term N]" and fill in the three contact lines and the governing-law state.
+- **Bracketed notes:** remove "[Apple term N]". `asc_apply.py` strips them itself.
 - **Apple's limit:** check the text against App Store Connect's current length limit. It's about 6,000 characters including the notes, and should be well within it.
-- **Governing law:** Apple's terms don't require a governing-law clause. It was added because Athena Networks is Australian, so the owner may remove it.
+- **Governing law:** Queensland, chosen by the owner. Apple's terms don't require the clause.

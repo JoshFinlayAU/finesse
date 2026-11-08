@@ -10,8 +10,8 @@ Text comes from the asc:<field> blocks in metadata.md, review-notes.md and eula.
 copy of every string. Screenshots come from --screenshots <folder> (default: FINESSE_SCREENSHOTS).
 
 Credentials stay out of the repo: ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_PATH (the .p8, default
-~/.appstoreconnect/private_keys/AuthKey_<key id>.p8). Review contact: ASC_REVIEW_FIRST_NAME,
-ASC_REVIEW_LAST_NAME, ASC_REVIEW_PHONE, ASC_REVIEW_EMAIL. Needs the `cryptography` package for apply.
+~/.appstoreconnect/private_keys/AuthKey_<key id>.p8). The App Review contact is the owner's public
+business contact, below. Needs the `cryptography` package for apply.
 
 App Privacy answers have no API, so they are a manual step. See asc-api.md.
 """
@@ -47,6 +47,10 @@ AGE_RATING = {                  # see age-rating.md, every answer for the app it
         "advertising", "gambling", "healthOrWellnessTopics", "lootBox", "messagingAndChat",
         "parentalControls", "ageAssurance", "socialMedia", "unrestrictedWebAccess", "userGeneratedContent"]},
     "ageRatingOverrideV2": "NONE",
+}
+REVIEW_CONTACT = {             # the owner, 2026-11-09; a 1300 number only works from within Australia
+    "contactFirstName": "Josh", "contactLastName": "Finlay",
+    "contactPhone": "1300 409 252", "contactEmail": "support@athenanetworks.com.au",
 }
 ENCRYPTION_DESCRIPTION = (
     "HTTPS through Apple's URLSession, and OpenSSL 3.5 (standard TLS 1.2 and 1.3) inside the bundled "
@@ -192,15 +196,8 @@ def listing(client):
 
 def review_details(client, version):
     # 6. App Review information: contact, demo account and notes.
-    names = ["ASC_REVIEW_FIRST_NAME", "ASC_REVIEW_LAST_NAME", "ASC_REVIEW_PHONE", "ASC_REVIEW_EMAIL"]
-    missing = [n for n in names if not os.environ.get(n)]
-    if missing and client.live:
-        sys.exit("review contact not set: " + ", ".join(missing))
     attributes = {
-        "contactFirstName": os.environ.get(names[0], "<first name>"),
-        "contactLastName": os.environ.get(names[1], "<last name>"),
-        "contactPhone": os.environ.get(names[2], "<phone>"),
-        "contactEmail": os.environ.get(names[3], "<email>"),
+        **REVIEW_CONTACT,
         "demoAccountRequired": True, "demoAccountName": "demo", "demoAccountPassword": "",
         "notes": block("review-notes.md", "reviewNotes")}
     existing = None
