@@ -24,13 +24,22 @@ final class SlowServerFocusUITests: XCTestCase {
         for _ in 0..<times {
             remote.press(button)
             sleep(1)
+            note("after remote button \(button.rawValue)")
         }
+    }
+
+    /// Where focus is, for reading a failure from the log.
+    private func note(_ step: String) {
+        let element = focused
+        print("SLOWFOCUS \(step): " + (element.exists ? "\(element.identifier) '\(element.label)'" : "nothing focused"))
     }
 
     /// Opens the card that `downs` presses from the tab bar reach, and waits for its page to load.
     private func openDetail(downs: Int, expecting title: String, line: UInt = #line) {
         press(.down, times: downs)
-        XCTAssertEqual(focused.label, title, "Should be on the card for \(title)", line: line)
+        // Nothing reports focus while it's moving between cards, so give it a moment to settle.
+        let card = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true AND label == %@", title)).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 5), "Should be on the card for \(title)", line: line)
         remote.press(.select)
         let actions = app.buttons.matching(NSPredicate(format: "identifier IN %@", ["detailPlay", "detailWatched"]))
         XCTAssertFalse(actions.firstMatch.waitForExistence(timeout: 1), "The delay should show the loading view first", line: line)

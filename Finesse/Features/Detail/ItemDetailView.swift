@@ -13,7 +13,11 @@ struct ItemDetailView: View {
 
 private struct DetailContent: View {
     private enum Focus: Hashable {
+        /// Holds focus while the page loads. Without it, focus stays on the screen underneath, and
+        /// the remote acts on that hidden screen until something here can take it.
+        case loading
         case play
+        case watched
     }
 
     @Environment(AppModel.self) private var app
@@ -33,6 +37,9 @@ private struct DetailContent: View {
             switch model.phase {
             case .loading:
                 LoadingStateView()
+                    .focusable()
+                    .focused($focus, equals: .loading)
+                    .accessibilityIdentifier("detailLoading")
             case .failed(let message):
                 ErrorStateView(message: message) {
                     Task { await model.load() }
@@ -44,6 +51,14 @@ private struct DetailContent: View {
         .environment(\.colorScheme, .dark)
         .toolbar(.hidden, for: .tabBar)
         .task { await model.load() }
+        .onChange(of: model.phase == .loaded) { _, loaded in
+            // The loading view had focus, so hand it to the page's first action as it replaces it.
+            guard loaded, focus == .loading || focus == nil else { return }
+            // The buttons arrive in this same update, so wait a turn for them to be focusable.
+            Task { @MainActor in
+                focus = model.playTarget == nil ? .watched : .play
+            }
+        }
         .onChange(of: navigator.activePlayback == nil) { _, finished in
             if finished { Task { await model.load() } }
         }
@@ -152,6 +167,7 @@ private struct DetailContent: View {
                 )
             }
             .buttonStyle(.glass)
+            .focused($focus, equals: .watched)
             .accessibilityIdentifier("detailWatched")
 
             Button {
