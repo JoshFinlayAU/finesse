@@ -27,8 +27,9 @@ export PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
 unset PKG_CONFIG_PATH || true
 # What the binaries record about where and when they were built, so it doesn't vary or ship to users.
 export SOURCE_DATE_EPOCH=1767225600 ZERO_AR_DATE=1
-# -g adds debug info for the dSYMs and doesn't change the code. make_frameworks.py strips it from what ships.
-BASE_FLAGS="-target $TRIPLE -isysroot $SDK -O2 -g -fPIC -ffile-prefix-map=$WORK=. -ffile-prefix-map=$SDK=/sdk"
+# Line tables are the debug info for the dSYMs. Full -g moved code around in FFmpeg, and line tables leave it
+# byte-identical. make_frameworks.py strips them from what ships.
+BASE_FLAGS="-target $TRIPLE -isysroot $SDK -O2 -gline-tables-only -fPIC -ffile-prefix-map=$WORK=. -ffile-prefix-map=$SDK=/sdk"
 LINK_FLAGS="-target $TRIPLE -isysroot $SDK -Wl,-headerpad_max_install_names -Wl,-dead_strip"
 
 quoted_list() { printf "'%s'," "$@" | sed 's/,$//'; }

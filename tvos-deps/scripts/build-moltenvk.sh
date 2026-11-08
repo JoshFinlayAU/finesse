@@ -13,6 +13,7 @@ cat > "$WORK/build/moltenvk.xcconfig" <<X
 TVOS_DEPLOYMENT_TARGET = $TVOS_DEPLOYMENT_TARGET
 ARCHS = arm64
 GCC_GENERATE_DEBUGGING_SYMBOLS = YES
+CLANG_DEBUG_INFORMATION_LEVEL = line-tables-only
 X
 export XCODE_XCCONFIG_FILE=$WORK/build/moltenvk.xcconfig
 
