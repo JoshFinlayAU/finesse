@@ -1,39 +1,39 @@
 # Branding
 
-The owner chose concept 04 Palace on 2026-11-07. The other concepts stay here for reference and aren't used in the app.
+Finesse's mark is Palace: three nested arches, like the proscenium of an old picture palace, receding toward a lit screen. The mark has no letter in it, so anywhere it has to say Finesse on its own, it sits beside the FINESSE wordmark.
 
-`build_tvos_assets.py` renders Palace into `Finesse/Resources/Assets.xcassets` and writes each layer's SVG to `palace/`. Change the drawing there and rerun it, rather than editing the PNGs. Its layers, front to back, are the screen, the inner, middle and outer arches, and the back. The app's lockup is an image with light and dark versions.
+Everything is drawn in code by `build_tvos_assets.py`. It writes the app icon, the App Store icon, the Top Shelf images and the lockup into `Finesse/Resources/Assets.xcassets`, and an SVG of each into `palace/` for reference. Change the drawing in the script and rerun it rather than editing the PNGs.
 
-The wordmark is an outline of Marcellus, under the SIL Open Font License. The font itself isn't shipped.
+## Regenerating the assets
 
-- `build_concepts.py` draws every concept and writes the SVGs to `concepts/`. The folder of `.woff` fonts is its only argument.
-- `build_page.py` builds the single review page from those SVGs.
+You need Python 3 with `resvg_py`, `Pillow` and `fontTools`, and a folder holding Marcellus as `marcellus.woff`. Fontsource publishes it as the `@fontsource/marcellus` package, or Google Fonts has it.
 
-Each concept folder holds the symbol, wordmark and lockup for dark and light backgrounds, and `icon-back.svg`, `icon-middle.svg` and `icon-front.svg` on an 800x480 canvas.
+```sh
+pip install resvg_py pillow fonttools
+python3 branding/build_tvos_assets.py <folder with marcellus.woff>
+```
 
-The marks are hand-drawn. The wordmarks are outlines of open-licensed typefaces from Fontsource: Outfit, Fraunces, Bodoni Moda, Marcellus and Jost. No font is bundled. All five are under the SIL Open Font License.
+The script replaces the whole asset catalog, so check `git status` afterwards. With the same font file the output is byte for byte identical to what's committed.
 
-## What the tvOS asset set needs
+## What it produces
 
-Tested with `actool` from Xcode 27.2 on 2026-11-07, for `appletvos` with a tvOS 26.0 deployment target.
+The app icon is a five-layer image stack, so each arch moves at its own depth when the icon is focused. From front to back the layers are the screen, the inner, middle and outer arches, and the background. The icon comes at 400x240 and 800x480, and the App Store icon at 1280x768. The arches run off the bottom of the icon, so the parallax never lifts them off the floor.
 
-A tvOS app icon is still a layered image stack in an asset catalog. Apple's guidance says Icon Composer covers iOS, iPadOS, macOS and watchOS, not tvOS. The catalog holds an `App Icon & Top Shelf Image.brandassets` folder, named by the `--app-icon` setting.
+The Top Shelf images are 1920x720 and the wide ones 2320x720, each with a 2x version. They show the arches and the wordmark inside the middle 1920 points, which every screen shows. The lockup comes in light and dark versions, because the app follows the system appearance.
 
-| Asset | Sizes in pixels | Notes |
-|---|---|---|
-| App Icon | 400x240 at 1x, 800x480 at 2x | Image stack of 2 to 5 layers. `actool` rejects 1 or 6 layers |
-| App Icon - App Store | 1280x768 at 1x | Same layer count. `actool` rejects other sizes |
-| Top Shelf Image | 1920x720 at 1x, 3840x1440 at 2x | Static image |
-| Top Shelf Image Wide | 2320x720 at 1x, 4640x1440 at 2x | Static image. The current guidance lists only this size |
+## Colours
 
-`actool` also compiled sets with no Top Shelf images, no wide image, no 2x icon or no App Store icon, without errors. That only shows they compile, and says nothing about whether App Store Connect accepts them, so supply all of the above.
+On dark backgrounds, which covers the icon and Top Shelf:
 
-The other requirements come from Apple's App Icons page:
+| Use | Colour |
+|---|---|
+| Background, top to bottom | #2C0F20 to #14060E |
+| Outer, middle and inner arch | #6A2340, #A4475C, #D97F78 |
+| Screen, top to bottom | #FFF4EA to #F2B79E |
+| Wordmark | #F7E3D6 |
 
-- Layers are rectangular with no rounded corners or masks, because the system applies its own.
-- Keep important content inside a safe zone. Apple gives no number, and foreground layers are cropped more than background ones.
-- The bottom layer must be opaque and full-bleed. `actool` requires the last layer to exactly fill the stack, and Apple asks for opaque background layers in its general guidance.
-- Colour is sRGB or Display P3. PNG is the preferred raster format.
-- Text belongs above the other layers so parallax doesn't crop it.
+On light backgrounds the arches are #E3B6A6, #BC6F6F and #7E3049, the screen runs from #2A0E1E to #6E2440, and the wordmark is #2A0E1E.
 
-A Top Shelf extension would be a separate feature. These static images are the fallback, and the app doesn't have an extension today.
+## Font
+
+The wordmark is Marcellus by Astigmatic, set in capitals with wide tracking and converted to outlines, so no font file ships with the app. Marcellus is licensed under the SIL Open Font License 1.1, which allows this.

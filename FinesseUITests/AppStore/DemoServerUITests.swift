@@ -102,7 +102,7 @@ final class DemoServerUITests: XCTestCase {
         XCTAssertTrue(play.waitForExistence(timeout: 20), "The result should open its detail page")
         sleep(4)
         capture("as-08-detail")
-        // The detail page must hand focus to Play once it loads, even on a slow server (#600).
+        // The detail page must hand focus to Play once it loads, even on a slow server.
         XCTAssertTrue(play.hasFocus, "Play should have focus when the detail page loads")
         remote.press(.select)
 

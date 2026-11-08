@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 """Enters the Finesse 1.0 listing into App Store Connect through its API, in one go.
 
-Usage:
-  python3 appstore/asc_apply.py plan                 prints every request, offline, with no network use
-  python3 appstore/asc_apply.py apply --yes          sends them. Only after the owner's go-ahead
-  python3 appstore/asc_apply.py encryption --build <build id> --yes   after a build is uploaded
+  python3 appstore/asc_apply.py plan                 prints every request without sending anything
+  python3 appstore/asc_apply.py apply --yes          sends them
+  python3 appstore/asc_apply.py encryption --build <build id> --yes   once a build is uploaded
 
-Text comes from the asc:<field> blocks in metadata.md, review-notes.md and eula.md, so there is one
-copy of every string. Screenshots come from --screenshots <folder> (default: FINESSE_SCREENSHOTS).
+Text comes from the asc:<field> blocks in metadata.md and review-notes.md and from eula.md.
+Screenshots come from --screenshots <folder>, or FINESSE_SCREENSHOTS.
 
-Credentials stay out of the repo: ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_PATH (the .p8, default
-~/.appstoreconnect/private_keys/AuthKey_<key id>.p8). The App Review contact is the owner's public
-business contact, below. Needs the `cryptography` package for apply.
-
-App Privacy answers have no API, so they are a manual step. See asc-api.md.
+The API key comes from ASC_KEY_ID and ASC_ISSUER_ID, with the .p8 at ASC_KEY_PATH or
+~/.appstoreconnect/private_keys/AuthKey_<key id>.p8. Sending needs the `cryptography` package.
+The App Privacy answer has no API, so it is entered in the website. See README.md.
 """
 import argparse
 import base64
@@ -27,17 +24,17 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-APP_ID = "6832351387"          # Finesse, from App Store Connect
+APP_ID = "6832351387"          # Finesse in App Store Connect
 LOCALE = "en-AU"
 VERSION = "1.0"
 PLATFORM = "TV_OS"
 BASE_TERRITORY = "AUS"
-EXCLUDED_TERRITORIES = {"FRA"}  # owner, 2026-11-09: no French encryption declaration
+EXCLUDED_TERRITORIES = {"FRA"}  # see export-compliance.md
 SCREENSHOT_ORDER = [            # see screenshots.md
     "as-04-home-row", "as-05-movies", "as-08-detail", "as-10-bar", "as-11-info",
     "as-07-search", "as-02-user-picker", "as-01-server-entry",
 ]
-AGE_RATING = {                  # see age-rating.md, every answer for the app itself
+AGE_RATING = {                  # see age-rating.md
     **{k: "NONE" for k in [
         "alcoholTobaccoOrDrugUseOrReferences", "contests", "gamblingSimulated", "gunsOrOtherWeapons",
         "medicalOrTreatmentInformation", "profanityOrCrudeHumor", "sexualContentGraphicAndNudity",
@@ -48,7 +45,7 @@ AGE_RATING = {                  # see age-rating.md, every answer for the app it
         "parentalControls", "ageAssurance", "socialMedia", "unrestrictedWebAccess", "userGeneratedContent"]},
     "ageRatingOverrideV2": "NONE",
 }
-REVIEW_CONTACT = {             # the owner, 2026-11-09; a 1300 number only works from within Australia
+REVIEW_CONTACT = {             # a 1300 number only works from within Australia
     "contactFirstName": "Josh", "contactLastName": "Finlay",
     "contactPhone": "1300 409 252", "contactEmail": "support@athenanetworks.com.au",
 }
@@ -71,7 +68,7 @@ def block(file, name):
 
 def eula_text():
     text = (HERE / "eula.md").read_text()
-    body = text.split("\n---\n")[1].strip()
+    body = text.split("\n---\n", 1)[1].strip()
     body = re.sub(r" ?\[Apple term \d+\]", "", body)
     if "OWNER TO" in body:
         return None
@@ -255,8 +252,8 @@ def eula(client, sold):
     text = eula_text()
     if text is None:
         if client.live:
-            sys.exit("eula.md still has OWNER TO PROVIDE placeholders")
-        text = "<eula.md text, once its placeholders are filled>"
+            sys.exit("eula.md still has placeholders")
+        text = "<eula.md text>"
     client.call("POST", "/v1/endUserLicenseAgreements", {"data": {
         "type": "endUserLicenseAgreements", "attributes": {"agreementText": text},
         "relationships": {"app": ref("apps", APP_ID), "territories": {
@@ -349,7 +346,7 @@ def main():
     screenshots(client, version_loc, args.screenshots)
     if not live:
         encryption(client, "<build id, after upload>")
-        print(f"\n# {client.fake} requests planned. App Privacy is a manual step, see asc-api.md.")
+        print(f"\n# {client.fake} requests planned. App Privacy is entered in the website, see README.md.")
 
 
 if __name__ == "__main__":

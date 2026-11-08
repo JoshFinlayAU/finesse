@@ -1,60 +1,16 @@
 # Export compliance
 
-Status: FINAL. The owner chose all territories except France on 2026-11-09, so no documents are needed.
+Finesse uses encryption only to protect its connection to the user's own server. App requests go over HTTPS through Apple's URLSession. Streams played by the built-in mpv player use OpenSSL 3.5, which is bundled inside FFmpeg's networking library and provides standard TLS 1.2 and 1.3. There is no proprietary cryptography.
 
-## What encryption the app contains
+Because OpenSSL ships in the app rather than coming from tvOS, Finesse doesn't qualify for the exemptions in App Store Connect's questionnaire. The answers are:
 
-| Where | What | Notes |
-|---|---|---|
-| The app and the Top Shelf extension, through `URLSession` | TLS for HTTPS, provided by tvOS | This is the encryption within Apple's operating system |
-| The keychain | Tokens kept with Apple's keychain | This also belongs to Apple's operating system |
-| `OpenSSL.framework`, OpenSSL 3.5.9, used by `Libavformat` | TLS 1.2 and 1.3 for HTTPS streams that mpv plays | Standard algorithms, public source and unmodified. It ships in the app bundle, so it isn't Apple's operating system. FFmpeg was built with OpenSSL by the owner's decision, for TLS 1.3. See `tvos-deps/README.md`, "HTTPS" |
+| Question | Answer |
+|---|---|
+| Does your app use encryption? | Yes |
+| Does it qualify for any of the exemptions? | No |
+| What type of encryption algorithms does it implement? | Standard encryption algorithms instead of, or in addition to, the encryption in Apple's operating system |
+| Is it available on the App Store in France? | No |
 
-No proprietary or non-standard algorithms are used. Encryption is used only to protect the connection to the user's own server, not to encrypt user data or as a feature in its own right.
+Leaving France out means no French encryption declaration is needed, so there are no documents to upload. Making Finesse available in France would first need a declaration to ANSSI, which takes several weeks.
 
-## App Store Connect answers
-
-App Store Connect asks these on the first build upload, unless `Info.plist` already answers them.
-
-1. **Does your app use encryption?**
-   - **Answer:** Yes. HTTPS counts, whoever provides it.
-2. **Does it qualify for any of the exemptions?**
-   - **Answer:** No.
-   - **Why:** the exemptions cover apps that use only encryption within Apple's operating system, or encryption limited to authentication or copy protection. Finesse also bundles OpenSSL.
-3. **What type of encryption algorithms does the app implement?**
-   - **Answer:** "Standard encryption algorithms instead of, or in addition to, using or accessing the encryption within Apple's operating system".
-4. **Is your app going to be available on the App Store in France?**
-   - **Answer:** No. France is left out of availability, so no French declaration is needed, and no documents are uploaded.
-   - **If France is wanted later:** the French encryption declaration, which is a filing with France's ANSSI, has to be approved first. Expect several weeks.
-
-Through the API, these four answers are one encryption declaration. `appEncryptionDeclarations` takes `containsProprietaryCryptography` false, `containsThirdPartyCryptography` true and `availableOnFrenchStore` false. It's attached to each uploaded build, which also gets `usesNonExemptEncryption` true. See `asc-api.md`, step 11.
-
-Under US export rules, an app like this is mass-market software with standard encryption, classified 5D992.c. Since BIS's 2021 rule change, mass-market end items under licence exception ENC 740.17(b)(1) no longer need the annual self-classification report. Apple still asks the questions above. With France excluded, no document is needed.
-
-**Not legal advice:** this is drawn from Apple's help pages and the published rules. The owner may want it checked by someone qualified, especially the French filing.
-
-## `ITSAppUsesNonExemptEncryption` in `Info.plist`
-
-**Don't set it to `false`.**
-
-- **Why not:** `false` tells Apple the app uses no encryption beyond the exempt kinds. That's true only if the app limited itself to tvOS's own TLS, which it doesn't, because of OpenSSL in Libavformat. Setting `false` would answer question 2 wrongly on every upload.
-
-**The choices are:**
-
-1. **Leave the key out for the first submission.** App Store Connect asks the questions for the first build, either in the web UI or through the declaration in `asc-api.md`, and they are reviewed with it. This is the choice for 1.0.
-2. **Set `ITSAppUsesNonExemptEncryption` to `true`** after the first review. If Apple issues a compliance code for approved documents, which happens only when documents are required, add `ITSEncryptionExportComplianceCode` too. That stops the questions coming back with every TestFlight upload.
-
-**Who does what:** agent-1 makes any `Info.plist` change after the merge. For 1.0 none is needed under option 1. Agent-3 should expect the export compliance question on the first upload and leave it for the owner, because it's an App Store Connect answer.
-
-## How `false` could become right
-
-FFmpeg could be built without OpenSSL, getting TLS from Apple instead.
-
-- **Why it doesn't work today:** FFmpeg's Apple TLS backend is SecureTransport, which is deprecated and stops at TLS 1.2. A TLS 1.3-only host failed with it in testing on 2026-11-06.
-- **What it would take:** a build without OpenSSL that loses TLS 1.3 in mpv. The other route is mpv using a Network.framework stream, which would need new code. Neither is recommended for 1.0.
-
-## Sources
-
-- Apple, App Store Connect Help, "Export compliance documentation for encryption", which covers the French declaration for algorithms not provided by Apple's operating system: https://developer.apple.com/help/app-store-connect/reference/export-compliance-documentation-for-encryption
-- Apple, "Overview of export compliance": https://developer.apple.com/help/app-store-connect/manage-app-information/overview-of-export-compliance
-- Developer forum notes on removing France to avoid the declaration: https://developer.apple.com/forums/thread/725047
+`asc_apply.py encryption --build <id>` records the same answers for an uploaded build. Don't add `ITSAppUsesNonExemptEncryption` set to `false` to `Info.plist`, because that would tell Apple the opposite. Once the first review is through, setting it to `true` stops App Store Connect asking again for every build.

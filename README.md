@@ -78,6 +78,10 @@ Use an account made for testing. The tests change only that user's own state, su
 - `tvos-deps` builds the playback frameworks, with pinned versions, checksums and patches
 - `branding` has the source of the app icon and logo
 
+## Support and privacy
+
+For help, see [SUPPORT.md](SUPPORT.md). Finesse collects no data; [PRIVACY.md](PRIVACY.md) explains what it sends to your own server and what it keeps on the Apple TV.
+
 ## Licence
 
 Finesse is free software under the GNU Lesser General Public License, version 3. See [COPYING.LESSER](COPYING.LESSER), and [COPYING](COPYING) for the GNU General Public License it builds on.

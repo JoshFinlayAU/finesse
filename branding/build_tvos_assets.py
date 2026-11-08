@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Renders the Palace mark into the app's asset catalog: the layered tvOS icon, the App Store icon,
-the Top Shelf images and the lockup the app shows. Writes the SVG for each layer to branding/palace/.
+the Top Shelf images and the lockup the app shows. Writes the SVG for each one to branding/palace/.
 
-Needs resvg_py and Pillow, and the same fonts folder as build_concepts.py:
+Needs resvg_py, Pillow and fontTools, and a folder holding Marcellus as marcellus.woff:
 
     build_tvos_assets.py <fonts folder>
 """
@@ -13,9 +13,10 @@ import shutil
 import sys
 
 import resvg_py
+from fontTools.pens.svgPathPen import SVGPathPen
+from fontTools.pens.transformPen import TransformPen
+from fontTools.ttLib import TTFont
 from PIL import Image
-
-from build_concepts import ICON_H, ICON_W, Palace, linear, radial, wordmark_path
 
 HERE = pathlib.Path(__file__).parent
 SOURCE = HERE / "palace"
@@ -29,6 +30,50 @@ FOOT = 640
 ICON_SCALE, ICON_DY = 0.9, 34
 # Front to back, the order an image stack lists its layers.
 ICON_LAYERS = ("screen", "inner-arch", "middle-arch", "outer-arch", "back")
+ICON_W, ICON_H = 800, 480
+
+
+def linear(id, x1, y1, x2, y2, *stops):
+    body = "".join(
+        f'<stop offset="{o}" stop-color="{c}"' + (f' stop-opacity="{a[0]}"' if a else "") + "/>"
+        for o, c, *a in stops
+    )
+    return (
+        f'<linearGradient id="{id}" gradientUnits="userSpaceOnUse" x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}">'
+        f"{body}</linearGradient>"
+    )
+
+
+def radial(id, cx, cy, r, *stops):
+    body = "".join(
+        f'<stop offset="{o}" stop-color="{c}"' + (f' stop-opacity="{a[0]}"' if a else "") + "/>"
+        for o, c, *a in stops
+    )
+    return f'<radialGradient id="{id}" gradientUnits="userSpaceOnUse" cx="{cx}" cy="{cy}" r="{r}">{body}</radialGradient>'
+
+
+def wordmark_path(font_file, text, tracking, units=100):
+    """The text as one path at a cap height near `units`, and its width. Tracking is in thousandths of an em."""
+    font = TTFont(font_file)
+    glyphs = font.getGlyphSet()
+    cmap = font.getBestCmap()
+    upem = font["head"].unitsPerEm
+    cap = getattr(font["OS/2"], "sCapHeight", 0) or upem * 0.7
+    scale = units / cap
+    pen = SVGPathPen(glyphs, ntos=lambda v: f"{v:.1f}".rstrip("0").rstrip("."))
+    x = 0.0
+    for index, char in enumerate(text):
+        name = cmap[ord(char)]
+        glyphs[name].draw(TransformPen(pen, (scale, 0, 0, -scale, x, units)))
+        x += glyphs[name].width * scale
+        if index < len(text) - 1:
+            x += tracking / 1000 * upem * scale
+    return pen.getCommands(), x
+
+
+def arch(cx, half, top, bottom):
+    """One arch on a 512 box: straight sides up to a semicircular top."""
+    return f"M{cx - half} {bottom} V{top + half} A{half} {half} 0 0 1 {cx + half} {top + half} V{bottom} Z"
 
 
 def svg(width, height, body):
@@ -43,12 +88,12 @@ def background(width, height):
 
 
 def screen_path(foot=FOOT):
-    return f'<defs>{linear("sc", 0, 196, 0, 448, (0, "#FFF4EA"), (1, "#F2B79E"))}</defs><path fill="url(#sc)" d="{Palace.arch(256, 62, 196, foot)}"/>'
+    return f'<defs>{linear("sc", 0, 196, 0, 448, (0, "#FFF4EA"), (1, "#F2B79E"))}</defs><path fill="url(#sc)" d="{arch(256, 62, 196, foot)}"/>'
 
 
 def arch_path(index, foot=FOOT):
     half, top = ARCH_SHAPES[index]
-    return f'<path fill="{ARCH_COLORS[index]}" d="{Palace.arch(256, half, top, foot)}"/>'
+    return f'<path fill="{ARCH_COLORS[index]}" d="{arch(256, half, top, foot)}"/>'
 
 
 def placed(fragment, center_x, dy, scale):
@@ -124,13 +169,32 @@ def top_shelf_set(name, width, source):
     write_contents(folder, {"images": images})
 
 
+def lockup_svg(tone, fonts):
+    """The arches beside the FINESSE wordmark, in colours for a light or dark background."""
+    if tone == "light":
+        screen, arches, word = ("#2A0E1E", "#6E2440"), ("#E3B6A6", "#BC6F6F", "#7E3049"), "#2A0E1E"
+    else:
+        screen, arches, word = ("#FFF4EA", "#F2B79E"), ARCH_COLORS, "#F7E3D6"
+    path, width = wordmark_path(fonts / "marcellus.woff", "FINESSE", 160)
+    total = 200 + 40 + width
+    mark = "".join(
+        f'<path fill="{color}" d="{arch(256, half, top, 448)}"/>' for color, (half, top) in zip(arches, ARCH_SHAPES)
+    ) + f'<path fill="url(#sc)" d="{arch(256, 62, 196, 448)}"/>'
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {total:.1f} 200">'
+        f'<defs>{linear("sc", 0, 196, 0, 448, (0, screen[0]), (1, screen[1]))}</defs>'
+        f'<g transform="scale({200 / 512})">{mark}</g>'
+        f'<g transform="translate(240 50)"><path fill="{word}" d="{path}"/></g></svg>'
+    )
+
+
 def lockup(fonts):
     """Light and dark versions, because the app follows the system's appearance."""
     folder = CATALOG / "FinesseLockup.imageset"
     folder.mkdir(parents=True)
     images = []
     for tone, appearance in (("light", None), ("dark", "dark")):
-        source = Palace().lockup(tone, fonts)
+        source = lockup_svg(tone, fonts)
         (SOURCE / f"lockup-on-{tone}.svg").write_text(source)
         probe = Image.open(io.BytesIO(bytes(resvg_py.svg_to_bytes(svg_string=source, width=600))))
         for scale, width in (("1x", 600), ("2x", 1200)):

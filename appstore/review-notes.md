@@ -1,55 +1,27 @@
-# App Review notes and demo server plan
+# App Review information
 
-**Status:** FINAL. Demo server: Jellyfin's public demo only for 1.0, by the manager's default in #623. An owner-run server stays an option, not a plan.
+App Review needs a server to sign in to, and ours aren't reachable from outside, so the notes send reviewers to the Jellyfin project's public demo server. It is run by the Jellyfin project and can change or go down without notice, so check it still works shortly before each submission.
 
-## Demo server options
+To check it, run the demo-server UI test on a freshly erased simulator. It connects, signs in as `demo`, browses, finds a film through Search and plays it from its detail page, which is the path the notes describe. It reads only these values, passed with the `TEST_RUNNER_` prefix:
 
-App Review can't reach our LAN test server, and the reviewer needs a working server to see anything past the first screen.
+```sh
+printf 'TEST_RUNNER_DEMO_URL=https://demo.jellyfin.org/stable\nTEST_RUNNER_DEMO_USERNAME=demo\nTEST_RUNNER_DEMO_PASSWORD=\nTEST_RUNNER_DEMO_MOVIE=Llamigos\n' | \
+  ssh fin-mac 'set -a; . /dev/stdin; set +a; cd ~/Developer/Finesse && xcodebuild test-without-building \
+  -project Finesse.xcodeproj -scheme Finesse -testPlan UI -only-testing:FinesseUITests/DemoServerUITests \
+  -destination "platform=tvOS Simulator,name=Finesse Apple TV 4K" -derivedDataPath build'
+```
 
-| Option | How it works | For | Against |
-|---|---|---|---|
-| **A. Jellyfin's public demo, CHOSEN for 1.0** | `https://demo.jellyfin.org/stable`, user `demo`, blank password | Free. Run by the Jellyfin project for exactly this. HTTPS. Version 12.4.0, the same as our test server. Content is 11 old films, mostly public domain in the US, plus Creative Commons shorts and one series, Pioneer One. Dracula (1931) is an exception: it's probably under US copyright until 1 January 2027. Tested, see below | No availability promise, and Jellyfin can reset it or upgrade it at any time. The account is shared with the public, so its settings and watch state can change between our check and the review |
-| **B. An owner-run public review server, kept as a fallback option** | A small Jellyfin instance reachable from the internet, with a review-only user and a handful of public-domain titles | Under our control, stable, and we choose the content and settings | Needs hosting, a domain and TLS, upkeep, and someone to watch it during each review. Our current server is LAN-only and holds the household's media, so it can't be used |
-| **C. A built-in demo mode** | Ship the `-FinesseFakeServer` mode in Release, behind a hidden switch | Never fails | Apple accepts a demo mode instead of an account only with prior approval. It has no real video, so playback, the thing worth reviewing, can't be shown. Today it's DEBUG-only by design. Not recommended |
+## Sign-in details
 
-**Plan:**
+Sign-in is required. The account is `demo` with an empty password. If App Store Connect won't accept an empty password, enter "(leave empty)"; the notes explain it.
 
-- **For 1.0:** option A, the public demo.
-- **If it fails during review:** App Review will reply through App Store Connect. Option B is the fallback, if the owner then sets one up.
-- **On the day of submission:** check that the demo still signs in and plays, using the same check as below, and again if review takes more than a few days.
+## Contact
 
-## Demo server test, 2026-11-09
+Josh Finlay, support@athenanetworks.com.au, phone 1300 409 252. A 1300 number only works from within Australia, so reviewers will normally use the email.
 
-The test is `FinesseUITests/AppStore/DemoServerUITests.swift`. It runs only when `DEMO_URL`, `DEMO_USERNAME` and `DEMO_MOVIE` are given, and reads none of the test server's values. On a freshly erased `Finesse Apple TV 4K` simulator it:
+## Notes
 
-1. connects;
-2. signs in as `demo` with a blank password;
-3. opens Home, Movies and TV Shows;
-4. searches for `DEMO_MOVIE` and opens its detail page;
-5. requires focus on Play, then plays the film;
-6. checks that playback moves, opens the Info panel and leaves the player.
-
-That's the path the notes below give App Review. Since `7427197` it also relaunches the app while Home's billboard shows `DEMO_AVOID`, so screenshots can avoid a title.
-
-The run on 2026-11-09 at `bd751f4`, described below, used an earlier version that played from Home's billboard, because the detail page's focus was broken then.
-
-**Result: passed on the third run, at `bd751f4`, built from a clean export of `main` on a freshly erased simulator, in 166 seconds.**
-
-- **Connect and sign in:** connecting to `https://demo.jellyfin.org/stable` showed the "Stable Demo" user picker with only the `demo` user. Signing in through Other User with a blank password reached Home.
-- **Playback:** Play on Home's billboard played Dracula (1931) directly from the file in AVPlayer. That was H.264 at 1920x1080, AAC stereo, MOV, 4.4 Mbps. Playback moved by more than 5 seconds in 12, and the control bar and Info panel worked. Back returned to Home.
-- **Browsing:** Movies listed 11 titles, TV Shows 1, and Search found "Llamigos" and opened its detail page.
-- **Not tested on the demo:** mpv. Every demo file is MP4 and plays in AVPlayer, so the review path doesn't touch mpv.
-
-**Found on the way:**
-
-1. **Detail page focus:** opened from Search, the detail page never had focus on Play. Up then acted on the Search screen underneath, and the page disappeared. It was an app bug that only showed on a slow server. Agent-1 fixed it in `3065e19` (#600), and since `7427197` the test requires the focus again.
-2. **Slow artwork:** the demo server is slow to serve artwork. Each image takes about 2 seconds from here, and Continue Watching took more than 11 seconds to fill. The app showed placeholders until then. That's the server, not the app.
-
-Earlier runs: the first stopped at the detail page's missing focus, and the second at the detail page disappearing after Up.
-
-## Notes for App Review: FINAL
-
-Paste this into App Store Connect, under App Review Information, then Notes, or let `asc_apply.py` send it. It comes to about 2300 of 4,000 characters.
+These go in the Notes field, and `asc_apply.py` sends them.
 
 <!-- asc:reviewNotes -->
 ```
@@ -77,20 +49,3 @@ Encryption: HTTPS through Apple's URLSession, plus OpenSSL (standard TLS) inside
 
 Finesse is open source under the LGPL v3: https://github.com/JoshFinlayAU/finesse
 ```
-
-## Contact details for App Review: FINAL
-
-- **Name:** Josh Finlay
-- **Phone:** 1300 409 252
-- **Email:** support@athenanetworks.com.au
-
-These came from the owner on 2026-11-09, and `asc_apply.py` sends them. The 1300 number can't be dialled from outside Australia, so App Review, which works from the US, can in practice only use the email. A number with an international form would fix that, if the owner wants to give one.
-
-## Sign-in required
-
-Tick "Sign-in required" and enter:
-
-- **Username:** `demo`
-- **Password:** leave it blank.
-
-App Store Connect may refuse a blank password field. If it does, put "(leave empty)" in the field and keep the explanation in the notes.
