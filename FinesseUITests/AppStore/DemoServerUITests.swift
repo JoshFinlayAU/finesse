@@ -108,6 +108,7 @@ final class DemoServerUITests: XCTestCase {
 
         let player = PlayerDriver(app: app)
         XCTAssertTrue(player.bar.waitForExistence(timeout: 30), "Play should open the player")
+        player.expectSilent()
         sleep(3)
         let started = player.seconds
         sleep(12)

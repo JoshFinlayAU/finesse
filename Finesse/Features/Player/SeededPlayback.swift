@@ -168,6 +168,9 @@ final class SeededPlaybackEngine: PlaybackEngine {
         state = .idle
     }
 
+    /// It plays nothing, so it has nothing to hear.
+    var isSilent: Bool { true }
+
     func makeRenderView() -> UIView {
         let label = UILabel()
         label.text = "Seeded playback on \(kind.rawValue): no video, and these segments are not from a server"

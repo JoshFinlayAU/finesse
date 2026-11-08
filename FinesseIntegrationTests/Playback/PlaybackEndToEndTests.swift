@@ -81,6 +81,8 @@ struct PlaybackEndToEndTests {
         guard let window else {
             return nil
         }
+        // The simulator plays through the build Mac's speakers, so every engine here must be silent.
+        #expect(engine.isSilent, "\(engine.kind) should play silently in the simulator")
         let view = engine.makeRenderView()
         view.frame = window.bounds
         window.addSubview(view)

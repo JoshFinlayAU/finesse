@@ -87,6 +87,8 @@ protocol PlaybackEngine: AnyObject, Observable {
     func stop()
     /// The view video is drawn into. Only `PlaybackSurface` calls this.
     func makeRenderView() -> UIView
+    /// True when the engine itself reports it makes no sound. See `PlaybackAudio`.
+    var isSilent: Bool { get }
 }
 
 extension PlaybackEngine {

@@ -19,6 +19,11 @@ struct PlayerDriver {
         return time.split(separator: ":").compactMap { Int($0) }.reduce(0) { $0 * 60 + $1 }
     }
 
+    /// The simulator plays through the build Mac's speakers, so the engine must report it's silent.
+    func expectSilent(file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(waitFor("silent", timeout: 10), "The engine should be silent in the simulator: \(value)", file: file, line: line)
+    }
+
     func isShowing(_ text: String) -> Bool {
         value.contains(text)
     }

@@ -37,6 +37,7 @@ final class PlayerOptionsUITests: XCTestCase {
         sleep(1)
         remote.press(.select)
         XCTAssertTrue(player.bar.waitForExistence(timeout: 15))
+        player.expectSilent()
         sleep(1)
     }
 

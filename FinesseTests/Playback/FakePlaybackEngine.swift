@@ -48,6 +48,7 @@ final class FakePlaybackEngine: PlaybackEngine {
     var loaded: PlaybackLoadRequest?
     var seeks: [Ticks] = []
     var stopped = false
+    var isSilent = true
     var unreachableAudio: Set<Int> = []
     var canSelectGate: TestGate?
     var applied: [PlaybackOptions] = []

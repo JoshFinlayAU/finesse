@@ -132,6 +132,11 @@ final class MPVEngine: PlaybackEngine {
         renderView
     }
 
+    /// Read back from mpv rather than assumed from the options it was given.
+    var isSilent: Bool {
+        core?.string("mute") == "yes" && core?.string("volume").flatMap(Double.init) == 0
+    }
+
     /// mpv takes colours as red/green/blue/alpha from 0 to 1.
     private static func mpvColor(_ color: SubtitleColor) -> String {
         "\(color.red)/\(color.green)/\(color.blue)/\(color.alpha)"
@@ -296,6 +301,11 @@ private final class MPVCore: @unchecked Sendable {
             ("demuxer-max-back-bytes", "50MiB"),
         ] {
             mpv_set_option_string(handle, name, value)
+        }
+        // The simulator plays through the build Mac's speakers. See `PlaybackAudio`.
+        if PlaybackAudio.isSilenced {
+            mpv_set_option_string(handle, "mute", "yes")
+            mpv_set_option_string(handle, "volume", "0")
         }
         guard mpv_initialize(handle) >= 0 else {
             mpv_terminate_destroy(handle)

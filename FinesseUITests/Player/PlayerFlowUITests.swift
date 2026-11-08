@@ -152,6 +152,7 @@ final class PlayerFlowUITests: XCTestCase {
         openPlayer(title: title)
         let player = PlayerDriver(app: app)
         XCTAssertTrue(player.bar.waitForExistence(timeout: 30))
+        player.expectSilent()
         sleep(1)
 
         // Nothing shows during playback, and left and right do nothing at all.

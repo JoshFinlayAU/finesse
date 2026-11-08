@@ -32,12 +32,20 @@ final class AVPlayerEngine: PlaybackEngine {
     @ObservationIgnored private(set) var subtitleText = ""
 
     init() {
+        if PlaybackAudio.isSilenced {
+            player.isMuted = true
+            player.volume = 0
+        }
         subtitleOutput.suppressesPlayerRendering = true
         subtitleOutput.setDelegate(subtitleReceiver, queue: .main)
         subtitleReceiver.onText = { [weak self] text in
             self?.subtitleText = text
             self?.renderView?.showSubtitle(text)
         }
+    }
+
+    var isSilent: Bool {
+        player.isMuted && player.volume == 0
     }
 
     func load(_ request: PlaybackLoadRequest) {

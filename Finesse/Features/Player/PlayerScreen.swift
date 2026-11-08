@@ -272,6 +272,10 @@ private struct PlayerRemoteSurface: View {
         case .skip: parts.append("focus skip")
         default: break
         }
+        #if DEBUG
+        // For UI tests, which check that a silenced run really is silent.
+        if model.engine?.isSilent == true { parts.append("silent") }
+        #endif
         return parts.joined(separator: ", ")
     }
 }
