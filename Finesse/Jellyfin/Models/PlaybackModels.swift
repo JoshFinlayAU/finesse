@@ -1,7 +1,7 @@
 import Foundation
 
 // The device profile keeps Jellyfin's wire field names so it encodes directly into the
-// PlaybackInfo request. agent-3's playback layer owns the values; this layer only sends them.
+// PlaybackInfo request. The playback layer decides the values; this layer only sends them.
 
 enum DlnaProfileKind: String, Hashable, Sendable, Codable {
     case audio = "Audio"

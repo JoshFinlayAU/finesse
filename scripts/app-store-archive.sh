@@ -4,7 +4,7 @@
 #   { echo "export ASC_KEY_ID=<key id> ASC_ISSUER_ID=<issuer id>"; cat scripts/app-store-archive.sh; } | ssh fin-mac 'bash -s validate'
 #                                                                    also ask Apple to validate it
 # The API key's .p8 goes in ~/.appstoreconnect/private_keys on the Mac. Its IDs stay out of the repo.
-# It never uploads. The upload command it prints is for when the owner says go.
+# It never uploads. It prints the upload command for when a release is approved.
 # Hold fin-mac-build. Other spokes build on this Mac, so the keychain search list changes only
 # while signing, and the trap always restores it.
 #
@@ -145,5 +145,5 @@ if [ "${1:-}" = validate ]; then
   grep -vE '^\s*$|Running altool at path' "$OUT/validate.log" | cut -c1-300 | head -40
   echo "validate exit=$status"
 fi
-echo "to upload, when the owner says go: $UPLOAD"
+echo "to upload, once the release is approved: $UPLOAD"
 [ $problems -eq 0 ]

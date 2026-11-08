@@ -1,6 +1,6 @@
 # Licences of the tvOS playback dependencies
 
-This is engineering input, not legal advice. The owner decides, ideally with a lawyer before release.
+This is engineering input, not legal advice. Decisions on it are best checked with a lawyer before release.
 
 Read from upstream's own files at the versions in `versions.sh`, on 2026-11-06, unless marked otherwise.
 
@@ -31,9 +31,9 @@ Build-time only, not read in detail: Volk from MoltenVK's dependency script, who
 
 Apple's system zlib, bzip2, iconv and frameworks are used, not bundled.
 
-## Questions for the owner
+## Open questions
 
-1. **LGPL 3 and installation information.** This came with the owner's decision to use OpenSSL. LGPL 3 builds on GPL 3, and GPL 3 section 6 asks, for consumer products, for the "Installation Information" needed to install and run a modified version. An Apple TV is plausibly such a product. An App Store app can't be altered and re-signed by its user, and we don't control the signing system. LGPL 2.1 didn't have this clause, so it's a stricter position than before, and this is the main question for a lawyer. Other LGPL 3 apps on the App Store aren't evidence either way.
+1. **LGPL 3 and installation information.** This came with the decision to use OpenSSL. LGPL 3 builds on GPL 3, and GPL 3 section 6 asks, for consumer products, for the "Installation Information" needed to install and run a modified version. An Apple TV is plausibly such a product. An App Store app can't be altered and re-signed by its user, and we don't control the signing system. LGPL 2.1 didn't have this clause, so it's a stricter position than before, and this is the main question for a lawyer. Other LGPL 3 apps on the App Store aren't evidence either way.
 2. **Replacing the libraries.** LGPL section 4 of version 3, and section 6 of 2.1, are commonly met with a shared library mechanism that lets a user swap in a modified library. These frameworks are dynamic, which MPVKit's static link could not offer. Dynamic linking removes that problem without proving a user can really make the swap on a device, for the reason in question 1.
 3. **Apache 2.0.** FFmpeg's `LICENSE.md` says Apache 2.0 is incompatible with LGPL 2.1 but not with version 3, which is why OpenSSL needs `--enable-version3`. mpv and libplacebo are LGPL 2.1 or later and link Apache-licensed MoltenVK as a separate dynamic library, and through FFmpeg they now sit beside OpenSSL. Reading them under version 3 looks like it resolves this, and it needs confirming.
 4. **OpenSSL on Apple's SDK list.** Apple lists OpenSSL among the SDKs that need a privacy manifest and, when used as a binary dependency, a signature. Our framework has a manifest made from what it imports. We build it from source rather than taking a vendor binary, and it gets our team's signature when embedded in the app, so as we read it no vendor signature applies. This comes from reading Apple's rule rather than from an App Store upload, which hasn't been tried. Export compliance also changes: the app now bundles encryption, so the App Store encryption questions need answering for it.

@@ -1,7 +1,7 @@
 import UIKit
 import XCTest
 
-/// Captures the owner's numbered screenshot gallery. Numbers are stable, see memory/screenshot-gallery.md.
+/// Captures the numbered screenshot gallery. The numbers stay the same from one capture to the next.
 /// Skipped unless GALLERY_CAPTURE is set. Seeds only test users' own state and clears it afterwards.
 /// The real user picker shows household names, so it is passed through and never captured.
 @MainActor

@@ -319,7 +319,7 @@ struct PlaybackTracksEndToEndTests {
         engine.stop()
     }
 
-    /// #109: paused, in both directions on real engines. This item starts on mpv for its default
+    /// Paused, in both directions on real engines. This item starts on mpv for its default
     /// external subtitle, AVPlayer takes over with subtitles off, and only mpv reaches its audio 3.
     @Test func pausedStaysPausedAcrossMovesBetweenRealEngines() async throws {
         #expect(try await remember(audio: 2, on: Item.avMultiAudio) == 2)

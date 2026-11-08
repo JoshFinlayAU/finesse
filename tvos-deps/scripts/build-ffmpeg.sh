@@ -1,5 +1,5 @@
 #!/bin/bash
-# LGPL 3 or later, the owner's decision to get TLS 1.3 through OpenSSL: --enable-version3, and no --enable-gpl or --enable-nonfree. The result is checked below.
+# LGPL 3 or later, chosen to get TLS 1.3 through OpenSSL: --enable-version3, and no --enable-gpl or --enable-nonfree. The result is checked below.
 source "$(dirname "$0")/common.sh" "$1"
 fresh_tree ffmpeg
 FEATURES=(--enable-shared --disable-static --enable-pic --disable-debug --disable-doc --disable-programs

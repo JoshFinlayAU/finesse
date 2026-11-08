@@ -4,7 +4,7 @@ import os
 /// The order and timing of what the Siri Remote sends, for settling on real hardware what the
 /// simulator can't show: whether a swipe arrives as a pan, a move or both, in which order, how far
 /// a full swipe really goes, and how much a resting thumb drifts. Nothing is compiled in a release
-/// build. See memory/player-hud.md for how to read it.
+/// build.
 enum PlayerRemoteLog {
     #if DEBUG
     private static let logger = Logger(subsystem: "au.com.athenanetworks.finesse", category: "remote")

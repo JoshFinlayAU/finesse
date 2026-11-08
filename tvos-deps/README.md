@@ -9,7 +9,7 @@ Binaries are never committed to this repo. See "Storing the frameworks" below. L
 | Framework | Source | Notes |
 |---|---|---|
 | Libmpv | mpv 0.42.0 with our three patches | `-Dgpl=false` |
-| Libavcodec, Libavfilter, Libavformat, Libavutil, Libswresample, Libswscale | FFmpeg 8.1.3 | `--enable-version3` for OpenSSL, the owner's decision, with no `--enable-gpl` or `--enable-nonfree`. The build stops if configure reports anything but LGPL 3 or later |
+| Libavcodec, Libavfilter, Libavformat, Libavutil, Libswresample, Libswscale | FFmpeg 8.1.3 | `--enable-version3` for OpenSSL, chosen for TLS 1.3, with no `--enable-gpl` or `--enable-nonfree`. The build stops if configure reports anything but LGPL 3 or later |
 | OpenSSL | OpenSSL 3.5.9, the LTS line | libssl and libcrypto as one framework, used only by Libavformat, for TLS 1.3 |
 | Libuchardet | uchardet 0.0.8 | Guesses the character set of old subtitles that aren't UTF-8 |
 | Libass | libass 0.17.5 | FreeType 2.15.0 and HarfBuzz 15.1.0 are static inside it |
@@ -86,12 +86,12 @@ It can't see Objective-C selectors called dynamically, so it doesn't replace App
 
 ## HTTPS
 
-FFmpeg uses OpenSSL 3.5.9, the owner's decision. Tested on the simulator on 2026-11-06:
+FFmpeg uses OpenSSL 3.5.9. Tested on the simulator on 2026-11-06:
 
 - A normal HTTPS file played to the end.
 - A TLS 1.3 only host connected. It failed with -9836 under Apple's SecureTransport, tried first because it needs no bundled TLS, and which is deprecated and stops at TLS 1.2.
 
-**Known issue to revisit before release: certificates aren't verified.** mpv's `tls-verify` is off by default and `MPVEngine` doesn't set it, by the owner's decision for now. An expired certificate was accepted in testing, so an https server could be impersonated. Turning it on would refuse self-signed home servers, and would also need a CA bundle or a verify callback into Apple's Security framework, because OpenSSL can't read the system's trust store on tvOS.
+**Known issue to revisit before release: certificates aren't verified.** mpv's `tls-verify` is off by default and `MPVEngine` doesn't set it, a choice made for now. An expired certificate was accepted in testing, so an https server could be impersonated. Turning it on would refuse self-signed home servers, and would also need a CA bundle or a verify callback into Apple's Security framework, because OpenSSL can't read the system's trust store on tvOS.
 
 ## Getting the frameworks on a clean machine
 
@@ -100,7 +100,7 @@ FFmpeg uses OpenSSL 3.5.9, the owner's decision. Tested on the simulator on 2026
 There are two ways to fill it:
 
 1. **Build them.** Follow "Building" above on the machine. From an empty work folder this took about 10 minutes at 4 jobs on a busy Mac on 2026-11-07, and the scan passed. It needs only Xcode, Homebrew's Python and pkg-config, and network access to the sources, so this works today.
-2. **Fetch an archive.** The proposal below, and pushing one anywhere needs the owner's go-ahead. Builds would run `scripts/fetch-dist.sh <file or URL> <sha256>` before `xcodegen generate`. It refuses a wrong hash or an archive without all 14 frameworks, and replaces `dist` only after those checks pass. It has been tried with a local file and a loopback URL.
+2. **Fetch an archive,** as proposed below. Nothing is published yet, and publishing one needs approval first. Builds would run `scripts/fetch-dist.sh <file or URL> <sha256>` before `xcodegen generate`. It refuses a wrong hash or an archive without all 14 frameworks, and replaces `dist` only after those checks pass. It has been tried with a local file and a loopback URL.
 
 Rebuilds aren't fully byte-identical. Build paths and dates are kept out of the binaries, but in a different work folder on 2026-11-07, 5 of the 14 frameworks still differed in each slice. On the device slice they have the same size and code size and differ by 45 to 48 bytes, which fits the linker's UUID and the signature hash that depends on it, though not every byte was traced. On the simulator slice, 4 of the 5 have section addresses that moved, which wasn't explained. So a shipped build should be identified by its archive's hash, not by rebuilding and comparing.
 

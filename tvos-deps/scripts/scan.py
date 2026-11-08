@@ -9,7 +9,7 @@ Checks, per binary:
  - every required-reason symbol it imports is declared in its privacy manifest
  - every Apple symbol it imports exists in the public SDK, as listed in the SDK's .tbd stubs
  - built for tvOS at the right deployment target, with @rpath install names
- - no GPL or nonfree build flags, and FFmpeg libraries report LGPL 3, the owner's decision for TLS 1.3
+ - no GPL or nonfree build flags, and FFmpeg libraries report LGPL 3, chosen for TLS 1.3
  - no local build paths in any file of the framework
 """
 import glob

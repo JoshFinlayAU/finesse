@@ -25,8 +25,11 @@ struct LicencesView: View {
 
     private func list(_ catalog: LicenceCatalog) -> some View {
         List {
-            Section("Source Code") {
-                SourceOfferRow(offer: catalog.sourceOffer)
+            // The manifest always carries the offer, which LicenceCatalogTests checks.
+            if let offer = catalog.sourceOffer {
+                Section("Source Code") {
+                    SourceOfferRow(offer: offer)
+                }
             }
             Section("Finesse") {
                 rows(catalog.components(in: .app))
@@ -57,22 +60,13 @@ struct LicencesView: View {
     }
 }
 
-/// Where to get the source. A manifest without the wording shows a marked placeholder instead.
+/// Where to get the source.
 private struct SourceOfferRow: View {
-    let offer: String?
+    let offer: String
 
     var body: some View {
         Button {} label: {
-            VStack(alignment: .leading, spacing: 8) {
-                if let offer {
-                    Text(offer)
-                } else {
-                    Label("Placeholder for the owner", systemImage: "exclamationmark.triangle")
-                        .fontWeight(.semibold)
-                    Text("The source code offer goes here. Its wording hasn't been decided.")
-                        .font(.callout)
-                }
-            }
+            Text(offer)
         }
         .accessibilityIdentifier("sourceOffer")
     }

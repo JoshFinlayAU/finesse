@@ -208,7 +208,7 @@ import Testing
         #expect(recorder.published.last == .some(nil))
     }
 
-    /// The owner's TV already has a stored account from before this existed.
+    /// A TV that used Finesse before this existed already has an account stored in the old place.
     @Test func restoringAnExistingUserPublishesThem() async {
         let storage = InMemoryStorage()
         let client = InMemoryJellyfinClient()
