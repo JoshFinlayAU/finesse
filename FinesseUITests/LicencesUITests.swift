@@ -59,14 +59,24 @@ final class LicencesUITests: XCTestCase {
         sleep(1)
         capture("licences-5-ffmpeg-further-down")
 
-        // All the way into the second licence, to prove nothing stops part way.
-        var reachedGPL = false
-        for _ in 0..<80 where !reachedGPL {
+        // All the way into the second licence, to prove nothing stops part way. Each press waits
+        // for focus to land on the next piece, so a slow simulator can't drop presses mid-scroll.
+        let gpl = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "hasFocus == true AND label CONTAINS %@", "GNU GENERAL PUBLIC LICENSE")).firstMatch
+        var current = later
+        var stuck = 0
+        for _ in 0..<150 where stuck < 3 && !gpl.exists {
             remote.press(.down)
-            usleep(200_000)
-            reachedGPL = focused.label.contains("GNU GENERAL PUBLIC LICENSE")
+            let next = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "hasFocus == true AND label != %@", current)).firstMatch
+            if next.waitForExistence(timeout: 3) {
+                current = next.label
+                stuck = 0
+            } else {
+                stuck += 1
+            }
         }
-        XCTAssertTrue(reachedGPL, "Down should reach the GPL text after the LGPL")
+        XCTAssertTrue(gpl.exists, "Down should reach the GPL text after the LGPL, but stopped on: \(current.prefix(80))")
         sleep(1)
         capture("licences-6-gpl-text")
 

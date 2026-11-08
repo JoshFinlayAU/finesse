@@ -1,7 +1,8 @@
 import XCTest
 
-/// Drives the real app against the test server with both test users. Reset the simulator keychain
-/// first, so it starts signed out. Skips when the second user's variables are absent.
+/// Drives the real app against the test server with both test users. It launches with
+/// `-FinesseSignedOut`, so it starts signed out whatever ran before it. Skips when the second
+/// user's variables are absent.
 /// Keeps no screenshot of the user picker, which shows household names on this server.
 @MainActor
 final class TwoUserSwitchingUITests: XCTestCase {
@@ -38,6 +39,7 @@ final class TwoUserSwitchingUITests: XCTestCase {
         }
 
         // First user signs in, and sees only their own movie in Continue Watching.
+        app.launchArguments = ["-FinesseSignedOut"]
         app.launch()
         let address = app.textFields["serverAddress"]
         XCTAssertTrue(address.waitForExistence(timeout: 20))
@@ -68,6 +70,7 @@ final class TwoUserSwitchingUITests: XCTestCase {
 
         // The second user is restored after a relaunch.
         app.terminate()
+        app.launchArguments = []
         app.launch()
         expectHome(showing: secondMovie.name, notShowing: firstMovie.name)
 
