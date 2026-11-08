@@ -9,9 +9,13 @@ fresh_tree fribidi
 meson_build shared -Ddocs=false -Dbin=false -Dtests=false
 
 fresh_tree harfbuzz
+# Even line tables change HarfBuzz's code, so it's built without them, and its frames in Libass's dSYM have no file or line.
+WITH_LINES=$BASE_FLAGS
+BASE_FLAGS=${BASE_FLAGS/ -gline-tables-only/}
 meson_build static -Dfreetype=enabled -Dglib=disabled -Dgobject=disabled -Dcairo=disabled -Dicu=disabled \
   -Dcoretext=disabled -Dtests=disabled -Dintrospection=disabled -Ddocs=disabled -Dutilities=disabled \
   -Dbenchmark=disabled -Dsubset=disabled
+BASE_FLAGS=$WITH_LINES
 
 fresh_tree libass
 meson_build shared -Dfontconfig=disabled -Dcoretext=enabled -Dlibunibreak=disabled -Drequire-system-font-provider=false -Dtest=disabled
