@@ -8,7 +8,9 @@
 set -u
 export PATH=/opt/homebrew/bin:$PATH
 cd ~/Developer/Finesse || exit 1
-UDID=00000000-0000000000000000
+# The TV's device ID stays out of the repo: FINESSE_TV_UDID, or a one-line file on the Mac.
+UDID=${FINESSE_TV_UDID:-$(cat ~/.config/finesse/apple-tv-udid 2>/dev/null)}
+[ -n "$UDID" ] || { echo "Set FINESSE_TV_UDID or put the TV's UDID in ~/.config/finesse/apple-tv-udid on the Mac"; exit 2; }
 SHA=45CF62320027F92459D1D8905667A23B91A7466E
 PROFILE="Finesse tvOS Development"
 EXTENSION_PROFILE="Finesse Top Shelf tvOS Development"

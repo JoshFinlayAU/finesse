@@ -45,7 +45,7 @@ This Linux workspace can't compile or run anything tvOS. **A change is only veri
 
 Done on 2026-11-06, with the Apple TV added on 2026-11-07.
 
-- `fin-mac` is in `~/.ssh/config` on Linux with key auth. It is `user@mac.example`, which also hosts production iMessageAI and other spokes' builds, so touch only `~/Developer/Finesse` and our own simulators.
+- `fin-mac` is in `~/.ssh/config` on Linux with key auth. Its login and address are in `memory/mac-setup.md`. It also hosts production iMessageAI and other spokes' builds, so touch only `~/Developer/Finesse` and our own simulators.
 - Xcode 27.2 and XcodeGen were already on the Mac, and `~/Developer/Finesse` exists.
 - tvOS 27.2 and 26.5 simulator runtimes are installed. Our simulators are `Finesse Apple TV 4K` (27.2, the default) and `Finesse Apple TV 4K 26` (26.5, the nearest installed to the minimum OS). The 26.5 one needs `OS=26.5` in the destination, because `xcodebuild` otherwise assumes `OS=latest` and reports no matching device.
 - The `Lounge Room` Apple TV is paired and registered, and device builds sign headlessly with the `aisbuild` keychain. No Xcode account sign-in is needed. Details are in `memory/mac-setup.md`.
@@ -116,7 +116,7 @@ Hold `fin-mac-build` and `lounge-room-apple-tv`, sync, then run this from the sp
 
 ```sh
 ssh fin-mac 'bash -s install' < scripts/apple-tv-build.sh
-ssh fin-mac 'xcrun devicectl device capture screenshot --device 00000000-0000000000000000 --destination /tmp/fin-tv.png' && scp fin-mac:/tmp/fin-tv.png /tmp/fin-tv.png
+ssh fin-mac 'xcrun devicectl device capture screenshot --device "$(cat ~/.config/finesse/apple-tv-udid)" --destination /tmp/fin-tv.png' && scp fin-mac:/tmp/fin-tv.png /tmp/fin-tv.png
 ```
 
 Sign off any playback change on the real device. The simulator doesn't represent hardware decode, HDR/Dolby Vision, display mode switching, audio passthrough or Siri Remote feel.
