@@ -48,6 +48,16 @@ The result is in `~/Developer/FinesseDeps/dist`. Builds run at low priority and 
 
 `scripts/fetch.sh --record` rewrites the checksums and is only for changing versions.
 
+### Debug symbols
+
+Everything compiles with `-gline-tables-only`. That's enough for crash reports to show function names, inlined calls, files and lines. Full `-g` changed code layout in FFmpeg, and line tables leave every framework's device code byte-identical to a build without them. That was checked section by section on 2026-11-09. The exception is HarfBuzz, whose code changes even with line tables, so it builds without them. Its frames inside Libass then show function names at most. `make_frameworks.py` makes each framework's dSYM from the unstripped binary, checks that its UUID matches, then strips the binary with `strip -S -x`. `-S` drops the debug map, which names files on the build Mac. `package.sh` adds the dSYM to each slice of the xcframework. Xcode then copies it into an app's archive, so App Store uploads carry symbols for our frameworks and their crash reports symbolicate.
+
+- OpenSSL makes its dSYM in `build-openssl.sh`, because its static archives are deleted once it's linked.
+- MoltenVK builds through its own Xcode project. `build-moltenvk.sh` turns on debug info in its xcconfig and makes the dSYM straight after, while the objects are still in Xcode's DerivedData.
+- FFmpeg gets `--disable-stripping`, so its install keeps the debug map until the dSYM is made. That option is left out of the configuration string the libraries report.
+
+To try a change without disturbing builds that use `dist`, set `FINESSE_DEPS_WORK` to another folder. The result lands in that folder's `dist`.
+
 ## Patches
 
 These are in `patches/mpv`, against the mpv commit in `versions.sh`. They were written for this project, and MPVKit's were only read to see which areas needed changing.
