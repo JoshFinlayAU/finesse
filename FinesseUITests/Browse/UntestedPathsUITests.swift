@@ -128,6 +128,9 @@ final class UntestedPathsUITests: XCTestCase {
         let play = app.buttons["detailPlay"]
         XCTAssertTrue(play.waitForExistence(timeout: 20))
         sleep(2)
+        // Continue Watching puts the most recently played first, so anything else the test user has
+        // in progress can come before the seeded movie. Then the saved position below isn't its own.
+        XCTAssertTrue(app.staticTexts[movie.name].exists, "The first Continue Watching card should be the seeded \(movie.name)")
         XCTAssertTrue(play.label.contains("Resume"), "Saved position should offer Resume: \(play.label)")
         let startOver = app.buttons["detailStartOver"]
         XCTAssertTrue(startOver.exists, "Saved position should offer Start Over")

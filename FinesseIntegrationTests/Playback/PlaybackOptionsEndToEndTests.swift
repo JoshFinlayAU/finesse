@@ -212,8 +212,10 @@ struct PlaybackOptionsEndToEndTests {
             #expect(view.bounds.contains(label.frame), "\(label.frame) should be on screen")
             #expect(label.frame.height > 0)
 
+            // Reading an attribute of an empty string traps, so an empty label counts as no size.
             @MainActor func fontSize() -> CGFloat {
-                (label.attributedText?.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)?.pointSize ?? 0
+                guard let text = label.attributedText, text.length > 0 else { return 0 }
+                return (text.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)?.pointSize ?? 0
             }
             let normalSize = fontSize()
             #expect(normalSize > 0)
