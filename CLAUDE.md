@@ -135,6 +135,17 @@ For UI changes, state which screens were checked and how. Focus behaviour can't 
 
 TestFlight uploads and any App Store Connect change are outward-facing, so confirm each one first. Archive and upload from `fin-mac`.
 
+`scripts/app-store-archive.sh` makes the Release archive and the App Store export, checks what Apple will receive, and with `validate` has Apple validate it. It never uploads. Hold `fin-mac-build`, sync, then run this from the spoke root with the App Store Connect API key's IDs, which stay out of the repo:
+
+```sh
+{ echo "export ASC_KEY_ID=<key id> ASC_ISSUER_ID=<issuer id>"; cat scripts/app-store-archive.sh; } | ssh fin-mac 'bash -s validate'
+```
+
+- It signs with the Apple Distribution identity in the `aisbuild` keychain and the `Finesse tvOS App Store` and `Finesse Top Shelf tvOS App Store` profiles.
+- The version comes from `MARKETING_VERSION` in `project.yml`. The build number defaults to the UTC time as `YYYYMMDD.HHMM`, or set `FINESSE_BUILD_NUMBER`.
+- Its last line is the upload command for that export. Run it only once the owner says go.
+- Our frameworks ship without dSYMs, so an upload warns about missing symbols for them.
+
 ## v1 scope
 
 **In:**
