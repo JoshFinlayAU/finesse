@@ -1,7 +1,25 @@
 {
-  "sourceOffer": null,
+  "sourceOffer": "Finesse is open source under the GNU Lesser General Public License, version 3. Its complete source code is at github.com/JoshFinlayAU/finesse. That repository also holds the corresponding source for our builds of mpv, FFmpeg and the other libraries under Playback Libraries: the tvos-deps folder has the scripts, pinned versions and patches that build them from their published sources.",
   "developmentOnlyPackages": [],
   "components": [
+    {
+      "id": "finesse",
+      "name": "Finesse",
+      "version": "0.1",
+      "group": "app",
+      "licence": "LGPL 3",
+      "files": [
+        {
+          "title": "GNU Lesser General Public License, version 3",
+          "file": "licence-finesse-1.txt"
+        },
+        {
+          "title": "GNU General Public License, version 3",
+          "file": "licence-finesse-2.txt"
+        }
+      ],
+      "note": "Copyright 2026 Josh Finlay, Athena Networks. The LGPL is a set of extra permissions on top of the GPL, so both texts apply. Source code: github.com/JoshFinlayAU/finesse"
+    },
     {
       "id": "ffmpeg",
       "name": "FFmpeg",

@@ -100,9 +100,19 @@ struct LicenceCatalogTests {
         #expect(freetype.credit?.contains("The FreeType Project (www.freetype.org)") == true)
     }
 
-    /// The owner decides this wording, and the screen shows a marked placeholder until then.
-    @Test func theSourceOfferIsAPlaceholderUntilTheOwnerDecides() throws {
-        #expect(try catalog.sourceOffer == nil)
+    /// Finesse is LGPL 3, and the offer points to the public repository that also builds our LGPL libraries.
+    @Test func theSourceOfferPointsToThePublicRepository() throws {
+        let offer = try #require(try catalog.sourceOffer)
+        #expect(offer.contains("github.com/JoshFinlayAU/finesse"))
+        #expect(offer.contains("tvos-deps"))
+    }
+
+    @Test func finesseIsListedUnderItsOwnLicenceAtTheAppVersion() throws {
+        let finesse = try #require(try catalog.components.first { $0.id == "finesse" })
+        #expect(finesse.group == .app)
+        #expect(finesse.version == Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+        let lesser = try #require(finesse.files.first { $0.title.contains("Lesser") })
+        #expect(try LicenceCatalog.text(of: lesser).contains("Version 3, 29 June 2007"))
     }
 }
 

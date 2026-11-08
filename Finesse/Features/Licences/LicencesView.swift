@@ -28,6 +28,9 @@ struct LicencesView: View {
             Section("Source Code") {
                 SourceOfferRow(offer: catalog.sourceOffer)
             }
+            Section("Finesse") {
+                rows(catalog.components(in: .app))
+            }
             Section("Playback Libraries") {
                 rows(catalog.components(in: .playback))
             }
@@ -54,7 +57,7 @@ struct LicencesView: View {
     }
 }
 
-/// The owner hasn't decided this wording, so nothing here stands in for it.
+/// Where to get the source. A manifest without the wording shows a marked placeholder instead.
 private struct SourceOfferRow: View {
     let offer: String?
 

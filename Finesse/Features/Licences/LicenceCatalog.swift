@@ -13,6 +13,7 @@ struct LicenceCatalog: Decodable, Equatable {
 
     struct Component: Decodable, Equatable, Hashable, Identifiable {
         enum Group: String, Decodable {
+            case app
             case playback
             case swift
         }
@@ -29,7 +30,7 @@ struct LicenceCatalog: Decodable, Equatable {
         var credit: String?
     }
 
-    /// The owner's wording for the source code offer. Nil until the owner provides it.
+    /// Where the source code is, for Finesse and for the LGPL libraries we build.
     let sourceOffer: String?
     /// Packages pinned only for development, which don't ship and so aren't listed.
     let developmentOnlyPackages: [String]

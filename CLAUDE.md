@@ -22,7 +22,7 @@ These are the owner's choices. Don't change them without asking.
 | Test server | Existing Jellyfin server, test user only |
 | Distribution | TestFlight first, kept App Store-ready |
 | Branding | Concept 04 Palace, nested picture-palace arches with the FINESSE wordmark. It has no letter, so pair it with the wordmark wherever the mark alone wouldn't say Finesse. Source and the tvOS asset requirements are in `branding/` |
-| Licence | Private for now; open or closed source to be decided before release |
+| Licence | LGPLv3, open source at github.com/JoshFinlayAU/finesse, which is public. `COPYING.LESSER` and `COPYING` hold the texts, and the in-app licences screen lists Finesse and points its source offer at the repo |
 | Bundle ID | `au.com.athenanetworks.finesse`. Registered in the developer portal on 2026-11-07. The owner approved an App Store Connect record on 2026-11-09: name Finesse, SKU `finesse-tvos`, tvOS, English (Australia). The owner created it in the web UI, because the API can't create app records. Apple ID `6832351387`, with version 1.0 for tvOS waiting in Prepare for Submission, checked through the API on 2026-11-09 |
 | Apple team | `4S7BG5A4XV` |
 | Plain HTTP | Allowed to any server (`NSAllowsArbitraryLoads`), because servers are user-configured and self-hosted |
@@ -173,8 +173,8 @@ TestFlight uploads and any App Store Connect change are outward-facing, so confi
 - Organise by feature, with separate layers for the Jellyfin client, playback and shared UI. Views stay free of networking and engine logic.
 - Set a valid module name (`PRODUCT_MODULE_NAME = FinEsse`), because the hyphen in `Finesse` isn't valid in a Swift module name. Use `FinEsse` for code identifiers and `Finesse` for the user-facing name.
 - Write new tests with Swift Testing where it fits. Unit tests use recorded fixtures rather than a live server.
-- Use short-lived feature branches with imperative commit messages.
-- Keep the repo private. Don't add a licence file or push to a public remote until the licence decision is made.
+- Commit to `main` with imperative commit messages. Short-lived branches are optional.
+- The repo is public. Before pushing, check new commits for internal addresses, the Mac login, the Apple TV UDID and workspace paths (see `memory/github-remote.md`).
 
 ## Gotchas
 
@@ -184,7 +184,7 @@ TestFlight uploads and any App Store Connect change are outward-facing, so confi
   - Sessions need a stable `DeviceId` and a `MediaBrowser` authorization header.
   - Report start, progress and stop, or resume and Next Up will drift.
   - Check the behaviour against the test server's version rather than assuming it from docs.
-- **libmpv/FFmpeg licensing:** our own dynamic build, with FFmpeg under LGPLv3 and OpenSSL for TLS 1.3 by the owner's decision, which replaced an earlier LGPL 2.1 plan. No GPL components. Track each dependency's licence, since App Store distribution and LGPL obligations both feed into the pre-release licence decision. Treat Swiftfin and other clients as references only, and don't copy their code without checking the licence.
+- **libmpv/FFmpeg licensing:** our own dynamic build, with FFmpeg under LGPLv3 and OpenSSL for TLS 1.3 by the owner's decision, which replaced an earlier LGPL 2.1 plan. No GPL components. Track each dependency's licence, since App Store distribution has to meet the LGPL obligations, and keep the source offer in `licences.json` current. Finesse is LGPLv3, so code copied in must have a compatible licence. Treat Swiftfin and other clients as references only, and don't copy their code without checking the licence.
 - **App Transport Security:** the app allows plain HTTP to any host, by the owner's decision. `NSAllowsLocalNetworking` must stay out of `Info.plist`, because its presence makes the system ignore `NSAllowsArbitraryLoads`. The App Review justification is in `memory/privacy-and-test-secrets.md`. AVPlayer and mpv make their own connections, so test both.
 - **tvOS storage:** local storage can be purged and `UserDefaults` is small. Keep tokens in the Keychain, treat image and metadata caches as disposable, and don't assume files persist.
 - **tvOS frameworks:** there's no `WKWebView`, so sign-in and help flows must be native.
@@ -198,7 +198,6 @@ TestFlight uploads and any App Store Connect change are outward-facing, so confi
 
 - Private memory: `memory/`  ·  Spoke skills: `skills/`
 - Destructive git ops (force-push, reset --hard, branch deletes) are fine without asking. Make a throwaway branch or note the SHA first so the state is recoverable.
-- Still undecided: the final licence. Ask rather than inventing it, then record the answer here.
 
 <!-- aisandbox:multi-agent:start -->
 ## Multi-agent spoke

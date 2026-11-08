@@ -30,9 +30,10 @@ final class LicencesUITests: XCTestCase {
         capture("licences-1-settings-row")
         remote.press(.select)
 
-        // The list, with the source offer placeholder marked for the owner.
-        let placeholder = app.descendants(matching: .any)["Placeholder for the owner"]
-        XCTAssertTrue(placeholder.waitForExistence(timeout: 10))
+        // The list, starting with where to get the source.
+        let offer = app.descendants(matching: .any)["sourceOffer"]
+        XCTAssertTrue(offer.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["licence-finesse"].exists, "Finesse lists its own licence")
         sleep(1)
         capture("licences-2-list")
 
@@ -71,7 +72,7 @@ final class LicencesUITests: XCTestCase {
 
         // Back: licence to list, list to Settings, Settings to the tab bar.
         remote.press(.menu)
-        XCTAssertTrue(placeholder.waitForExistence(timeout: 10))
+        XCTAssertTrue(offer.waitForExistence(timeout: 10))
         sleep(1)
         XCTAssertTrue(ffmpeg.waitForExistence(timeout: 5))
         capture("licences-7-back-on-list")
