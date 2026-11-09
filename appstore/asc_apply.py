@@ -48,9 +48,9 @@ AGE_RATING = {                  # see age-rating.md
         "parentalControls", "ageAssurance", "socialMedia", "unrestrictedWebAccess", "userGeneratedContent"]},
     "ageRatingOverrideV2": "NONE",
 }
-REVIEW_CONTACT = {             # a 1300 number only works from within Australia
+REVIEW_CONTACT = {             # a 1300 number only works from within Australia; Apple wants the +61 form
     "contactFirstName": "Josh", "contactLastName": "Finlay",
-    "contactPhone": "1300 409 252", "contactEmail": "support@athenanetworks.com.au",
+    "contactPhone": "+61 1300 409 252", "contactEmail": "support@athenanetworks.com.au",
 }
 ENCRYPTION_DESCRIPTION = (
     "HTTPS through Apple's URLSession, and OpenSSL 3.5 (standard TLS 1.2 and 1.3) inside the bundled "
