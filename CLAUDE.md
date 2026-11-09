@@ -90,7 +90,7 @@ The second command runs `Fast`, the default plan. Name any other plan with `-tes
 
 | Plan | What it holds | When to run it |
 |---|---|---|
-| `Fast` | Every unit test, plus a UI smoke set on the fake server: user switching, Home, the library grid and Search, detail focus on a slow server, and Back from each tab | Every routine change, on the 27.2 simulator only. It took 7 minutes on 2026-11-09 |
+| `Fast` | Every unit test, plus a UI smoke set on the fake server: user switching, Home, the library grid and Search, detail focus on a slow server, a new episode arriving live, and Back from each tab | Every routine change, on the 27.2 simulator only. It took 7 minutes on 2026-11-09 |
 | `Playback` | Every streaming and player test: the playback integration tests, the player UI tests on AVPlayer and mpv, tracks, transcodes, resume and progress, Skip and Up Next, and the demo server | Only when a change touches `Finesse/Playback`, `Finesse/Features/Player`, the device profile, playback info code, `tvos-deps` or `FinesseDeps`, and before a release build |
 | `Full` | Everything | Before a release build, on both simulators, or when the manager asks |
 | `Finesse` | The unit tests alone | When only unit tests need proving |

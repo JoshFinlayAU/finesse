@@ -26,6 +26,7 @@
         "HomeLandingUITests/testDownThroughTheRowsAndBackOutAgain()",
         "HomeLandingUITests/testPositionIsKeptOnReturnFromDetailAndThePlayer()",
         "HomeLandingUITests/testUpFromTheFirstRowReachesTheButtonsThenTheTabBar()",
+        "LiveUpdatesUITests",
         "SlowServerFocusUITests",
         "UntestedPathsUITests/testBackFromMovies()",
         "UntestedPathsUITests/testBackFromSearch()",
