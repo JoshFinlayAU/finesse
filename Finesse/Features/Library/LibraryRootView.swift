@@ -198,14 +198,12 @@ private struct LibraryControls: View {
     /// All or Unwatched in one press, as the filter people want most. Selecting rather than
     /// following focus, so moving across it to Sort never reloads the grid.
     private var scopeSwitch: some View {
-        GlassEffectContainer {
-            HStack(spacing: 12) {
-                ForEach(LibraryScope.allCases, id: \.self) { scope in
-                    ScopeButton(title: scope.title, isChosen: model.scope == scope) {
-                        Task { await model.setScope(scope) }
-                    }
-                    .accessibilityIdentifier(scope == .all ? "libraryScopeAll" : "libraryScopeUnwatched")
+        HStack(spacing: 16) {
+            ForEach(LibraryScope.allCases, id: \.self) { scope in
+                ScopeButton(title: scope.title, isChosen: model.scope == scope) {
+                    Task { await model.setScope(scope) }
                 }
+                .accessibilityIdentifier(scope == .all ? "libraryScopeAll" : "libraryScopeUnwatched")
             }
         }
     }
@@ -271,18 +269,20 @@ private struct ScopeButton: View {
     let isChosen: Bool
     let action: () -> Void
 
+    /// Tinted with a checkmark when chosen, like the letters in the filter panel, so the choice
+    /// reads without focus on it.
     var body: some View {
-        if isChosen {
-            button.buttonStyle(.glassProminent)
-        } else {
-            button.buttonStyle(.glass)
+        Button(action: action) {
+            if isChosen {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
         }
-    }
-
-    private var button: some View {
-        Button(title, action: action)
-            .accessibilityValue(isChosen ? "On" : "Off")
-            .accessibilityAddTraits(isChosen ? .isSelected : [])
+        .tint(isChosen ? .accentColor : nil)
+        .buttonStyle(.bordered)
+        .accessibilityValue(isChosen ? "On" : "Off")
+        .accessibilityAddTraits(isChosen ? .isSelected : [])
     }
 }
 
