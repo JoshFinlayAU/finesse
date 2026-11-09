@@ -143,6 +143,36 @@ struct HomeModelTests {
         #expect(hubs(model).first?.items.first?.resumePosition == Ticks(seconds: 600))
     }
 
+    /// The reload as the player closes and a live refresh can overlap. Whichever was asked for
+    /// last must be what stays, even if the earlier one answers after it.
+    @Test func aLoadThatFinishesLateDoesNotUndoANewerOne() async throws {
+        let base = await signedInClient()
+        await base.configure {
+            $0.resumeValue = [film("before")]
+            $0.allItems = [film("m")]
+        }
+        let gated = GatedJellyfinClient(base: base)
+        let model = HomeModel(client: gated, focusDelay: .milliseconds(30), prepareArt: { _ in })
+
+        await gated.hold("items@0")
+        let older = Task { await model.load() }
+        for _ in 0..<500 {
+            if await gated.isWaiting("items@0") { break }
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        #expect(await gated.isWaiting("items@0"))
+        // By now the older load's Continue Watching has come back, from before the change.
+        try await Task.sleep(for: .milliseconds(50))
+
+        await base.configure { $0.resumeValue = [film("after")] }
+        await model.load()
+        #expect(hubs(model).first?.items.map(\.id) == ["after"])
+
+        await gated.release("items@0")
+        await older.value
+        #expect(hubs(model).first?.items.map(\.id) == ["after"])
+    }
+
     @Test func refusedTokenIsReportedAsExpired() async {
         let model = makeModel(InMemoryJellyfinClient())
         await model.load()

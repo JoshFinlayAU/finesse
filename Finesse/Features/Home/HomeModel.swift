@@ -73,6 +73,10 @@ final class HomeModel {
     private var heroTask: Task<Void, Never>?
     private var featuredRefreshTask: Task<Void, Never>?
     private var details: [String: MediaItem] = [:]
+    /// Numbers each load, so one that finishes after a newer one has shown can't put back older
+    /// rows. A newer load that was cancelled doesn't count, so the older one still shows.
+    private var loadGeneration = 0
+    private var shownGeneration = 0
 
     init(
         client: any JellyfinClient,
@@ -98,6 +102,8 @@ final class HomeModel {
         if case .failed = state {
             state = .loading
         }
+        loadGeneration += 1
+        let current = loadGeneration
         let client = client
         let limit = limit
         async let resume = Self.outcome { try await client.resumeItems(limit: limit) }
@@ -114,7 +120,7 @@ final class HomeModel {
             (HomeHub.Kind.recentMovies, movies),
             (HomeHub.Kind.recentShows, shows),
         ]
-        guard !Task.isCancelled else { return }
+        guard !Task.isCancelled, current > shownGeneration else { return }
 
         let failures = outcomes.compactMap { outcome -> Error? in
             if case .failure(let error) = outcome.1 { return error }
@@ -130,6 +136,7 @@ final class HomeModel {
             state = .failed(first.userMessage)
             return
         }
+        shownGeneration = current
         coreRows = outcomes.compactMap { kind, outcome in
             guard case .success(let items) = outcome, !items.isEmpty else { return nil }
             return HomeHub(kind: kind, items: items)
