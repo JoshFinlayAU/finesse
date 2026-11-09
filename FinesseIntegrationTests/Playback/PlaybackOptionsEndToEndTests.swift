@@ -31,7 +31,7 @@ private enum LiveServer {
 /// Options on real engines and real media. The fakes only record what they're told, so this is what
 /// shows speed, picture mode, subtitle size and delays really change something.
 @MainActor
-@Suite(.serialized, .enabled(if: LiveServer.isConfigured, "JELLYFIN_* variables not set"))
+@Suite(.serialized, .enabled(if: LiveServer.isConfigured, "JELLYFIN_* variables not set"), .disabled(if: TestPlanScope.leavesOutPlayback, "Left to Playback.xctestplan"))
 struct PlaybackOptionsEndToEndTests {
     /// An MP4 with mov_text subtitles that AVPlayer plays, with regular dialogue from 15 minutes in.
     private let movText = "75c2da7ae8730a3faa40e7b6f09eefee"
@@ -204,7 +204,15 @@ struct PlaybackOptionsEndToEndTests {
             let label = try subtitleLabel(in: view)
             try await session.selectSubtitleTrack(id: 2)
 
-            #expect(try await waitUntil { !av.subtitleText.isEmpty }, "AVPlayer should hand over a line")
+            #expect(try await waitUntil { !av.subtitleText.isEmpty || av.drawsSubtitlesNatively }, "AVPlayer should hand over a line")
+            // tvOS 26 hands over nothing, so AVPlayer draws them itself, unstyled. Ours must stay out of the way.
+            if av.drawsSubtitlesNatively {
+                #expect(ProcessInfo.processInfo.operatingSystemVersion.majorVersion < 27, "Only tvOS 26 should need AVPlayer's own drawing")
+                try await Task.sleep(for: .seconds(2))
+                view.layoutIfNeeded()
+                #expect(label.isHidden, "AVPlayer draws the line, so ours must not show it too")
+                return
+            }
             @MainActor func showing() -> Bool {
                 view.layoutIfNeeded()
                 return label.attributedText?.string.isEmpty == false && !label.isHidden && label.alpha > 0

@@ -30,6 +30,9 @@ final class AVPlayerEngine: PlaybackEngine {
     @ObservationIgnored private let subtitleReceiver = SubtitleReceiver()
     /// What's showing now. Internal so a test can read it.
     @ObservationIgnored private(set) var subtitleText = ""
+    @ObservationIgnored private var subtitleFallback = SubtitleRenderingFallback()
+    /// AVPlayer draws the subtitles itself, because our output delivered nothing. Internal so a test can read it.
+    var drawsSubtitlesNatively: Bool { subtitleFallback.isNative }
 
     init() {
         if PlaybackAudio.isSilenced {
@@ -39,8 +42,12 @@ final class AVPlayerEngine: PlaybackEngine {
         subtitleOutput.suppressesPlayerRendering = true
         subtitleOutput.setDelegate(subtitleReceiver, queue: .main)
         subtitleReceiver.onText = { [weak self] text in
-            self?.subtitleText = text
-            self?.renderView?.showSubtitle(text)
+            guard let self else { return }
+            subtitleFallback.outputDelivered()
+            // Once AVPlayer draws them, drawing here too would show every line twice.
+            guard !subtitleFallback.isNative else { return }
+            subtitleText = text
+            renderView?.showSubtitle(text)
         }
     }
 
@@ -58,6 +65,9 @@ final class AVPlayerEngine: PlaybackEngine {
         pendingStart = request.startPosition > .zero ? request.startPosition : nil
         hasStarted = false
         wantsPause = false
+        subtitleFallback = SubtitleRenderingFallback()
+        subtitleFallback.select(request.subtitleStreamIndex != nil)
+        subtitleOutput.suppressesPlayerRendering = true
 
         let item = AVPlayerItem(url: request.url)
         item.audioTimePitchAlgorithm = .timeDomain
@@ -102,6 +112,7 @@ final class AVPlayerEngine: PlaybackEngine {
 
     func selectSubtitleTrack(id: Int?) {
         selectedSubtitleTrackID = id
+        subtitleFallback.select(id != nil)
         subtitleText = ""
         renderView?.showSubtitle("")
         applySelection(.legible, trackID: id, tracks: subtitleTracks)
@@ -240,7 +251,14 @@ final class AVPlayerEngine: PlaybackEngine {
         guard pendingStart == nil, let ticks = Self.ticks(time) else {
             return
         }
+        // Only ordinary playing counts towards the subtitle fallback, not a seek's jump.
+        let moved = ticks.seconds - position.seconds
         position = ticks
+        if state == .playing, moved > 0, moved <= 2, subtitleFallback.played(moved) {
+            subtitleOutput.suppressesPlayerRendering = false
+            subtitleText = ""
+            renderView?.showSubtitle("")
+        }
     }
 
     /// Server streams and AVPlayer's options are matched by order among embedded tracks.
