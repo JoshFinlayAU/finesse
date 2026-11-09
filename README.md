@@ -11,8 +11,8 @@ It's an early, independent project. Version 1 concentrates on watching video wel
 
 <p align="center">
   <img src="docs/images/home.jpg" alt="Home, with the featured film above the Continue Watching row" width="32%">
-  <img src="docs/images/detail.jpg" alt="A film's detail page with Play, Mark Unwatched and Favourite" width="32%">
-  <img src="docs/images/search.jpg" alt="Search results as you type" width="32%">
+  <img src="docs/images/movies.jpg" alt="The Movies library, with sorting, the filter panel and the All and Unwatched switch" width="32%">
+  <img src="docs/images/detail.jpg" alt="A film's detail page with Resume, Start Over, Mark Unwatched and Favourite" width="32%">
 </p>
 
 ## What it does
