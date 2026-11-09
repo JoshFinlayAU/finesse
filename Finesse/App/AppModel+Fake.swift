@@ -34,6 +34,7 @@ extension AppModel {
                 show.genres = ["Comedy"]
                 show.images.backdropTags = ["bright"]
                 show.images.primaryTag = "poster"
+                show.userState.unplayedItemCount = 12
                 var next = MediaItem(id: "next", name: "The Next One", kind: .episode)
                 next.seriesID = "a-long-show"
                 next.seriesName = "A Long Show"

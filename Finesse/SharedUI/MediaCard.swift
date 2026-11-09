@@ -29,6 +29,8 @@ struct MediaCard<Menu: View>: View {
     var progress: Double?
     /// Shows a check mark for an item that has been watched to the end.
     var isWatched = false
+    /// Unwatched episodes on a series or season card. Nil or 0 shows no count.
+    var unwatchedCount: Int?
     var onPlay: (() -> Void)?
     /// Tells the screen when this card gains or loses focus.
     var onFocusChange: ((Bool) -> Void)?
@@ -51,6 +53,9 @@ struct MediaCard<Menu: View>: View {
                         if isWatched {
                             WatchedBadge()
                                 .padding(12)
+                        } else if let unwatchedCount, unwatchedCount > 0 {
+                            UnwatchedCountBadge(count: unwatchedCount)
+                                .padding(12)
                         }
                     }
                     .clipped()
@@ -61,7 +66,7 @@ struct MediaCard<Menu: View>: View {
             .contextMenu(menuItems: menu)
             .onPlayPauseCommand(perform: onPlay)
             .accessibilityLabel(title)
-            .accessibilityValue([subtitle, isWatched ? "Watched" : nil].compactMap(\.self).joined(separator: ", "))
+            .accessibilityValue(accessibilityValue)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -77,6 +82,11 @@ struct MediaCard<Menu: View>: View {
             .frame(width: style.size.width, alignment: .leading)
         }
     }
+
+    private var accessibilityValue: String {
+        let count = isWatched ? nil : unwatchedCount.flatMap { $0 > 0 ? UnwatchedCountBadge.spokenText(for: $0) : nil }
+        return [subtitle, isWatched ? "Watched" : nil, count].compactMap(\.self).joined(separator: ", ")
+    }
 }
 
 extension MediaCard where Menu == EmptyView {
@@ -87,6 +97,7 @@ extension MediaCard where Menu == EmptyView {
         imageURL: URL?,
         progress: Double? = nil,
         isWatched: Bool = false,
+        unwatchedCount: Int? = nil,
         onPlay: (() -> Void)? = nil,
         action: @escaping () -> Void
     ) {
@@ -97,6 +108,7 @@ extension MediaCard where Menu == EmptyView {
             imageURL: imageURL,
             progress: progress,
             isWatched: isWatched,
+            unwatchedCount: unwatchedCount,
             onPlay: onPlay,
             action: action,
             menu: { EmptyView() }
@@ -112,6 +124,34 @@ struct WatchedBadge: View {
             .foregroundStyle(.white)
             .frame(width: 48, height: 48)
             .glassEffect(.regular.tint(.black.opacity(0.5)), in: .circle)
+    }
+}
+
+/// How many episodes are left, in the same dark glass as the check mark, so it reads from across a
+/// room on any artwork. It sits in the corner, clear of the title beneath the card.
+struct UnwatchedCountBadge: View {
+    let count: Int
+
+    /// Counts over 99 show as 99+, so the badge never grows past the corner.
+    static func text(for count: Int) -> String {
+        count > 99 ? "99+" : String(count)
+    }
+
+    static func spokenText(for count: Int) -> String {
+        count == 1 ? "1 unwatched episode" : "\(count) unwatched episodes"
+    }
+
+    var body: some View {
+        Text(Self.text(for: count))
+            .font(.system(size: 26, weight: .bold).monospacedDigit())
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 14)
+            .frame(minWidth: 48, minHeight: 48)
+            .glassEffect(.regular.tint(.black.opacity(0.5)), in: .capsule)
+            // The card's own value says the count in words.
+            .accessibilityHidden(true)
     }
 }
 

@@ -218,6 +218,7 @@ private struct HomeLanding: View {
             imageURL: hub.usesLandscapeCards ? client.landscapeURL(for: item) : client.posterURL(for: item),
             progress: item.watchedFraction,
             isWatched: item.isWatched,
+            unwatchedCount: item.unwatchedCount,
             onPlay: item.isPlayable ? { navigator.play(item, resumeFrom: item.resumePosition) } : nil,
             onFocusChange: { isFocused in
                 if isFocused {

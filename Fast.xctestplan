@@ -29,7 +29,8 @@
         "SlowServerFocusUITests",
         "UntestedPathsUITests/testBackFromMovies()",
         "UntestedPathsUITests/testBackFromSearch()",
-        "UntestedPathsUITests/testBackFromSettings()"
+        "UntestedPathsUITests/testBackFromSettings()",
+        "UnwatchedBadgeUITests"
       ],
       "target" : {
         "containerPath" : "container:Finesse.xcodeproj",

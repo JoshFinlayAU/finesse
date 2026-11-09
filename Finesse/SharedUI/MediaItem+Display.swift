@@ -34,6 +34,16 @@ extension MediaItem {
         userState.isPlayed
     }
 
+    /// Episodes left to watch, for the count on a series or season card. Nil hides it, as it does
+    /// once everything is watched, when the check mark shows instead.
+    var unwatchedCount: Int? {
+        guard kind == .series || kind == .season, !userState.isPlayed,
+              let count = userState.unplayedItemCount, count > 0 else {
+            return nil
+        }
+        return count
+    }
+
     /// The saved position to resume from, or nil to play from the start.
     var resumePosition: Ticks? {
         userState.playbackPosition > .zero ? userState.playbackPosition : nil
