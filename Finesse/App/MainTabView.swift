@@ -1,13 +1,47 @@
 import SwiftUI
 
+/// The signed-in shell. It keeps the user's live connection open around the tabs, here rather than
+/// in the tabs' own view, so switching tabs never touches it.
 struct MainTabView: View {
-    @Environment(AppModel.self) private var app
     @Environment(\.jellyfinClient) private var client
     @Environment(\.scenePhase) private var scenePhase
-    @State private var navigator = AppNavigator()
     /// One per signed-in user. A sign-out or switch rebuilds this view, which closes the old one.
     @State private var serverEvents = ServerEventHub()
     @State private var live: LiveUpdates?
+
+    var body: some View {
+        MainTabs()
+            .environment(\.serverEvents, serverEvents)
+            .task { await keepLive() }
+            .onChange(of: scenePhase) { _, phase in
+                guard let live else { return }
+                Task {
+                    switch phase {
+                    case .active: await live.resume()
+                    case .background: await live.pause()
+                    default: break
+                    }
+                }
+            }
+    }
+
+    /// Open while this user is signed in, closed when the view goes.
+    private func keepLive() async {
+        let live = LiveUpdates(source: client as? any LiveEventSource, events: serverEvents)
+        self.live = live
+        await live.start()
+        // Ends when this view goes, at sign-out or a switch to another user.
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(3600))
+        }
+        await live.stop()
+    }
+}
+
+private struct MainTabs: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.jellyfinClient) private var client
+    @State private var navigator = AppNavigator()
 
     var body: some View {
         @Bindable var navigator = navigator
@@ -29,35 +63,11 @@ struct MainTabView: View {
             }
         }
         .environment(navigator)
-        .environment(\.serverEvents, serverEvents)
         .fullScreenCover(item: $navigator.activePlayback) { request in
             PlayerScreen(request: request)
                 .environment(navigator)
         }
         .task(id: app.pendingLink) { await openPendingLink() }
-        .task { await keepLive() }
-        .onChange(of: scenePhase) { _, phase in
-            guard let live else { return }
-            Task {
-                switch phase {
-                case .active: await live.resume()
-                case .background: await live.pause()
-                default: break
-                }
-            }
-        }
-    }
-
-    /// Open while this user is signed in, closed when the view goes.
-    private func keepLive() async {
-        let live = LiveUpdates(source: client as? any LiveEventSource, events: serverEvents)
-        self.live = live
-        await live.start()
-        // Ends when this view goes, at sign-out or a switch to another user.
-        while !Task.isCancelled {
-            try? await Task.sleep(for: .seconds(3600))
-        }
-        await live.stop()
     }
 
     /// Here because the navigator lives here. A switch to another user rebuilds this view, so the
