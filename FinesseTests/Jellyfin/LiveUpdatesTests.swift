@@ -241,7 +241,8 @@ private func listen(to hub: ServerEventHub) -> (Heard, Task<Void, Never>) {
         let client = try await signedIn()
         var show = MediaItem(id: "show", name: "Show", kind: .series)
         show.userState.unplayedItemCount = 2
-        await client.configure { $0.allItems = [show] }
+        let seeded = show
+        await client.configure { $0.allItems = [seeded] }
         let live = LiveUpdates(source: client, fallbackInterval: .seconds(3600), sleep: Waits().sleep())
         let (heard, listening) = listen(to: live.events)
         defer { listening.cancel() }
