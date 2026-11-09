@@ -45,6 +45,11 @@ actor InMemoryJellyfinClient: JellyfinClient {
 
     private var session: UserSession?
     private var quickConnectPolls = 0
+    /// Live connections that are open, newest last. `emit` sends to all of them.
+    private var liveSockets: [FakeLiveSocket] = []
+    /// Makes opening a live connection throw, to exercise reconnecting.
+    var liveSocketFailure: JellyfinError?
+    private(set) var liveSocketsOpened = 0
 
     init(serverURL: URL = URL(string: "http://fake.invalid:8096")!) {
         self.serverURL = serverURL
@@ -352,3 +357,122 @@ private extension InMemoryJellyfinClient {
         return direction == .descending ? ascending.reversed() : ascending
     }
 }
+
+// MARK: Live updates
+
+extension InMemoryJellyfinClient: LiveEventSource {
+    func openLiveSocket() async throws -> (socket: any LiveSocket, userID: String) {
+        if let liveSocketFailure { throw liveSocketFailure }
+        guard let session else { throw JellyfinError.notSignedIn }
+        liveSocketsOpened += 1
+        let socket = FakeLiveSocket()
+        liveSockets.removeAll { $0.isClosed }
+        liveSockets.append(socket)
+        // Like the server, which asks for keep-alives as soon as a client connects.
+        socket.deliver(#"{"MessageType":"ForceKeepAlive","Data":60}"#)
+        return (socket, session.user.id)
+    }
+
+    /// Sends a message, in the server's own JSON, to every open live connection.
+    func emit(_ message: String) {
+        liveSockets.removeAll { $0.isClosed }
+        for socket in liveSockets {
+            socket.deliver(message)
+        }
+    }
+
+    /// Ends every open live connection, as a server restart would.
+    func dropLiveConnections() {
+        for socket in liveSockets {
+            socket.fail()
+        }
+        liveSockets.removeAll()
+    }
+
+    var openLiveSocketCount: Int {
+        liveSockets.filter { !$0.isClosed }.count
+    }
+
+    var liveMessagesSent: [String] {
+        liveSockets.flatMap(\.sent)
+    }
+
+    /// Adds an episode to a series as a library scan would, and says so on the live connection.
+    func addEpisode(_ episode: MediaItem) {
+        allItems.append(episode)
+        latestValue.insert(episode, at: 0)
+        var updated: [String] = []
+        if let seriesID = episode.seriesID, let index = allItems.firstIndex(where: { $0.id == seriesID }) {
+            allItems[index].userState.unplayedItemCount = (allItems[index].userState.unplayedItemCount ?? 0) + 1
+            updated.append(seriesID)
+        }
+        let message: [String: Any] = [
+            "MessageType": "LibraryChanged",
+            "Data": [
+                "ItemsAdded": [episode.id], "ItemsUpdated": updated, "ItemsRemoved": [String](),
+                "FoldersAddedTo": [String](), "FoldersRemovedFrom": [String](), "CollectionFolders": [String](),
+            ],
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: message) {
+            emit(String(decoding: data, as: UTF8.self))
+        }
+    }
+}
+
+/// A live connection inside the process. Messages queue until read, as on a real socket.
+final class FakeLiveSocket: LiveSocket, @unchecked Sendable {
+    private let lock = NSLock()
+    private var queued: [String] = []
+    private var waiting: CheckedContinuation<String, Error>?
+    private var closed = false
+    private var sentMessages: [String] = []
+
+    var isClosed: Bool { lock.withLock { closed } }
+    var sent: [String] { lock.withLock { sentMessages } }
+
+    func deliver(_ message: String) {
+        let waiter: CheckedContinuation<String, Error>? = lock.withLock {
+            guard !closed else { return nil }
+            if let waiting {
+                self.waiting = nil
+                return waiting
+            }
+            queued.append(message)
+            return nil
+        }
+        waiter?.resume(returning: message)
+    }
+
+    func fail() {
+        let waiter: CheckedContinuation<String, Error>? = lock.withLock {
+            closed = true
+            defer { waiting = nil }
+            return waiting
+        }
+        waiter?.resume(throwing: URLError(.networkConnectionLost))
+    }
+
+    func send(_ text: String) async throws {
+        try lock.withLock {
+            guard !closed else { throw URLError(.networkConnectionLost) }
+            sentMessages.append(text)
+        }
+    }
+
+    func receive() async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            let result: Result<String, Error>? = lock.withLock {
+                if !queued.isEmpty { return .success(queued.removeFirst()) }
+                if closed { return .failure(URLError(.networkConnectionLost)) }
+                waiting = continuation
+                return nil
+            }
+            if let result { continuation.resume(with: result) }
+        }
+    }
+
+    func close() {
+        fail()
+    }
+}
+

@@ -34,6 +34,7 @@ private struct HomeContent: View {
         }
         // Runs each time Home reappears, so progress is current after Detail.
         .task { await model.load() }
+        .refreshesOnServerChanges(isPaused: navigator.activePlayback != nil) { await model.load() }
         // The player covers Home without it disappearing, so `.task` doesn't rerun when it closes.
         // The player reports stop before clearing this, so the reload sees the final position.
         .onChange(of: navigator.activePlayback == nil) { _, playerClosed in

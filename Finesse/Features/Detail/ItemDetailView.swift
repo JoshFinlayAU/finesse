@@ -51,6 +51,8 @@ private struct DetailContent: View {
         .environment(\.colorScheme, .dark)
         .toolbar(.hidden, for: .tabBar)
         .task { await model.load() }
+        // Watched state and progress, quietly, while the page is showing.
+        .refreshesOnServerChanges(isPaused: navigator.activePlayback != nil) { await model.load() }
         .onChange(of: model.phase == .loaded) { _, loaded in
             // The loading view had focus, so hand it to the page's first action as it replaces it.
             guard loaded, focus == .loading || focus == nil else { return }

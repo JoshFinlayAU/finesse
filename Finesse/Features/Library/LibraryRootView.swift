@@ -44,6 +44,8 @@ private struct LibraryContent: View {
         }
         // Runs each time the grid reappears, so progress is current after Detail or the player.
         .task { await model.appeared() }
+        // In place, keeping position and focus, while the grid is showing.
+        .refreshesOnServerChanges(isPaused: navigator.activePlayback != nil) { await model.appeared() }
         .onChange(of: navigator.activePlayback == nil) { _, finished in
             if finished { Task { await model.appeared() } }
         }

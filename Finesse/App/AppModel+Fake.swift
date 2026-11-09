@@ -69,6 +69,20 @@ extension AppModel {
                     $0.responseDelay = .milliseconds(Int(delay * 1000))
                 }
             }
+            // `-FinesseFakeServerNewEpisodeAfter 20` adds an episode of A Long Show that many seconds
+            // after launch and says so on the live connection, as a library scan would.
+            let newEpisodeAfter = UserDefaults.standard.double(forKey: "FinesseFakeServerNewEpisodeAfter")
+            if newEpisodeAfter > 0 {
+                try? await Task.sleep(for: .milliseconds(Int(newEpisodeAfter * 1000)))
+                var episode = MediaItem(id: "brand-new", name: "Brand New Episode", kind: .episode)
+                episode.seriesID = "a-long-show"
+                episode.seriesName = "A Long Show"
+                episode.parentIndexNumber = 2
+                episode.indexNumber = 6
+                episode.productionYear = 2026
+                episode.images.primaryTag = "still"
+                await client.addEpisode(episode)
+            }
         }
         return AppModel(
             store: store,

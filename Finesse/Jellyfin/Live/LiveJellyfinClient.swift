@@ -688,3 +688,64 @@ private extension ItemFilter {
         return filters.isEmpty ? nil : filters
     }
 }
+
+// MARK: Live updates
+
+extension LiveJellyfinClient: LiveEventSource {
+    /// The server's `/socket`, signed in by header. A token in the URL would end up in server and
+    /// proxy logs, so it never goes there, and neither the URL nor the header is logged here.
+    func openLiveSocket() async throws -> (socket: any LiveSocket, userID: String) {
+        guard let session else { throw JellyfinError.notSignedIn }
+        guard var components = URLComponents(url: serverURL, resolvingAgainstBaseURL: false) else {
+            throw JellyfinError.notAJellyfinServer
+        }
+        components.scheme = components.scheme == "https" ? "wss" : "ws"
+        components.path = components.path.hasSuffix("/") ? components.path + "socket" : components.path + "/socket"
+        components.query = nil
+        guard let url = components.url else { throw JellyfinError.notAJellyfinServer }
+        var request = URLRequest(url: url)
+        request.setValue(Self.authorization(device: device, token: session.accessToken), forHTTPHeaderField: "Authorization")
+        return (URLSessionLiveSocket(request: request, configuration: makeSessionConfiguration()), session.user.id)
+    }
+
+    /// The same fields the SDK sends, so the server ties the connection to this device's session.
+    static func authorization(device: DeviceIdentity, token: String) -> String {
+        let fields = [
+            ("Client", headerSafe(device.clientName)),
+            ("Device", headerSafe(device.deviceName)),
+            ("DeviceId", device.deviceID),
+            ("Version", headerSafe(device.clientVersion)),
+            ("Token", token),
+        ]
+        return "MediaBrowser " + fields.map { "\($0.0)=\"\($0.1)\"" }.joined(separator: ", ")
+    }
+}
+
+/// `URLSessionWebSocketTask` as a `LiveSocket`, on its own session so closing it can't affect requests.
+final class URLSessionLiveSocket: LiveSocket, @unchecked Sendable {
+    private let session: URLSession
+    private let task: URLSessionWebSocketTask
+
+    init(request: URLRequest, configuration: URLSessionConfiguration) {
+        session = URLSession(configuration: configuration)
+        task = session.webSocketTask(with: request)
+        task.resume()
+    }
+
+    func send(_ text: String) async throws {
+        try await task.send(.string(text))
+    }
+
+    func receive() async throws -> String {
+        switch try await task.receive() {
+        case .string(let text): text
+        case .data(let data): String(decoding: data, as: UTF8.self)
+        @unknown default: ""
+        }
+    }
+
+    func close() {
+        task.cancel(with: .goingAway, reason: nil)
+        session.invalidateAndCancel()
+    }
+}
