@@ -118,6 +118,7 @@ private struct LibraryContent: View {
             imageURL: client.posterURL(for: item),
             progress: item.watchedFraction,
             isWatched: item.isWatched,
+            unwatchedCount: item.unwatchedCount,
             onPlay: item.isPlayable ? { navigator.play(item, resumeFrom: item.resumePosition) } : nil,
             action: { navigator.show(.detail(item)) },
             menu: {
