@@ -540,4 +540,93 @@ import Testing
         defaults.set(Data("not json".utf8), forKey: "libraryPreferences.user.movie")
         #expect(saved.load() == nil)
     }
+
+    // MARK: All or Unwatched
+
+    @Test func unwatchedIsTheSameFilterAsThePanels() async throws {
+        let client = try await movies()
+        await client.configure { $0.allItems[1].userState.isPlayed = true }
+        let model = LibraryModel(kind: .movie, client: client)
+        await model.appeared()
+        #expect(model.scope == .all)
+        await model.setScope(.unwatched)
+        #expect(model.scope == .unwatched)
+        #expect(FilterChoice.unwatched.isOn(in: model.filter))
+        #expect(await client.itemQueries.last?.filter.isPlayed == false)
+        #expect(model.totalCount == 4)
+        #expect(model.activeFilterTitles == ["Unwatched"])
+        await model.setScope(.all)
+        #expect(!model.hasActiveFilter)
+        #expect(model.totalCount == 5)
+    }
+
+    @Test func unwatchedKeepsTheOtherFiltersAndTheSort() async throws {
+        let client = try await movies()
+        let model = LibraryModel(kind: .movie, client: client)
+        await model.appeared()
+        await model.setSort(.dateAdded)
+        await model.toggle(.favourites)
+        await model.setScope(.unwatched)
+        #expect(model.filter.isFavorite == true)
+        #expect(model.sort == .dateAdded)
+        await model.setScope(.all)
+        #expect(model.filter.isFavorite == true)
+    }
+
+    @Test func watchedOrInProgressIsNeitherChoice() async throws {
+        let client = try await movies()
+        let model = LibraryModel(kind: .movie, client: client)
+        await model.appeared()
+        await model.toggle(.watched)
+        #expect(model.scope == nil)
+        await model.setScope(.unwatched)
+        #expect(model.filter.isPlayed == false)
+        await model.toggle(.inProgress)
+        #expect(model.scope == nil)
+        await model.setScope(.all)
+        #expect(model.filter.isResumable == nil)
+        #expect(model.scope == .all)
+    }
+
+    @Test func theSwitchIsRemembered() async throws {
+        let client = try await movies()
+        let (saved, _) = store(kind: .series)
+        let first = LibraryModel(kind: .series, client: client, preferences: saved)
+        await first.appeared()
+        await first.setScope(.unwatched)
+        let second = LibraryModel(kind: .series, client: client, preferences: saved)
+        #expect(second.scope == .unwatched)
+    }
+
+    // MARK: Reading what an older or newer version saved
+
+    @Test func aSaveMissingANewerFilterStillLoads() {
+        let (saved, defaults) = store()
+        let older = #"{"sort":"DateCreated","direction":"Descending","filter":{"isPlayed":false,"genres":["Drama"]}}"#
+        defaults.set(Data(older.utf8), forKey: "libraryPreferences.user.movie")
+        let loaded = saved.load()
+        #expect(loaded?.sort == .dateAdded)
+        #expect(loaded?.direction == .descending)
+        #expect(loaded?.filter.isPlayed == false)
+        #expect(loaded?.filter.genres == ["Drama"])
+        #expect(loaded?.filter.hasSubtitles == false)
+    }
+
+    @Test func aValueNoLongerKnownLosesOnlyThatValue() throws {
+        let (saved, defaults) = store()
+        var chosen = LibraryPreferences()
+        chosen.filter.isPlayed = false
+        chosen.filter.genres = ["Drama"]
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(chosen)) as? [String: Any])
+        object["sort"] = "SomethingRemoved"
+        var filter = try #require(object["filter"] as? [String: Any])
+        filter["videoTypes"] = ["Laserdisc"]
+        object["filter"] = filter
+        defaults.set(try JSONSerialization.data(withJSONObject: object), forKey: "libraryPreferences.user.movie")
+        let loaded = saved.load()
+        #expect(loaded?.sort == .name)
+        #expect(loaded?.filter.isPlayed == false)
+        #expect(loaded?.filter.genres == ["Drama"])
+        #expect(loaded?.filter.videoTypes == [])
+    }
 }

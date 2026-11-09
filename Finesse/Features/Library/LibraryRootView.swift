@@ -66,12 +66,12 @@ private struct LibraryContent: View {
         case .loaded where model.items.isEmpty:
             VStack(spacing: 40) {
                 EmptyStateView(
-                    title: model.hasActiveFilter ? "No Matches" : "Nothing Here Yet",
-                    message: model.hasActiveFilter ? "No \(title.lowercased()) match these filters." : nil,
+                    title: emptyTitle,
+                    message: emptyMessage,
                     systemImage: "film.stack"
                 )
                 if model.hasActiveFilter {
-                    Button("Clear Filters") {
+                    Button(onlyUnwatched ? "Show All" : "Clear Filters") {
                         Task { await model.clearFilters() }
                     }
                     .accessibilityIdentifier("emptyClearFilters")
@@ -91,6 +91,23 @@ private struct LibraryContent: View {
             }
             footer
         }
+    }
+
+    /// Unwatched on its own finding nothing means everything has been watched, not a bad filter.
+    private var onlyUnwatched: Bool {
+        var rest = model.filter
+        LibraryScope.all.apply(to: &rest)
+        return model.scope == .unwatched && rest == ItemFilter()
+    }
+
+    private var emptyTitle: String {
+        if onlyUnwatched { return "All Watched" }
+        return model.hasActiveFilter ? "No Matches" : "Nothing Here Yet"
+    }
+
+    private var emptyMessage: String? {
+        if onlyUnwatched { return "You've watched every one of these \(title.lowercased())." }
+        return model.hasActiveFilter ? "No \(title.lowercased()) match these filters." : nil
     }
 
     private func card(for item: MediaItem) -> some View {
@@ -162,6 +179,9 @@ private struct LibraryControls: View {
                 .labelStyle(.iconOnly)
                 .accessibilityIdentifier("libraryClearFilters")
             }
+            // Last, so it stays put while Clear Filters comes and goes, and Sort stays the first
+            // thing up from the grid.
+            scopeSwitch
         }
     }
 
@@ -172,6 +192,21 @@ private struct LibraryControls: View {
         guard !titles.isEmpty else { return count }
         let shown = titles.prefix(3).joined(separator: ", ")
         return "\(count) · \(shown)\(titles.count > 3 ? " +\(titles.count - 3)" : "")"
+    }
+
+    /// All or Unwatched in one press, as the filter people want most. Selecting rather than
+    /// following focus, so moving across it to Sort never reloads the grid.
+    private var scopeSwitch: some View {
+        GlassEffectContainer {
+            HStack(spacing: 12) {
+                ForEach(LibraryScope.allCases, id: \.self) { scope in
+                    ScopeButton(title: scope.title, isChosen: model.scope == scope) {
+                        Task { await model.setScope(scope) }
+                    }
+                    .accessibilityIdentifier(scope == .all ? "libraryScopeAll" : "libraryScopeUnwatched")
+                }
+            }
+        }
     }
 
     private var sortMenu: some View {
@@ -227,6 +262,26 @@ private struct LibraryControls: View {
         .focused($filterHasFocus)
         .accessibilityIdentifier("libraryFilter")
         .accessibilityValue(model.hasActiveFilter ? "Filtered" : "All")
+    }
+}
+
+private struct ScopeButton: View {
+    let title: String
+    let isChosen: Bool
+    let action: () -> Void
+
+    var body: some View {
+        if isChosen {
+            button.buttonStyle(.glassProminent)
+        } else {
+            button.buttonStyle(.glass)
+        }
+    }
+
+    private var button: some View {
+        Button(title, action: action)
+            .accessibilityValue(isChosen ? "On" : "Off")
+            .accessibilityAddTraits(isChosen ? .isSelected : [])
     }
 }
 

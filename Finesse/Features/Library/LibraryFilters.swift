@@ -234,6 +234,34 @@ extension ItemFilter {
     }
 }
 
+/// The switch at the top of each library, for the filter people reach for most. It's the same
+/// filter as Unwatched in the panel, so it combines with every other filter and sort. For TV
+/// shows the server counts a show as unwatched until every episode has been watched.
+enum LibraryScope: Hashable, CaseIterable {
+    case all, unwatched
+
+    var title: String {
+        switch self {
+        case .all: "All"
+        case .unwatched: "Unwatched"
+        }
+    }
+
+    /// Nil when the panel has Watched or In Progress on, since neither choice describes that.
+    static func current(in filter: ItemFilter) -> LibraryScope? {
+        switch (filter.isPlayed, filter.isResumable) {
+        case (nil, nil): .all
+        case (false, nil): .unwatched
+        default: nil
+        }
+    }
+
+    func apply(to filter: inout ItemFilter) {
+        filter.isResumable = nil
+        filter.isPlayed = self == .unwatched ? false : nil
+    }
+}
+
 /// A library's sort and filters, remembered per user. Losing this only resets the view.
 struct LibraryPreferences: Codable, Hashable {
     var sort = ItemSort.name
@@ -251,7 +279,42 @@ struct LibraryPreferencesStore: @unchecked Sendable {
     }
 
     func load() -> LibraryPreferences? {
-        defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(LibraryPreferences.self, from: $0) }
+        guard let data = defaults.data(forKey: key) else { return nil }
+        if let saved = try? JSONDecoder().decode(LibraryPreferences.self, from: data) {
+            return saved
+        }
+        return Self.salvage(data)
+    }
+
+    /// Keeps whatever still reads after an update. A filter added since the save would otherwise
+    /// make the whole thing unreadable, and a value since removed would take the rest with it.
+    private static func salvage(_ data: Data) -> LibraryPreferences? {
+        guard let saved = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let fresh = try? JSONEncoder().encode(LibraryPreferences()),
+              var result = try? JSONSerialization.jsonObject(with: fresh) as? [String: Any]
+        else { return nil }
+        for (key, value) in saved where result[key] != nil {
+            if let inner = value as? [String: Any], var merged = result[key] as? [String: Any] {
+                for (innerKey, innerValue) in inner {
+                    var trialInner = merged
+                    trialInner[innerKey] = innerValue
+                    var trial = result
+                    trial[key] = trialInner
+                    if decode(trial) != nil { merged = trialInner }
+                }
+                result[key] = merged
+            } else {
+                var trial = result
+                trial[key] = value
+                if decode(trial) != nil { result = trial }
+            }
+        }
+        return decode(result)
+    }
+
+    private static func decode(_ object: [String: Any]) -> LibraryPreferences? {
+        guard let data = try? JSONSerialization.data(withJSONObject: object) else { return nil }
+        return try? JSONDecoder().decode(LibraryPreferences.self, from: data)
     }
 
     func save(_ preferences: LibraryPreferences) {

@@ -179,6 +179,16 @@ final class LibraryModel {
         await setFilter(changed)
     }
 
+    var scope: LibraryScope? {
+        LibraryScope.current(in: filter)
+    }
+
+    func setScope(_ scope: LibraryScope) async {
+        var changed = filter
+        scope.apply(to: &changed)
+        await setFilter(changed)
+    }
+
     func toggle(_ value: FilterValue, in list: FilterList) async {
         var changed = filter
         list.toggle(value, in: &changed)
