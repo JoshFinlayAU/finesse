@@ -31,7 +31,7 @@ PLATFORM = "TV_OS"
 BASE_TERRITORY = "AUS"
 EXCLUDED_TERRITORIES = {"FRA"}  # see export-compliance.md
 SCREENSHOT_ORDER = [            # see screenshots.md
-    "as-04-home-row", "as-05-movies", "as-08-detail", "as-10-bar", "as-11-info",
+    "as-03-home", "as-05-movies", "as-08-detail", "as-10-bar", "as-11-info",
     "as-07-search", "as-02-user-picker", "as-01-server-entry",
 ]
 AGE_RATING = {                  # see age-rating.md

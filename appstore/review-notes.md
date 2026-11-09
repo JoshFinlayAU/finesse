@@ -5,9 +5,9 @@ App Review needs a server to sign in to, and ours aren't reachable from outside,
 To check it, run the demo-server UI test on a freshly erased simulator. It connects, signs in as `demo`, browses, finds a film through Search and plays it from its detail page, which is the path the notes describe. It reads only these values, passed with the `TEST_RUNNER_` prefix:
 
 ```sh
-printf 'TEST_RUNNER_DEMO_URL=https://demo.jellyfin.org/stable\nTEST_RUNNER_DEMO_USERNAME=demo\nTEST_RUNNER_DEMO_PASSWORD=\nTEST_RUNNER_DEMO_MOVIE=Llamigos\n' | \
+printf 'TEST_RUNNER_DEMO_URL=https://demo.jellyfin.org/stable\nTEST_RUNNER_DEMO_USERNAME=demo\nTEST_RUNNER_DEMO_PASSWORD=\nTEST_RUNNER_DEMO_MOVIE="Jungle Book"\n' | \
   ssh fin-mac 'set -a; . /dev/stdin; set +a; cd ~/Developer/Finesse && xcodebuild test-without-building \
-  -project Finesse.xcodeproj -scheme Finesse -testPlan UI -only-testing:FinesseUITests/DemoServerUITests \
+  -project Finesse.xcodeproj -scheme Finesse -testPlan Playback -only-testing:FinesseUITests/DemoServerUITests \
   -destination "platform=tvOS Simulator,name=Finesse Apple TV 4K" -derivedDataPath build'
 ```
 
@@ -30,9 +30,9 @@ Finesse is a client for Jellyfin, a free, open-source media server that people r
 To review, please use the Jellyfin project's public demo server:
 
 1. On the first screen, enter the server address: https://demo.jellyfin.org/stable
-2. Choose Connect.
+2. Choose Continue.
 3. Choose "Other User" and enter the username: demo. Leave the password empty, and choose Sign In.
-4. Home, Movies, TV Shows and Search are now available. Any film can be played, for example "Caminandes: Llamigos" from Search.
+4. Home, Movies, TV Shows and Search are now available. Any film can be played, for example "Jungle Book" (1942) from Search.
 
 The demo server is run by the Jellyfin project, not by us, and its content was chosen by that project. If it is unavailable, please let us know through App Store Connect and we will provide another server.
 
