@@ -37,3 +37,7 @@ On light backgrounds the arches are #E3B6A6, #BC6F6F and #7E3049, the screen run
 ## Font
 
 The wordmark is Marcellus by Astigmatic, set in capitals with wide tracking and converted to outlines, so no font file ships with the app. Marcellus is licensed under the SIL Open Font License 1.1, which allows this.
+
+## For GitHub
+
+The README header uses the two lockup SVGs in `palace/`, picking the light or dark one to match the reader's theme. `social-preview.png` is the 1280x640 image GitHub shows when the repository is shared. It's the dark lockup on the background gradient, made from `palace/lockup-on-dark.svg`, and it's uploaded by hand in the repository's settings because GitHub has no API for it. The README screenshots in `docs/images/` are 1600x900 JPEGs taken against Jellyfin's public demo server.

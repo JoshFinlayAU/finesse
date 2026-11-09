@@ -1,8 +1,19 @@
-# Finesse
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="branding/palace/lockup-on-dark.svg">
+    <img alt="Finesse" src="branding/palace/lockup-on-light.svg" width="420">
+  </picture>
+</h1>
 
 Finesse is a Jellyfin client for Apple TV. It borrows its structure from the Plex app, with hub rows on Home, library grids you can sort and filter, and detail pages for movies, shows, seasons and episodes. It looks like tvOS 26, using Liquid Glass and system controls throughout.
 
 It's an early, independent project. Version 1 concentrates on watching video well.
+
+<p align="center">
+  <img src="docs/images/home.jpg" alt="Home, with the featured film above the Continue Watching row" width="32%">
+  <img src="docs/images/detail.jpg" alt="A film's detail page with Play, Mark Unwatched and Favourite" width="32%">
+  <img src="docs/images/search.jpg" alt="Search results as you type" width="32%">
+</p>
 
 ## What it does
 
