@@ -39,6 +39,14 @@ final class DemoServerUITests: XCTestCase {
         app.launchArguments = ["-FinesseSignedOut"]
         app.launch()
         app.launchArguments = []
+        // And ends signed out, pass or fail, so no later test finds the demo user signed in.
+        addTeardownBlock { @MainActor [app] in
+            app.terminate()
+            app.launchArguments = ["-FinesseSignedOut"]
+            app.launch()
+            app.terminate()
+            app.launchArguments = []
+        }
 
         let address = app.textFields["serverAddress"]
         XCTAssertTrue(address.waitForExistence(timeout: 20), "A fresh install should open on server entry")

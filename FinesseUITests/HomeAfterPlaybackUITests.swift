@@ -121,7 +121,11 @@ final class HomeAfterPlaybackUITests: XCTestCase {
 
     private func launchToHome() {
         let environment = ProcessInfo.processInfo.environment
+        // Signed out first, so a session an earlier test left, such as the demo server's, can't
+        // stand in for the test user's.
+        app.launchArguments = ["-FinesseSignedOut"]
         app.launch()
+        app.launchArguments = []
         let address = app.textFields["serverAddress"]
         if address.waitForExistence(timeout: 8) {
             enter(environment["JELLYFIN_URL"] ?? "", into: address, in: app)

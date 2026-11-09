@@ -55,7 +55,11 @@ final class UntestedPathsUITests: XCTestCase {
         let username = try environment("JELLYFIN_USERNAME")
         _ = try environment("JELLYFIN_PASSWORD")
         continueAfterFailure = false
+        // Signed out first, so a session an earlier test left, such as the demo server's, can't
+        // stand in for the test user's.
+        app.launchArguments = ["-FinesseSignedOut"]
         app.launch()
+        app.launchArguments = []
 
         let tabBar = app.tabBars.firstMatch
         let address = app.textFields["serverAddress"]
