@@ -32,7 +32,7 @@ private enum LiveServer {
 /// `MARK` lines so screenshots of the same moments can be reviewed. Items are chosen for their
 /// streams; a test skips itself if its item has left the library. Saved positions are put back.
 @MainActor
-@Suite(.serialized, .enabled(if: LiveServer.isConfigured, "JELLYFIN_* variables not set"))
+@Suite(.serialized, .enabled(if: LiveServer.isConfigured, "JELLYFIN_* variables not set"), .disabled(if: TestPlanScope.leavesOutPlayback, "Left to Playback.xctestplan"))
 struct PlaybackTracksEndToEndTests {
     private enum Item {
         /// mkv, two audio languages, embedded subrip.

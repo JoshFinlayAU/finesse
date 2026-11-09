@@ -97,7 +97,7 @@ The second command runs `Fast`, the default plan. Name any other plan with `-tes
 | `Integration` and `UI` | The rest of the server tests and UI tests, without playback | As part of `Full`, or for a change to what they cover |
 
 - The 26.5 simulator is for `Full` only, unless a change depends on the OS version.
-- A new playback test goes in `Playback.xctestplan`, and in the skip list of `Integration.xctestplan` or `UI.xctestplan`. A new UI test that needs no server can join `Fast` if it covers a core path.
+- A new playback UI test (XCTest) goes in `Playback.xctestplan`'s selected list and `UI.xctestplan`'s skip list. Xcode ignores those lists for Swift Testing, so integration suites choose a plan with a trait instead. A streaming suite adds `.disabled(if: TestPlanScope.leavesOutPlayback, ...)`, and any other suite adds `.disabled(if: TestPlanScope.playbackOnly, ...)`. `Integration` and `Playback` set `FINESSE_TEST_SCOPE` for these. A new UI test that needs no server can join `Fast` if it covers a core path.
 - `PlayerFlowUITests` skips unless the `PLAYER_` values in `memory/player-signoff.md` are added to the stdin values.
 - DEBUG builds in the simulator play silently (`Finesse/Playback/PlaybackAudio.swift`), and the player tests check it. Never launch with `-FinesseAudio` in a test run, and shut our simulators down after every run.
 

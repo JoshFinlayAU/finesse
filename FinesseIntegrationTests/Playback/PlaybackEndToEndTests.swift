@@ -29,7 +29,7 @@ private enum LiveServer {
 }
 
 @MainActor
-@Suite(.serialized, .enabled(if: LiveServer.isConfigured, "JELLYFIN_* variables not set"))
+@Suite(.serialized, .enabled(if: LiveServer.isConfigured, "JELLYFIN_* variables not set"), .disabled(if: TestPlanScope.leavesOutPlayback, "Left to Playback.xctestplan"))
 struct PlaybackEndToEndTests {
     /// Long enough to review a screenshot of the running engine.
     private let watchTime = Duration.seconds(15)

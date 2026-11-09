@@ -5,7 +5,7 @@ import Testing
 /// These tests run inside the app, so anything sent through `URLSession.shared` goes through the app's
 /// own cache. A run once left the test password and a token in the app's `Cache.db` that way. This
 /// sends both through it on purpose, then searches the app's folders for them. Reports paths only.
-@Suite(.serialized, .enabled(if: SecretsServer.current != nil, "JELLYFIN_* variables not set"))
+@Suite(.serialized, .enabled(if: SecretsServer.current != nil, "JELLYFIN_* variables not set"), .disabled(if: TestPlanScope.playbackOnly, "Playback.xctestplan runs only the streaming suites"))
 struct NoSecretsOnDiskTests {
     @Test func credentialsSentThroughTheSharedSessionStayOffDisk() async throws {
         let server = try #require(SecretsServer.current)

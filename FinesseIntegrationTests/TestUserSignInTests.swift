@@ -32,7 +32,7 @@ private struct AuthenticationResult: Decodable {
     let AccessToken: String
 }
 
-@Suite(.enabled(if: TestServer.current != nil, "JELLYFIN_URL, JELLYFIN_USERNAME or JELLYFIN_PASSWORD is not set"))
+@Suite(.enabled(if: TestServer.current != nil, "JELLYFIN_URL, JELLYFIN_USERNAME or JELLYFIN_PASSWORD is not set"), .disabled(if: TestPlanScope.playbackOnly, "Playback.xctestplan runs only the streaming suites"))
 struct TestUserSignInTests {
     @Test func testUserSignsInWithoutAdminRights() async throws {
         let server = try #require(TestServer.current)

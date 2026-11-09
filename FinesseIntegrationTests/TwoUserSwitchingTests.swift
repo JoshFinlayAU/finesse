@@ -21,7 +21,7 @@ private struct TwoUsers {
     }
 }
 
-@Suite(.enabled(if: TwoUsers.current != nil, "The second test user's variables are not set"))
+@Suite(.enabled(if: TwoUsers.current != nil, "The second test user's variables are not set"), .disabled(if: TestPlanScope.playbackOnly, "Playback.xctestplan runs only the streaming suites"))
 struct TwoUserSwitchingTests {
     /// One install has one DeviceId, so both users' tokens and resume state must survive side by side.
     @Test func usersOnOneDeviceKeepSeparateTokensAndResumeState() async throws {

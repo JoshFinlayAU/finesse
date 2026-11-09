@@ -28,7 +28,7 @@ private enum LiveServer {
     }
 }
 
-@Suite(.serialized, .enabled(if: LiveServer.isConfigured, "JELLYFIN_* variables not set"))
+@Suite(.serialized, .enabled(if: LiveServer.isConfigured, "JELLYFIN_* variables not set"), .disabled(if: TestPlanScope.playbackOnly, "Playback.xctestplan runs only the streaming suites"))
 struct LibraryFilterTests {
     private func count(_ kind: ItemKind, _ client: LiveJellyfinClient, _ change: (inout ItemFilter) -> Void = { _ in }) async throws -> Int {
         var filter = ItemFilter()

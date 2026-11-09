@@ -33,7 +33,7 @@ private enum LiveServer {
     }
 }
 
-@Suite(.serialized, .enabled(if: LiveServer.isConfigured, "JELLYFIN_* variables not set"))
+@Suite(.serialized, .enabled(if: LiveServer.isConfigured, "JELLYFIN_* variables not set"), .disabled(if: TestPlanScope.playbackOnly, "Playback.xctestplan runs only the streaming suites"))
 struct LiveServerTests {
     /// A missing capability fails the test rather than passing without checking anything.
     private func firstItem(of kind: ItemKind, client: LiveJellyfinClient) async throws -> MediaItem {
