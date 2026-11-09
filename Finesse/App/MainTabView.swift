@@ -1,40 +1,53 @@
 import SwiftUI
+import UIKit
 
-/// The signed-in shell. It keeps the user's live connection open around the tabs, here rather than
-/// in the tabs' own view, so switching tabs never touches it.
+/// The signed-in shell. It keeps the user's live connection open around the tabs. Nothing here
+/// changes what the tabs show, so it never re-renders them or moves focus.
 struct MainTabView: View {
     @Environment(\.jellyfinClient) private var client
-    @Environment(\.scenePhase) private var scenePhase
     /// One per signed-in user. A sign-out or switch rebuilds this view, which closes the old one.
     @State private var serverEvents = ServerEventHub()
-    @State private var live: LiveUpdates?
+    @State private var connection = LiveConnectionHolder()
 
     var body: some View {
         MainTabs()
             .environment(\.serverEvents, serverEvents)
             .task { await keepLive() }
-            .onChange(of: scenePhase) { _, phase in
-                guard let live else { return }
-                Task {
-                    switch phase {
-                    case .active: await live.resume()
-                    case .background: await live.pause()
-                    default: break
-                    }
-                }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                connection.pause()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                connection.resume()
             }
     }
 
     /// Open while this user is signed in, closed when the view goes.
     private func keepLive() async {
         let live = LiveUpdates(source: client as? any LiveEventSource, events: serverEvents)
-        self.live = live
+        connection.live = live
         await live.start()
         // Ends when this view goes, at sign-out or a switch to another user.
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(3600))
         }
+        connection.live = nil
         await live.stop()
+    }
+}
+
+/// Holds the connection without SwiftUI watching it, so opening it doesn't redraw anything.
+@MainActor
+private final class LiveConnectionHolder {
+    var live: LiveUpdates?
+
+    func pause() {
+        guard let live else { return }
+        Task { await live.pause() }
+    }
+
+    func resume() {
+        guard let live else { return }
+        Task { await live.resume() }
     }
 }
 
