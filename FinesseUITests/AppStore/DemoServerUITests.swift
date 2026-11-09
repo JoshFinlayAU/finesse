@@ -4,8 +4,8 @@ import XCTest
 /// title and leave, from a freshly installed app. Also captures App Store screenshot candidates.
 /// Runs only when DEMO_URL and DEMO_USERNAME are set, and reads none of the test server's values.
 /// DEMO_PASSWORD may be empty, as on Jellyfin's own demo. It plays about 15 seconds of DEMO_MOVIE,
-/// reached through Search as the review notes describe. DEMO_AVOID, if set, is a title kept out of the
-/// screenshots: while Home's billboard shows it, the app is relaunched for another pick.
+/// reached through Search as the review notes describe. DEMO_AVOID, if set, lists titles kept out of the
+/// screenshots, separated by "|": while Home's billboard shows one, the app is relaunched for another pick.
 @MainActor
 final class DemoServerUITests: XCTestCase {
     private var remote: XCUIRemote { .shared }
@@ -66,11 +66,12 @@ final class DemoServerUITests: XCTestCase {
         XCTAssertTrue(tabBar.waitForExistence(timeout: 30), "Signing in should reach Home")
         sleep(8)
         // The billboard picks a title at random, so relaunch until it isn't one to avoid.
-        if let avoid = environment["DEMO_AVOID"], !avoid.isEmpty {
+        let avoid = (environment["DEMO_AVOID"] ?? "").split(separator: "|").map(String.init).filter { !$0.isEmpty }
+        if !avoid.isEmpty {
             for attempt in 1...8 {
                 let hero = app.descendants(matching: .any)["heroTitle"]
-                guard hero.waitForExistence(timeout: 15), hero.label.contains(avoid) else { break }
-                print("DEMO billboard showed \(avoid), relaunching (\(attempt))")
+                guard hero.waitForExistence(timeout: 15), let shown = avoid.first(where: hero.label.contains) else { break }
+                print("DEMO billboard showed \(shown), relaunching (\(attempt))")
                 app.terminate()
                 app.launch()
                 XCTAssertTrue(tabBar.waitForExistence(timeout: 30))
