@@ -58,6 +58,7 @@ struct PlaybackOptionsEndToEndTests {
         try await session.start()
         let engine = try #require(session.engine)
         #expect(engine.kind == kind)
+        #expect(engine.isSilent, "\(engine.kind) should play silently in the simulator")
         let window = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).first)
         let view = engine.makeRenderView()
         view.frame = window.bounds
