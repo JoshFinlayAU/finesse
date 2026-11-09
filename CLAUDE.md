@@ -84,6 +84,23 @@ ssh fin-mac 'cd ~/Developer/Finesse && xcodebuild test-without-building -project
 
 These names are ours, so they don't change between Xcode versions. To see them, run `ssh fin-mac xcrun simctl list devices available`.
 
+### Which plan to run
+
+The second command runs `Fast`, the default plan. Name any other plan with `-testPlan`.
+
+| Plan | What it holds | When to run it |
+|---|---|---|
+| `Fast` | Every unit test, plus a UI smoke set on the fake server: user switching, Home, the library grid and Search, detail focus on a slow server, and Back from each tab | Every routine change, on the 27.2 simulator only. It took 7 minutes on 2026-11-09 |
+| `Playback` | Every streaming and player test: the playback integration tests, the player UI tests on AVPlayer and mpv, tracks, transcodes, resume and progress, Skip and Up Next, and the demo server | Only when a change touches `Finesse/Playback`, `Finesse/Features/Player`, the device profile, playback info code, `tvos-deps` or `FinesseDeps`, and before a release build |
+| `Full` | Everything | Before a release build, on both simulators, or when the manager asks |
+| `Finesse` | The unit tests alone | When only unit tests need proving |
+| `Integration` and `UI` | The rest of the server tests and UI tests, without playback | As part of `Full`, or for a change to what they cover |
+
+- The 26.5 simulator is for `Full` only, unless a change depends on the OS version.
+- A new playback test goes in `Playback.xctestplan`, and in the skip list of `Integration.xctestplan` or `UI.xctestplan`. A new UI test that needs no server can join `Fast` if it covers a core path.
+- `PlayerFlowUITests` skips unless the `PLAYER_` values in `memory/player-signoff.md` are added to the stdin values.
+- DEBUG builds in the simulator play silently (`Finesse/Playback/PlaybackAudio.swift`), and the player tests check it. Never launch with `-FinesseAudio` in a test run, and shut our simulators down after every run.
+
 ### Integration tests
 
 The test user's URL and credentials live in a gitignored `.env.local` at the spoke root on Linux. This is a deliberate choice for these low-privilege test credentials only. The file is never rsynced or written to the Mac; values are passed at test time over SSH stdin, which keeps them out of process arguments.
@@ -106,7 +123,7 @@ sed 's/^/TEST_RUNNER_/' .env.local | ssh fin-mac 'set -a; . /dev/stdin; set +a; 
 `-testPlan UI` drives the real app with the Siri Remote API (`XCUIRemote`) and keeps screenshots in the result bundle. It's the only way to send remote input to the simulator from here.
 
 - `FakeServerUITests` needs no server. It launches with `-FinesseFakeServer`, a DEBUG-only mode with two signed-in users and seeded hubs.
-- `SignInFlowUITests` signs in to the test server using the same stdin credentials as the integration tests, and skips without them. Reset first so it starts signed out: `xcrun simctl keychain "Finesse Apple TV 4K" reset`.
+- `SignInFlowUITests` signs in to the test server using the same stdin credentials as the integration tests, and skips without them. It launches with `-FinesseSignedOut`, a DEBUG-only argument that forgets stored users, so it starts signed out whatever ran before it.
 - `TwoUserSwitchingUITests` and the integration `TwoUserSwitchingTests` need `JELLYFIN_USERNAME_2` and `JELLYFIN_PASSWORD_2` in `.env.local` for the second test user, and skip without them.
 - `TopShelfUITests` drives the simulator's Home Screen rather than the app, so it only runs when asked. Add `TEST_RUNNER_FINESSE_TOP_SHELF_TEST=1` to the stdin values along with the credentials, and name it with `-only-testing:FinesseUITests/TopShelfUITests`. The Home Screen reports nothing about the shelf to XCTest, so review the `shelf-` screenshots for what it shows. The assertions only prove what choosing an item does. It changes only the test user's own state and undoes it.
 - The real user picker shows household names from `/Users/Public`, so never commit or quote those screenshots.

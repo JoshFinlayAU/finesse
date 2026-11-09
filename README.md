@@ -48,20 +48,25 @@ The Xcode project isn't checked in. `project.yml` describes it, and XcodeGen gen
 
 ## Tests
 
-There are three test plans.
+There are six test plans.
 
-- `Finesse`, the default, holds the unit tests. They run offline against recorded server responses, so they need no server.
+- `Fast`, the default, runs every unit test and a short set of UI tests against a built-in fake server, so it needs no server. Use it for everyday changes.
+- `Finesse` holds the unit tests alone. They run offline against recorded server responses.
 - `Integration` talks to a real Jellyfin server as a test user.
-- `UI` drives the app in the simulator with the Siri Remote API. Most of these run against a built-in fake server and need nothing else. Some sign in to a real server and skip themselves when no server details are given.
+- `UI` drives the app in the simulator with the Siri Remote API. Most of these run against the fake server and need nothing else. Some sign in to a real server and skip themselves when no server details are given.
+- `Playback` holds the streaming and player tests, on both AVPlayer and mpv. Run it when you change playback.
+- `Full` runs everything.
 
-Run the unit tests with:
+Debug builds in the simulator play no sound. Launch with `-FinesseAudio` to hear them.
+
+Run the default `Fast` plan with:
 
 ```sh
 xcodebuild test -project Finesse.xcodeproj -scheme Finesse \
   -destination "platform=tvOS Simulator,name=Apple TV 4K (3rd generation)"
 ```
 
-The integration tests and the server-backed UI tests read the server address and a test user's credentials from environment variables: `JELLYFIN_URL`, `JELLYFIN_USERNAME` and `JELLYFIN_PASSWORD`, plus `JELLYFIN_USERNAME_2` and `JELLYFIN_PASSWORD_2` for a second user in the user switching tests. `xcodebuild` passes variables to the tests when they're prefixed with `TEST_RUNNER_`, for example `TEST_RUNNER_JELLYFIN_URL`. Then add `-testPlan Integration` or `-testPlan UI` to the command above.
+The integration tests and the server-backed UI tests read the server address and a test user's credentials from environment variables: `JELLYFIN_URL`, `JELLYFIN_USERNAME` and `JELLYFIN_PASSWORD`, plus `JELLYFIN_USERNAME_2` and `JELLYFIN_PASSWORD_2` for a second user in the user switching tests. `xcodebuild` passes variables to the tests when they're prefixed with `TEST_RUNNER_`, for example `TEST_RUNNER_JELLYFIN_URL`. Then add `-testPlan` and the plan's name to the command above.
 
 Use an account made for testing. The tests change only that user's own state, such as watch progress and favourites, and put it back afterwards.
 
