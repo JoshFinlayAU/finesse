@@ -2,7 +2,8 @@
 # Builds and signs Finesse for the Lounge Room Apple TV. Runs on fin-mac, fed over SSH:
 #   ssh fin-mac 'bash -s' < scripts/apple-tv-build.sh           build and sign only
 #   ssh fin-mac 'bash -s install' < scripts/apple-tv-build.sh   also install, which ends a running copy
-#   ssh fin-mac 'bash -s install launch' < scripts/apple-tv-build.sh   also open it on the TV
+# It never opens the app. The household opens it themselves: a copy opened through devicectl stays
+# tied to the developer tools, and on 2026-11-09 the TV's app switcher couldn't close one.
 # Hold fin-mac-build and, for install, lounge-room-apple-tv. Other spokes build on this Mac,
 # so the keychain search list changes only for signing, and the trap always restores it.
 set -u
@@ -59,6 +60,3 @@ security list-keychains -d user
 [ "${1:-}" = install ] || exit 0
 xcrun devicectl device install app --device $UDID "$APP" < /dev/null 2>&1 | tail -6 | cut -c1-200
 [ "${PIPESTATUS[0]}" -eq 0 ] || exit 11
-# It's the household's TV, so opening the app has to be asked for.
-[ "${2:-}" = launch ] || exit 0
-xcrun devicectl device process launch --terminate-existing --device $UDID au.com.athenanetworks.finesse < /dev/null 2>&1 | cut -c1-160
