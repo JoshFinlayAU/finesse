@@ -13,4 +13,4 @@ Because OpenSSL ships in the app rather than coming from tvOS, Finesse doesn't q
 
 Leaving France out means no French encryption declaration is needed, so there are no documents to upload. Making Finesse available in France would first need a declaration to ANSSI, which takes several weeks.
 
-`asc_apply.py encryption --build <id>` records the same answers for an uploaded build. Don't add `ITSAppUsesNonExemptEncryption` set to `false` to `Info.plist`, because that would tell Apple the opposite. Once the first review is through, setting it to `true` stops App Store Connect asking again for every build.
+`asc_apply.py encryption --build <id>` records the same answers for an uploaded build by setting its encryption flag. Apple makes no declaration record for these answers, because no documents are needed. Don't add `ITSAppUsesNonExemptEncryption` set to `false` to `Info.plist`, because that would tell Apple the opposite. Once the first review is through, setting it to `true` stops App Store Connect asking again for every build.

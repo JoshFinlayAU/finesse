@@ -52,10 +52,6 @@ REVIEW_CONTACT = {             # a 1300 number only works from within Australia;
     "contactFirstName": "Josh", "contactLastName": "Finlay",
     "contactPhone": "+61 1300 409 252", "contactEmail": "support@athenanetworks.com.au",
 }
-ENCRYPTION_DESCRIPTION = (
-    "HTTPS through Apple's URLSession, and OpenSSL 3.5 (standard TLS 1.2 and 1.3) inside the bundled "
-    "FFmpeg library for streams the built-in player fetches. No proprietary algorithms."
-)
 
 HERE = Path(__file__).resolve().parent
 API = "https://api.appstoreconnect.apple.com"
@@ -312,13 +308,8 @@ def screenshots(client, version_loc, folder):
 
 def encryption(client, build_id):
     # 11. Export compliance for an uploaded build: standard, third-party (OpenSSL), not in France.
-    declaration = client.call("POST", "/v1/appEncryptionDeclarations", {"data": {
-        "type": "appEncryptionDeclarations", "attributes": {
-            "appDescription": ENCRYPTION_DESCRIPTION, "containsProprietaryCryptography": False,
-            "containsThirdPartyCryptography": True, "availableOnFrenchStore": False},
-        "relationships": {"app": ref("apps", APP_ID)}}}, "11 encryption declaration")["data"]
-    client.call("POST", f"/v1/appEncryptionDeclarations/{declaration['id']}/relationships/builds",
-                {"data": [{"type": "builds", "id": build_id}]}, "11 attach to build")
+    # Apple refuses a declaration object for that combination, since no documents are needed
+    # (409 on 2026-11-09), so the answer is only the build's flag.
     client.call("PATCH", f"/v1/builds/{build_id}", {"data": {
         "type": "builds", "id": build_id, "attributes": {"usesNonExemptEncryption": True}}}, "11 build flag")
     # 12. Choose that build for version 1.0.
