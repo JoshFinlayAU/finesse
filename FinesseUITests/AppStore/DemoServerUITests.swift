@@ -35,7 +35,10 @@ final class DemoServerUITests: XCTestCase {
         }
         let password = environment["DEMO_PASSWORD"] ?? ""
         continueAfterFailure = false
+        // Starts signed out whatever ran before it, as a fresh install would.
+        app.launchArguments = ["-FinesseSignedOut"]
         app.launch()
+        app.launchArguments = []
 
         let address = app.textFields["serverAddress"]
         XCTAssertTrue(address.waitForExistence(timeout: 20), "A fresh install should open on server entry")
