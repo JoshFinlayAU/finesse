@@ -269,8 +269,8 @@ private struct ScopeButton: View {
     let isChosen: Bool
     let action: () -> Void
 
-    /// Tinted with a checkmark when chosen, like the letters in the filter panel, so the choice
-    /// reads without focus on it.
+    /// A checkmark marks the chosen side, so it reads with or without focus. A tint was tried and
+    /// left the label unreadable on the white focus background.
     var body: some View {
         Button(action: action) {
             if isChosen {
@@ -279,8 +279,6 @@ private struct ScopeButton: View {
                 Text(title)
             }
         }
-        .tint(isChosen ? .accentColor : nil)
-        .buttonStyle(.bordered)
         .accessibilityValue(isChosen ? "On" : "Off")
         .accessibilityAddTraits(isChosen ? .isSelected : [])
     }
