@@ -154,9 +154,12 @@ schemes:
         - FinesseIntegrationTests
         - FinesseUITests
       testPlans:
-        - path: Finesse.xctestplan
+        - path: Fast.xctestplan
           defaultPlan: true
+        - path: Finesse.xctestplan
         - path: Integration.xctestplan
         - path: UI.xctestplan
+        - path: Playback.xctestplan
+        - path: Full.xctestplan
     archive:
       config: Release

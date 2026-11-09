@@ -335,8 +335,11 @@ final class UntestedPathsUITests: XCTestCase {
     }
 
     /// From content Back goes to the tab bar, staying on that tab, and from there it leaves the app.
+    /// On the fake server, since leaving a tab doesn't depend on what the server holds, and it keeps
+    /// these in the Fast plan with no sign-in.
     private func checkBack(from tab: String) throws {
-        try launchSignedIn()
+        app.launchArguments = ["-FinesseFakeServer"]
+        app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
         // Presses are lost until Home has loaded and focus has settled.
         XCTAssertTrue(app.buttons["heroMoreInfo"].waitForExistence(timeout: 30))

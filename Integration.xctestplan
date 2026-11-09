@@ -13,6 +13,13 @@
   },
   "testTargets" : [
     {
+      "skippedTests" : [
+        "LiveServerTests/playbackInfoAndDirectStreamURL()",
+        "LiveServerTests/playbackReportsMoveResumePosition()",
+        "PlaybackEndToEndTests",
+        "PlaybackOptionsEndToEndTests",
+        "PlaybackTracksEndToEndTests"
+      ],
       "target" : {
         "containerPath" : "container:Finesse.xcodeproj",
         "identifier" : "82316B7A76B09633B219AF68",
