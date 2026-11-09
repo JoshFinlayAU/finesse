@@ -82,7 +82,7 @@ https://github.com/JoshFinlayAU/finesse/blob/main/PRIVACY.md
 
 ## Other details
 
-The primary category is Entertainment, with no secondary category. Finesse is free and sold everywhere except France, where the encryption rules would need a separate declaration (see `export-compliance.md`). New App Store territories aren't added automatically.
+The primary category is Photo & Video and the secondary is Entertainment, chosen by the owner when they created the record in App Store Connect. `asc_apply.py` checks them and doesn't change them. Finesse is free and sold everywhere except France, where the encryption rules would need a separate declaration (see `export-compliance.md`). New App Store territories aren't added automatically.
 
 The copyright line is entered without the copyright sign, which the store adds itself:
 

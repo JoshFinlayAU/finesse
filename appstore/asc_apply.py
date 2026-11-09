@@ -30,6 +30,9 @@ VERSION = "1.0"
 PLATFORM = "TV_OS"
 BASE_TERRITORY = "AUS"
 EXCLUDED_TERRITORIES = {"FRA"}  # see export-compliance.md
+CATEGORIES = {                  # chosen by the owner in the website, see metadata.md
+    "primaryCategory": "PHOTO_AND_VIDEO", "secondaryCategory": "ENTERTAINMENT",
+}
 SCREENSHOT_ORDER = [            # see screenshots.md
     "as-03-home", "as-05-movies", "as-08-detail", "as-10-bar", "as-11-info",
     "as-07-search", "as-02-user-picker", "as-01-server-entry",
@@ -160,10 +163,11 @@ def listing(client):
             "subtitle": block("metadata.md", "subtitle"),
             "privacyPolicyUrl": block("metadata.md", "privacyPolicyUrl")}}}, "1 subtitle, privacy URL")
 
-    # 2. Category.
-    client.call("PATCH", f"/v1/appInfos/{app_info['id']}", {"data": {
-        "type": "appInfos", "id": app_info["id"], "relationships": {
-            "primaryCategory": ref("appCategories", "ENTERTAINMENT")}}}, "2 category")
+    # 2. Categories: the owner chose them in the website, so this only checks them.
+    for relation, expected in CATEGORIES.items():
+        found = client.call("GET", f"/v1/appInfos/{app_info['id']}/{relation}", note=f"2 check {relation}")
+        if client.live and (found.get("data") or {}).get("id") != expected:
+            sys.exit(f"{relation} is not {expected}; it was chosen in the website, so check with the owner")
 
     # 3. Age rating.
     path = f"/v1/appInfos/{app_info['id']}/ageRatingDeclaration"

@@ -12,7 +12,7 @@ The privacy policy is `PRIVACY.md` at the top of the repository. For App Privacy
 
 ## Entering it
 
-`asc_apply.py` enters everything through the App Store Connect API in one run: the listing text, category, age rating, copyright, review information, availability, price, licence agreement and screenshots. It reads the text from the files here, so they stay the single source.
+`asc_apply.py` enters everything through the App Store Connect API in one run: the listing text, age rating, copyright, review information, availability, price, licence agreement and screenshots. It checks the categories, which the owner chose in the website, without changing them. It reads the text from the files here, so they stay the single source.
 
 It needs an App Store Connect API key with the App Manager role and Python's `cryptography` package. The key's IDs come from the environment, and the `.p8` file is looked for in `~/.appstoreconnect/private_keys/` unless `ASC_KEY_PATH` says otherwise.
 
