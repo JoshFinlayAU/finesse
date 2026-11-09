@@ -132,7 +132,7 @@ sed 's/^/TEST_RUNNER_/' .env.local | ssh fin-mac 'set -a; . /dev/stdin; set +a; 
 
 `scripts/apple-tv-build.sh` is the device build path. It handles the headless signing and the framework re-signing that a real device insists on, so don't build for the device with plain `xcodebuild`.
 
-Hold `fin-mac-build` and `lounge-room-apple-tv`, sync, then run this from the spoke root. Leave out `install` to build and sign without touching the TV, which is the household's, so don't play anything on it unprompted. `install` ends a running copy of the app and doesn't open the new one, so check first that nobody is watching. Add `launch` after it to open the app.
+Hold `fin-mac-build` and `lounge-room-apple-tv`, sync, then run this from the spoke root. Leave out `install` to build and sign without touching the TV, which is the household's, so don't play anything on it unprompted. `install` ends a running copy of the app and doesn't open the new one, so check first that nobody is watching. The script never opens the app, so the household opens it themselves. On 2026-11-09 a copy opened through devicectl stayed tied to the developer tools, and the TV's app switcher couldn't close it.
 
 ```sh
 ssh fin-mac 'bash -s install' < scripts/apple-tv-build.sh
