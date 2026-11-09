@@ -77,7 +77,8 @@ private enum Recorded {
     }
 }
 
-/// Records each wait, then waits only briefly, so reconnecting and the fallback can be checked quickly.
+/// Records each wait, then waits a thousandth of it, so a minute's backoff takes 60 ms and an
+/// hour's fallback 3.6 s, keeping their order while the tests stay quick.
 private actor Waits {
     private(set) var all: [Duration] = []
     func add(_ duration: Duration) { all.append(duration) }
@@ -85,7 +86,7 @@ private actor Waits {
     nonisolated func sleep() -> @Sendable (Duration) async throws -> Void {
         { duration in
             await self.add(duration)
-            try await Task.sleep(for: .milliseconds(10))
+            try await Task.sleep(for: duration / 1000)
         }
     }
 }
@@ -226,7 +227,7 @@ private func listen(to hub: ServerEventHub) -> (Heard, Task<Void, Never>) {
 
     @Test func theFallbackStaysQuietWhileConnected() async throws {
         let client = try await signedIn()
-        let live = LiveUpdates(source: client, fallbackInterval: .milliseconds(1), sleep: Waits().sleep())
+        let live = LiveUpdates(source: client, fallbackInterval: .seconds(20), sleep: Waits().sleep())
         let (heard, listening) = listen(to: live.events)
         defer { listening.cancel() }
         await live.start()
