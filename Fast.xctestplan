@@ -30,7 +30,6 @@
         "SlowServerFocusUITests",
         "UntestedPathsUITests/testBackFromMovies()",
         "UntestedPathsUITests/testBackFromSearch()",
-        "UntestedPathsUITests/testBackFromSettings()",
         "UnwatchedBadgeUITests"
       ],
       "target" : {

@@ -90,12 +90,13 @@ The second command runs `Fast`, the default plan. Name any other plan with `-tes
 
 | Plan | What it holds | When to run it |
 |---|---|---|
-| `Fast` | Every unit test, plus a UI smoke set on the fake server: user switching, Home, the library grid and Search, detail focus on a slow server, a new episode arriving live, and Back from each tab | Every routine change, on the 27.2 simulator only. It took 7 minutes on 2026-11-09 |
+| `Fast` | Every unit test, plus a UI smoke set on the fake server: user switching, Home, the library grid and Search, detail focus on a slow server, a new episode arriving live, and Back from Movies and Search | Every routine change, on the 27.2 simulator only. It took 7 minutes on 2026-11-09 |
 | `Playback` | Every streaming and player test: the playback integration tests, the player UI tests on AVPlayer and mpv, tracks, transcodes, resume and progress, Skip and Up Next, and the demo server | Only when a change touches `Finesse/Playback`, `Finesse/Features/Player`, the device profile, playback info code, `tvos-deps` or `FinesseDeps`, and before a release build |
 | `Full` | Everything | Before a release build, on both simulators, or when the manager asks |
 | `Finesse` | The unit tests alone | When only unit tests need proving |
 | `Integration` and `UI` | The rest of the server tests and UI tests, without playback | As part of `Full`, or for a change to what they cover |
 
+- `testBackFromSettings` is in `UI` but not `Fast`. About 1 run in 6, SwiftUI's tab view leaves the accessibility tree on Home after switching to Settings, and neither waiting nor remote input clears it, so it can't be made stable from the test. See `memory/ui-test-focus-gotchas.md`.
 - The 26.5 simulator is for `Full` only, unless a change depends on the OS version.
 - A new playback UI test (XCTest) goes in `Playback.xctestplan`'s selected list and `UI.xctestplan`'s skip list. Xcode ignores those lists for Swift Testing, so integration suites choose a plan with a trait instead. A streaming suite adds `.disabled(if: TestPlanScope.leavesOutPlayback, ...)`, and any other suite adds `.disabled(if: TestPlanScope.playbackOnly, ...)`. `Integration` and `Playback` set `FINESSE_TEST_SCOPE` for these. A new UI test that needs no server can join `Fast` if it covers a core path.
 - `PlayerFlowUITests` skips unless the `PLAYER_` values in `memory/player-signoff.md` are added to the stdin values.
